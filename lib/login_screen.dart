@@ -22,7 +22,7 @@ class RoleSelectionScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.rocket_launch, size: 80, color: Colors.white),
+            const Icon(Icons.rocket_launch_sharp, size: 80, color: Colors.white),
             const SizedBox(height: 10),
             const Text("CAMPUSLY", style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 2)),
             const SizedBox(height: 50),
@@ -203,15 +203,22 @@ class MainFacultyDashboard extends StatelessWidget {
       context: context,
       builder: (c) => AlertDialog(
         title: const Text("CSV Bulk Upload"),
-        content: const Text("Ensure your CSV has columns in this order:\nName, Email, Password/ID"),
+        content: const Text("Format: Name, Email, Password/ID\n\nDownload the template if you don't have one."),
         actions: [
+          // NEW: Download Template Button
+          TextButton.icon(
+            onPressed: () => AddFacultyScreenState.downloadCSVTemplate(context),
+            icon: const Icon(Icons.download),
+            label: const Text("Template"),
+          ),
+          const Spacer(),
           TextButton(onPressed: () => Navigator.pop(c), child: const Text("Cancel")),
           ElevatedButton(
               onPressed: () {
                 Navigator.pop(c);
                 AddFacultyScreenState.pickAndUploadCSV(context, collegeName);
               },
-              child: const Text("Select File")
+              child: const Text("Upload File")
           ),
         ],
       ),
