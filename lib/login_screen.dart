@@ -28,7 +28,7 @@ class RoleSelectionScreen extends StatelessWidget {
             const SizedBox(height: 50),
             _roleButton(context, "Admin", Icons.supervised_user_circle, true),
             const SizedBox(height: 20),
-            _roleButton(context, "Faculty/Student", Icons.school, false),
+            _roleButton(context, "Faculty//Student", Icons.school, false),
             const SizedBox(height: 30),
           ],
         ),
