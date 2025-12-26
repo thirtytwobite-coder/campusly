@@ -6,10 +6,8 @@ import 'college_list.dart';
 import 'faculty_home.dart';
 import 'manage_clubs.dart';
 import 'change_password.dart';
-
 class RoleSelectionScreen extends StatelessWidget {
   RoleSelectionScreen({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -17,7 +15,7 @@ class RoleSelectionScreen extends StatelessWidget {
         width: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFFF5FA2), Color(0xFF8F5CFF)],
+            colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
             begin: Alignment.topCenter,
           ),
         ),
@@ -37,7 +35,6 @@ class RoleSelectionScreen extends StatelessWidget {
       ),
     );
   }
-
   Widget _roleButton(BuildContext context, String title, IconData icon, bool isFaculty) {
     return SizedBox(
       width: 250,
@@ -55,14 +52,12 @@ class RoleSelectionScreen extends StatelessWidget {
     );
   }
 }
-
 class AdminLoginScreen extends StatefulWidget {
   final bool isFacultyRole;
   const AdminLoginScreen({super.key, required this.isFacultyRole});
   @override
   State<AdminLoginScreen> createState() => _AdminLoginScreenState();
 }
-
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final _email = TextEditingController(), _pass = TextEditingController();
   bool _isLoading = false;
@@ -93,7 +88,6 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -117,11 +111,9 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     );
   }
 }
-
 // ADMIN SECTION - KEPT PERFECT AS REQUESTED
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -159,7 +151,6 @@ class AdminDashboard extends StatelessWidget {
       ),
     );
   }
-
   Widget _card(BuildContext context, String t, IconData i, VoidCallback o) => InkWell(
       onTap: o,
       child: Card(
@@ -175,12 +166,10 @@ class AdminDashboard extends StatelessWidget {
       )
   );
 }
-
 // MAIN FACULTY SECTION - CLEANED UP
 class MainFacultyDashboard extends StatelessWidget {
   final String collegeName;
   const MainFacultyDashboard({super.key, required this.collegeName});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -188,8 +177,6 @@ class MainFacultyDashboard extends StatelessWidget {
         title: Text(collegeName),
         backgroundColor: const Color(0xFF1A237E),
         foregroundColor: Colors.white,
-
-
       ),
       body: GridView.count(
         padding: const EdgeInsets.all(16),
@@ -216,7 +203,6 @@ class MainFacultyDashboard extends StatelessWidget {
       ),
     );
   }
-
   void _showCSVInstructions(BuildContext context) {
     showDialog(
       context: context,
@@ -236,7 +222,6 @@ class MainFacultyDashboard extends StatelessWidget {
       ),
     );
   }
-
   Widget _card(BuildContext context, String t, IconData i, VoidCallback o) => InkWell(
       onTap: o,
       child: Card(
