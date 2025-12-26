@@ -100,6 +100,7 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -6,6 +6,7 @@ import 'college_list.dart';
 import 'faculty_home.dart';
 import 'manage_clubs.dart';
 import 'change_password.dart';
+
 class RoleSelectionScreen extends StatelessWidget {
   RoleSelectionScreen({super.key});
   @override
@@ -52,7 +53,7 @@ class RoleSelectionScreen extends StatelessWidget {
     );
   }
 }
-class AdminLoginScreen extends StatefulWidget {
+class AdminLoginScreen extends StatefulWidget{
   final bool isFacultyRole;
   const AdminLoginScreen({super.key, required this.isFacultyRole});
   @override
