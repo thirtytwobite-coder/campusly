@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "750597681838",
+    "project_id": "collegeeventmanager-b3211",
+    "storage_bucket": "collegeeventmanager-b3211.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:750597681838:android:da08e3dc488842d5a6b33f",
+        "android_client_info": {
+          "package_name": "com.example.college_event_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBrUXM3S7brLueu4W4L68Yl7j4anmCtp0A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
