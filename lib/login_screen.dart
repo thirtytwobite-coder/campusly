@@ -9,7 +9,7 @@ import 'change_password.dart';
 class RoleSelectionScreen extends StatelessWidget {
   RoleSelectionScreen({super.key});
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context){
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -35,7 +35,7 @@ class RoleSelectionScreen extends StatelessWidget {
       ),
     );
   }
-  Widget _roleButton(BuildContext context, String title, IconData icon, bool isFaculty) {
+  Widget _roleButton(BuildContext context, String title, IconData icon, bool isFaculty){
     return SizedBox(
       width: 250,
       height: 60,
@@ -61,7 +61,6 @@ class AdminLoginScreen extends StatefulWidget {
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final _email = TextEditingController(), _pass = TextEditingController();
   bool _isLoading = false;
-
   Future login() async {
     setState(() => _isLoading = true);
     try {
@@ -72,7 +71,6 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AdminDashboard()));
         return;
       }
-
       var doc = await FirebaseFirestore.instance.collection('faculty').doc(u.user!.uid).get();
       if (doc.exists) {
         final data = doc.data()!;
