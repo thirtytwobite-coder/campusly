@@ -184,12 +184,9 @@ class MainFacultyDashboard extends StatelessWidget {
         children: [
           _card(context, "Add Club Faculty", Icons.person_add_alt_1, () => Navigator.push(
               context, MaterialPageRoute(builder: (c) => AddFacultyScreen(role: 'Faculty', autoCollege: collegeName)))),
-
           _card(context, "Assign via CSV", Icons.upload_file, () => _showCSVInstructions(context)),
-
           _card(context, "Change Password", Icons.security, () => Navigator.push(
               context, MaterialPageRoute(builder: (c) => const ChangePasswordScreen()))),
-
           _card(context, "Logout", Icons.power_settings_new, () async {
             await FirebaseAuth.instance.signOut();
             Navigator.pushReplacement(
