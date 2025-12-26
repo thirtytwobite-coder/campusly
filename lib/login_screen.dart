@@ -17,7 +17,7 @@ class RoleSelectionScreen extends StatelessWidget {
         width: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+            colors: [Color(0xFFFF5FA2), Color(0xFF8F5CFF)],
             begin: Alignment.topCenter,
           ),
         ),
