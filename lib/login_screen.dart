@@ -9,23 +9,31 @@ import 'change_password.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
   RoleSelectionScreen({super.key});
+
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
     return Scaffold(
+      // Changed background to white
+      backgroundColor: Colors.white,
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
-            begin: Alignment.topCenter,
-          ),
-        ),
+        // Removed the LinearGradient decoration
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.rocket_launch_sharp, size: 80, color: Colors.white),
+            // Changed icon color to indigo for visibility on white
+            const Icon(Icons.rocket_launch_sharp, size: 80, color: Color(0xFF1A237E)),
             const SizedBox(height: 10),
-            const Text("CAMPUSLY", style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 2)),
+            // Changed text color to indigo
+            const Text(
+              "CAMPUSLY",
+              style: TextStyle(
+                color: Color(0xFF1A237E),
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2,
+              ),
+            ),
             const SizedBox(height: 50),
             _roleButton(context, "Admin", Icons.supervised_user_circle, true),
             const SizedBox(height: 20),
@@ -36,19 +44,25 @@ class RoleSelectionScreen extends StatelessWidget {
       ),
     );
   }
-  Widget _roleButton(BuildContext context, String title, IconData icon, bool isFaculty){
+
+  Widget _roleButton(BuildContext context, String title, IconData icon, bool isFaculty) {
     return SizedBox(
       width: 250,
       height: 60,
       child: ElevatedButton.icon(
-        icon: Icon(icon, color: Colors.indigo),
+        icon: Icon(icon, color: Colors.white), // White icon on blue button
         label: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.indigo,
+          // Inverted colors: Blue background with white text for better contrast on white screen
+          backgroundColor: const Color(0xFF1A237E),
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          elevation: 4, // Added slight shadow for depth
         ),
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => AdminLoginScreen(isFacultyRole: isFaculty))),
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => AdminLoginScreen(isFacultyRole: isFaculty)),
+        ),
       ),
     );
   }
