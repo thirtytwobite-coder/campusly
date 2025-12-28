@@ -35,9 +35,9 @@ class RoleSelectionScreen extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     letterSpacing: 2)),
             const SizedBox(height: 50),
-            _roleButton(context, "Admin", Icons.supervised_user_circle, true),
+            _roleButton(context, "Admin/Faculty", Icons.supervised_user_circle, true),
             const SizedBox(height: 20),
-            _roleButton(context, "Faculty/Student", Icons.school, false),
+            _roleButton(context, "Student", Icons.school, false),
             const SizedBox(height: 30),
           ],
         ),
@@ -140,7 +140,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(widget.isFacultyRole ? "FACULTY LOGIN" : "STUDENT LOGIN",
+            Text(widget.isFacultyRole ? "LOGIN" : "STUDENT LOGIN",
                 style: const TextStyle(
                     color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 30),
@@ -188,6 +188,18 @@ class AdminDashboard extends StatelessWidget {
         title: const Text("Admin Dashboard"),
         backgroundColor: const Color(0xFF1A237E),
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (c) => RoleSelectionScreen())
+              );
+            },
+          )
+        ],
       ),
       body: GridView.count(
         padding: const EdgeInsets.all(16),
@@ -203,10 +215,7 @@ class AdminDashboard extends StatelessWidget {
               context, MaterialPageRoute(builder: (c) => const CollegeListView()))),
           _card(context, "Change Password", Icons.lock_reset, () => Navigator.push(
               context, MaterialPageRoute(builder: (c) => const ChangePasswordScreen()))),
-          _card(context, "Logout", Icons.power_settings_new, () async {
-            await FirebaseAuth.instance.signOut();
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const RoleSelectionScreen()));
-          }),
+
         ],
       ),
     );

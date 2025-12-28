@@ -1,3 +1,4 @@
+
 name: college_event_manager
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
@@ -54,21 +55,20 @@ dev_dependencies:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/images/CAM.png"
+  image_path: "assets/images/CAM.jpeg"
   # For Android 8.0+ adaptive icons (optional but recommended)
   adaptive_icon_background: "#1A237E"
-  adaptive_icon_foreground: "assets/images/CAM.png"
+  adaptive_icon_foreground: "assets/images/CAM.jpeg"
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
-  uses-material-design: true
-  assets:
-    - assets/images/logo.jpeg
+
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
+  uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
   # assets:

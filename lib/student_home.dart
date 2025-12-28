@@ -18,31 +18,31 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: const Text("Upcoming Events"),
-          backgroundColor: Colors.indigo,
-          foregroundColor: Colors.white,
-          actions: [
-            IconButton(
-              tooltip: "Participation History",
-              icon: const Icon(Icons.history_edu),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (c) => const ParticipationHistoryScreen()),
-              ),
+      appBar: AppBar(
+        title: const Text("Upcoming Events"),
+        backgroundColor: Colors.indigo,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            tooltip: "Participation History",
+            icon: const Icon(Icons.history_edu),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (c) => const ParticipationHistoryScreen()),
             ),
-            IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-                Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (c) => RoleSelectionScreen())
-                );
-              },
-            ),
-          ],
-        ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (c) => RoleSelectionScreen())
+              );
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // CATEGORY FILTER (User Story 2)
