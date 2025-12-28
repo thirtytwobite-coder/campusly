@@ -13,25 +13,29 @@ class RoleSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Changed background to white
       backgroundColor: Colors.white,
-      body: Container(
+      body: SizedBox(
         width: double.infinity,
-        // Removed the LinearGradient decoration
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Changed icon color to indigo for visibility on white
-            const Icon(Icons.rocket_launch_sharp, size: 80, color: Color(0xFF1A237E)),
+            // Panda Logo
+            Image.asset(
+              'assets/images/logo.jpeg',
+              height: 100,
+              width: 100,
+              errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.face, size: 80, color: Color(0xFF1A237E)),
+            ),
             const SizedBox(height: 10),
-            // Changed text color to indigo
-            const Text(
-              "CAMPUSLY",
-              style: TextStyle(
-                color: Color(0xFF1A237E),
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2,
+            // Blue/Green Branding
+            RichText(
+              text: const TextSpan(
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 2),
+                children: [
+                  TextSpan(text: 'CAMP', style: TextStyle(color: Color(0xFF1A237E))),
+                  TextSpan(text: 'USLY', style: TextStyle(color: Colors.green)),
+                ],
               ),
             ),
             const SizedBox(height: 50),
@@ -50,14 +54,13 @@ class RoleSelectionScreen extends StatelessWidget {
       width: 250,
       height: 60,
       child: ElevatedButton.icon(
-        icon: Icon(icon, color: Colors.white), // White icon on blue button
+        icon: Icon(icon, color: Colors.white),
         label: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         style: ElevatedButton.styleFrom(
-          // Inverted colors: Blue background with white text for better contrast on white screen
           backgroundColor: const Color(0xFF1A237E),
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-          elevation: 4, // Added slight shadow for depth
+          elevation: 4,
         ),
         onPressed: () => Navigator.push(
           context,
@@ -67,15 +70,18 @@ class RoleSelectionScreen extends StatelessWidget {
     );
   }
 }
-class AdminLoginScreen extends StatefulWidget{
+
+class AdminLoginScreen extends StatefulWidget {
   final bool isFacultyRole;
   const AdminLoginScreen({super.key, required this.isFacultyRole});
   @override
   State<AdminLoginScreen> createState() => _AdminLoginScreenState();
 }
+
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final _email = TextEditingController(), _pass = TextEditingController();
   bool _isLoading = false;
+
   Future login() async {
     setState(() => _isLoading = true);
     try {
@@ -101,6 +107,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,30 +115,50 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, iconTheme: const IconThemeData(color: Colors.white)),
       body: Container(
         padding: const EdgeInsets.all(30),
-        decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF1A237E), Color(0xFF3949AB)], begin: Alignment.topCenter)),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(colors: [Color(0xFF1A237E), Color(0xFF3949AB)], begin: Alignment.topCenter),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(widget.isFacultyRole ? "FACULTY LOGIN" : "STUDENT LOGIN", style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+            Text(
+              widget.isFacultyRole ? "FACULTY LOGIN" : "STUDENT LOGIN",
+              style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 30),
-            TextField(controller: _email, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(labelText: "Email", labelStyle: TextStyle(color: Colors.white70))),
-            TextField(controller: _pass, obscureText: true, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(labelText: "Password", labelStyle: TextStyle(color: Colors.white70))),
+            TextField(
+              controller: _email,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(labelText: "Email", labelStyle: TextStyle(color: Colors.white70)),
+            ),
+            TextField(
+              controller: _pass,
+              obscureText: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(labelText: "Password", labelStyle: TextStyle(color: Colors.white70)),
+            ),
             const SizedBox(height: 40),
-            _isLoading ? const CircularProgressIndicator(color: Colors.white) : SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: login, child: const Text("LOGIN"))),
+            _isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(onPressed: login, child: const Text("LOGIN")),
+            ),
           ],
         ),
       ),
     );
   }
 }
-// ADMIN SECTION - KEPT PERFECT AS REQUESTED
+
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Admin Dasboard"),
+        title: const Text("Admin Dashboard"),
         backgroundColor: const Color(0xFF1A237E),
         foregroundColor: Colors.white,
       ),
@@ -143,27 +170,21 @@ class AdminDashboard extends StatelessWidget {
         children: [
           _card(context, "Add Main Faculty", Icons.person_add, () => Navigator.push(
               context, MaterialPageRoute(builder: (c) => const AddFacultyScreen(role: 'Main Faculty')))),
-
           _card(context, "Create Club", Icons.add_circle_outline, () => Navigator.push(
               context, MaterialPageRoute(builder: (c) => ManageClubsScreen(isGuest: false)))),
-
           _card(context, "Colleges & Status", Icons.list_alt, () => Navigator.push(
               context, MaterialPageRoute(builder: (c) => const CollegeListView()))),
-
           _card(context, "Change Password", Icons.lock_reset, () => Navigator.push(
               context, MaterialPageRoute(builder: (c) => const ChangePasswordScreen()))),
-
           _card(context, "Logout", Icons.power_settings_new, () async {
             await FirebaseAuth.instance.signOut();
-            Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (c) => RoleSelectionScreen())
-            );
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => RoleSelectionScreen()));
           }),
         ],
       ),
     );
   }
+
   Widget _card(BuildContext context, String t, IconData i, VoidCallback o) => InkWell(
       onTap: o,
       child: Card(
@@ -174,12 +195,9 @@ class AdminDashboard extends StatelessWidget {
                 Icon(i, size: 35, color: Colors.indigo),
                 const SizedBox(height: 10),
                 Text(t, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold))
-              ]
-          )
-      )
-  );
+              ])));
 }
-// MAIN FACULTY SECTION - CLEANED UP
+
 class MainFacultyDashboard extends StatelessWidget {
   final String collegeName;
   const MainFacultyDashboard({super.key, required this.collegeName});
@@ -204,15 +222,13 @@ class MainFacultyDashboard extends StatelessWidget {
               context, MaterialPageRoute(builder: (c) => const ChangePasswordScreen()))),
           _card(context, "Logout", Icons.power_settings_new, () async {
             await FirebaseAuth.instance.signOut();
-            Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (c) => RoleSelectionScreen())
-            );
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => RoleSelectionScreen()));
           }),
         ],
       ),
     );
   }
+
   void _showCSVInstructions(BuildContext context) {
     showDialog(
       context: context,
@@ -220,7 +236,6 @@ class MainFacultyDashboard extends StatelessWidget {
         title: const Text("CSV Bulk Upload"),
         content: const Text("Format: Name, Email, Password/ID\n\nDownload the template if you don't have one."),
         actions: [
-          // NEW: Download Template Button
           TextButton.icon(
             onPressed: () => AddFacultyScreenState.downloadCSVTemplate(context),
             icon: const Icon(Icons.download),
@@ -233,12 +248,12 @@ class MainFacultyDashboard extends StatelessWidget {
                 Navigator.pop(c);
                 AddFacultyScreenState.pickAndUploadCSV(context, collegeName);
               },
-              child: const Text("Upload File")
-          ),
+              child: const Text("Upload File")),
         ],
       ),
     );
   }
+
   Widget _card(BuildContext context, String t, IconData i, VoidCallback o) => InkWell(
       onTap: o,
       child: Card(
@@ -249,8 +264,5 @@ class MainFacultyDashboard extends StatelessWidget {
                 Icon(i, size: 35, color: Colors.indigo),
                 const SizedBox(height: 10),
                 Text(t, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold))
-              ]
-          )
-      )
-  );
+              ])));
 }
