@@ -3,14 +3,43 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login_screen.dart';
 
-class FacultyHomeScreen extends StatelessWidget {
+class FacultyHomeScreen extends StatefulWidget {
   const FacultyHomeScreen({super.key});
+
+  @override
+  State<FacultyHomeScreen> createState() => _FacultyHomeScreenState();
+}
+
+class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
+  Future<bool> _onWillPop() async {
+    return await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Exit Dashboard?'),
+          content: const Text('Are you sure you want to exit the dashboard?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Yes'),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
 
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
       appBar: AppBar(
         title: const Text("FACULTY DASHBOARD"),
         backgroundColor: const Color(0xFF1A237E),
@@ -20,10 +49,12 @@ class FacultyHomeScreen extends StatelessWidget {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) =>  RoleSelectionScreen()),
-                    (route) => false,
-              );
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const UnifiedLoginScreen()),
+                  (route) => false,
+                );
+              }
             },
           )
         ],
@@ -68,8 +99,9 @@ class FacultyHomeScreen extends StatelessWidget {
           );
         },
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _dashboardCard(BuildContext context, String title, IconData icon, Color color, DocumentSnapshot doc) {
     return InkWell(

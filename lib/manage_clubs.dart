@@ -3,7 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ManageClubsScreen extends StatelessWidget {
   final bool isGuest;
-  const ManageClubsScreen({super.key, required this.isGuest});
+  final String? college;
+  const ManageClubsScreen({super.key, required this.isGuest, this.college});
 
   @override
   Widget build(BuildContext context) {
@@ -106,6 +107,7 @@ class ManageClubsScreen extends StatelessWidget {
                 if (clubController.text.trim().isNotEmpty) {
                   FirebaseFirestore.instance.collection('clubs').add({
                     'clubName': clubController.text.trim(),
+                    'college': college ?? 'Default College',
                     'facultyEmail': "", // Still initialized for dashboard compatibility
                     'coordinatorName': null,
                     'coordinatorEmail': null,

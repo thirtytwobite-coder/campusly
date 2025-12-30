@@ -15,9 +15,33 @@ class StudentHomeScreen extends StatefulWidget {
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
   String selectedCategory = "All";
 
+  Future<bool> _onWillPop() async {
+    return await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Exit Dashboard?'),
+          content: const Text('Are you sure you want to exit the dashboard?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Yes'),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
       appBar: AppBar(
         title: const Text("Upcoming Events"),
         backgroundColor: Colors.indigo,
@@ -35,10 +59,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
-              Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (c) => RoleSelectionScreen())
-              );
+              if (context.mounted) {
+                Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (c) => const UnifiedLoginScreen())
+                );
+              }
             },
           ),
         ],
@@ -73,12 +99,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   },
                 );
               },
-            ),
+                ),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildCategoryFilter() {
     List<String> categories = ["All", "Technical", "Cultural", "Sports"];

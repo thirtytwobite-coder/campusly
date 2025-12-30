@@ -20,7 +20,7 @@ class CampuslyApp extends StatelessWidget {
         primarySwatch: Colors.pink,
         useMaterial3: true,
       ),
-      home: RoleSelectionScreen(),
+      home: const UnifiedLoginScreen(),
     );
   }
 }
