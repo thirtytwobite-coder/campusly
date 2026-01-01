@@ -27,7 +27,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
 
   Future<void> _login() async {
     if (_loginEmail.text.isEmpty || _loginPass.text.isEmpty) {
-      _showSnackBar("Please fill all fields");
+      _showErrorDialog("Please fill all fields");
       return;
     }
 
@@ -54,7 +54,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
       if (doc.exists) {
         final data = doc.data()!;
         if (data.containsKey('isActive') && data['isActive'] == false) {
-          _showSnackBar("Account disabled. Contact Admin.");
+          _showErrorDialog("Account disabled. Contact Admin.");
           return;
         }
 
@@ -79,19 +79,31 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
               );
               break;
             default:
-              _showSnackBar("Invalid role assigned");
+              _showErrorDialog("Invalid role assigned");
           }
         }
       }
     } on FirebaseAuthException catch (e) {
-      _showSnackBar(e.message ?? "Login failed");
+      _showErrorDialog(e.message ?? "Login failed");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Login Failed'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildTextField(TextEditingController controller, String label, IconData icon, TextInputType type,
@@ -206,7 +218,7 @@ class AdminDashboard extends StatelessWidget {
         final exit = await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
-            title: const Text('Logout'),
+            title: const Text('Exit'),
             content: const Text('Are you sure you want to exit?'),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
@@ -306,7 +318,7 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
               await FirebaseFirestore.instance.collection('clubs').add({
                 'clubName': name,
                 'description': clubDesc.text.trim(),
-                'createdBy': 'admin', // Important for role-based filtering
+                'createdBy': FirebaseAuth.instance.currentUser?.email ?? 'admin', // Store admin email
                 'createdAt': FieldValue.serverTimestamp(),
               });
             },
@@ -353,15 +365,26 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
         child: const Icon(Icons.add, color: Colors.white),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        // 🔹 Important: OrderBy + where requires Firestore composite index
+        // Filter clubs by current admin's email
         stream: FirebaseFirestore.instance
             .collection('clubs')
-            .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
 
-          final docs = snapshot.data?.docs ?? [];
+          final adminEmail = FirebaseAuth.instance.currentUser?.email ?? '';
+          final docs = (snapshot.data?.docs ?? [])
+              .where((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                return data['createdBy'] == adminEmail;
+              })
+              .toList()
+              ..sort((a, b) {
+                final aTime = a['createdAt'] as Timestamp?;
+                final bTime = b['createdAt'] as Timestamp?;
+                return (bTime?.compareTo(aTime ?? Timestamp.now()) ?? 0);
+              });
+          
           if (docs.isEmpty) return const Center(child: Text("No clubs found."));
 
           return ListView.builder(
