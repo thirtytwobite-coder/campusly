@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -67,8 +68,8 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                   return ListTile(
                     leading: CircleAvatar(
                       backgroundColor: isGlobal ? Colors.orange[100] : Colors.blue[100],
-                      child: Icon(isGlobal ? Icons.public : Icons.school, 
-                                  color: isGlobal ? Colors.orange[900] : Colors.blue[900]),
+                      child: Icon(isGlobal ? Icons.public : Icons.school,
+                          color: isGlobal ? Colors.orange[900] : Colors.blue[900]),
                     ),
                     title: Text(clubData['clubName'], style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: StreamBuilder<DocumentSnapshot>(
@@ -82,8 +83,8 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                         if (mapSnap.hasData && mapSnap.data!.exists) {
                           assigned = (mapSnap.data!.data() as Map<String, dynamic>)['facultyEmail'] ?? "Not Assigned";
                         }
-                        return Text("Faculty: $assigned", 
-                                    style: TextStyle(color: assigned == "Not Assigned" ? Colors.red : Colors.green));
+                        return Text("Faculty: $assigned",
+                            style: TextStyle(color: assigned == "Not Assigned" ? Colors.red : Colors.green));
                       },
                     ),
                     trailing: IconButton(
@@ -102,7 +103,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
 
   Future<void> _assignFacultyToClub(String clubId, String clubName) async {
     String? selectedEmail;
-    
+
     // Fetch local faculty
     final facultySnap = await FirebaseFirestore.instance
         .collection('faculty')
@@ -131,7 +132,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
           ElevatedButton(
             onPressed: () async {
               if (selectedEmail == null) return;
-              
+
               // This mapping document belongs ONLY to this college
               await FirebaseFirestore.instance
                   .collection('club_mappings')
@@ -165,16 +166,16 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () async {
-              if (nameController.text.isEmpty) return;
-              await FirebaseFirestore.instance.collection('clubs').add({
-                'clubName': nameController.text.trim(),
-                'college': widget.collegeName, // Marked as local
-                'createdAt': FieldValue.serverTimestamp(),
-              });
-              if (mounted) Navigator.pop(c);
-            }, 
-            child: const Text('Add')
+              onPressed: () async {
+                if (nameController.text.isEmpty) return;
+                await FirebaseFirestore.instance.collection('clubs').add({
+                  'clubName': nameController.text.trim(),
+                  'college': widget.collegeName, // Marked as local
+                  'createdAt': FieldValue.serverTimestamp(),
+                });
+                if (mounted) Navigator.pop(c);
+              },
+              child: const Text('Add')
           ),
         ],
       ),
@@ -251,7 +252,7 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
 
   Future<void> _register() async {
     try {
-      // NOTE: In a production app, use a Cloud Function to create users 
+      // NOTE: In a production app, use a Cloud Function to create users
       // so the admin isn't logged out by FirebaseAuth.instance.createUserWithEmailAndPassword
       UserCredential cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _email.text.trim(),
