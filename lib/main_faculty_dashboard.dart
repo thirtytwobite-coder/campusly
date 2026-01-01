@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -186,7 +185,22 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+        onWillPop: () async {
+        final exit = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Exit'),
+            content: const Text('Are you sure you want to exit?'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes')),
+            ],
+          ),
+        );
+        return exit ?? false;
+      },
+    child: Scaffold(
       appBar: AppBar(
         title: Text(widget.collegeName),
         backgroundColor: primaryColor,
@@ -212,7 +226,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildCard(String title, IconData icon, VoidCallback onTap) {
@@ -262,7 +276,7 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
       await FirebaseFirestore.instance.collection('faculty').doc(cred.user!.uid).set({
         'name': _name.text.trim(),
         'email': _email.text.trim(),
-        'college': widget.collegeName,
+        'college': widget..collegeName,
         'role': 'Faculty',
       });
 
