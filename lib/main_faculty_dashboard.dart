@@ -276,7 +276,7 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
       await FirebaseFirestore.instance.collection('faculty').doc(cred.user!.uid).set({
         'name': _name.text.trim(),
         'email': _email.text.trim(),
-        'college': widget..collegeName,
+        'college': widget.collegeName,
         'role': 'Faculty',
       });
 
