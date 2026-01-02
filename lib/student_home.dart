@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'main.dart'; // Import main.dart to access themeNotifier
 import 'event_details.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'login_screen.dart'; // To navigate back to RoleSelection
@@ -44,9 +47,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       child: Scaffold(
       appBar: AppBar(
         title: const Text("Upcoming Events"),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
         actions: [
+            IconButton(
+              icon: const Icon(Icons.brightness_6),
+              onPressed: () async {
+                themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+                SharedPreferences prefs = await SharedPreferences.getInstance();
+                prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
+              },
+            ),
           IconButton(
             tooltip: "Participation History",
             icon: const Icon(Icons.history_edu),

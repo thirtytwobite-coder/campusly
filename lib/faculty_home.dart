@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'main.dart'; // Import main.dart to access themeNotifier
 import 'login_screen.dart';
+import 'change_password.dart';
 
 class FacultyHomeScreen extends StatefulWidget {
   const FacultyHomeScreen({super.key});
@@ -12,27 +16,42 @@ class FacultyHomeScreen extends StatefulWidget {
 
 class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
   Future<bool> _onWillPop() async {
-    return await showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Exit'),
-              content: const Text('Are you sure you want to exit?'),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('No'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Yes'),
-                ),
+    final bool? shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Exit'),
+          content: const Text('Are you sure you want to Exit?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Yes'),
+            ),
+          ],
+        );
+      },
+    );
 
-              ],
-            );
-          },
-        ) ??
-        false;
+    if (shouldLogout ?? false) {
+      await FirebaseAuth.instance.signOut();
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const UnifiedLoginScreen()),
+          (route) => false,
+        );
+      }
+      // Returning false because we are handling navigation manually.
+      // This prevents the WillPopScope from popping the route again.
+      return false;
+    }
+
+    // If shouldLogout is false or null, we don't do anything and don't pop the scope.
+    return false;
   }
 
   @override
@@ -44,9 +63,15 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text("FACULTY DASHBOARD"),
-          backgroundColor: const Color(0xFF1A237E),
-          foregroundColor: Colors.white,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.brightness_6),
+              onPressed: () async {
+                themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+                SharedPreferences prefs = await SharedPreferences.getInstance();
+                prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.logout),
               onPressed: () async {
@@ -63,7 +88,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
           ],
         ),
         body: StreamBuilder<QuerySnapshot>(
-          // Correctly fetch clubs from the 'club_mappings' collection
+
           stream: FirebaseFirestore.instance
               .collection('club_mappings')
               .where('facultyEmail', isEqualTo: user?.email)
@@ -74,8 +99,35 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
             }
 
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return _buildEmptyState();
+              // If no clubs are assigned, still show the Change Password option
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+
+                      _buildEmptyState(),
+                      const SizedBox(height: 30),
+                      _buildDashboardCard(
+                        title: "Change Password",
+                        icon: Icons.lock,
+                        color: Colors.teal,
+                        onTap: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ChangePasswordScreen()));
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              );
             }
+
+            final docs = snapshot.data!.docs;
 
             return GridView.builder(
               padding: const EdgeInsets.all(16),
@@ -84,16 +136,45 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
               ),
-              itemCount: snapshot.data!.docs.length,
+              itemCount: docs.length + 1, // Add 1 for the static card
               itemBuilder: (context, index) {
-                var doc = snapshot.data!.docs[index];
-                var data = doc.data() as Map<String, dynamic>;
+                if (index < docs.length) {
+                  // Club card
+                  var doc = docs[index];
+                  var data = doc.data() as Map<String, dynamic>;
+                  String clubName = data.containsKey('clubName')
+                      ? data['clubName']
+                      : "My Club";
 
-                String clubName =
-                    data.containsKey('clubName') ? data['clubName'] : "My Club";
-
-                return _dashboardCard(
-                    context, clubName, Icons.group_work, Colors.indigo, doc);
+                  return _buildDashboardCard(
+                    title: clubName,
+                    icon: Icons.group_work,
+                    color: Colors.indigo,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ClubManagementScreen(clubMappingDoc: doc),
+                        ),
+                      );
+                    },
+                  );
+                } else {
+                  // Static "Change Password" card
+                  return _buildDashboardCard(
+                    title: "Change Password",
+                    icon: Icons.lock,
+                    color: Colors.teal,
+                    onTap: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const ChangePasswordScreen()));
+                    },
+                  );
+                }
               },
             );
           },
@@ -102,18 +183,14 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
     );
   }
 
-  Widget _dashboardCard(BuildContext context, String title, IconData icon,
-      Color color, DocumentSnapshot doc) {
+  Widget _buildDashboardCard({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
-      onTap: () {
-        // Navigate to the new ClubManagementScreen
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ClubManagementScreen(clubMappingDoc: doc),
-          ),
-        );
-      },
+      onTap: onTap,
       child: Card(
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -136,8 +213,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ),
           ],
@@ -147,30 +223,26 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.assignment_ind_outlined,
-              size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          const Text(
-            "No Clubs Assigned",
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey),
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.assignment_ind_outlined,
+            size: 80, color: Colors.grey[300]),
+        const SizedBox(height: 16),
+        const Text(
+          "No Clubs Assigned",
+          style: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.0),
+          child: Text(
+            "Contact your college's Main Faculty to be assigned to a club.",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.0),
-            child: Text(
-              "Contact your college's Main Faculty to be assigned to a club.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -194,7 +266,7 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
 
     // Fetch all students from the same college
     final studentSnap = await FirebaseFirestore.instance
-        .collection('faculty')
+        .collection('faculty') // Students are also in the 'faculty' collection but with role 'Student'
         .where('role', isEqualTo: 'Student')
         .where('college', isEqualTo: collegeName)
         .get();

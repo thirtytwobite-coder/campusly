@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'main.dart'; // Import main.dart to access themeNotifier
 // Ensure these imports match your actual file names
 import 'change_password.dart';
 import 'login_screen.dart';
@@ -70,7 +73,9 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                       child: Icon(isGlobal ? Icons.public : Icons.school,
                           color: isGlobal ? Colors.orange[900] : Colors.blue[900]),
                     ),
-                    title: Text(clubData['clubName'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                    title: Text(clubData['clubName'],
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis), // Added overflow
                     subtitle: StreamBuilder<DocumentSnapshot>(
                       // Look up the mapping in the junction collection
                       stream: FirebaseFirestore.instance
@@ -83,12 +88,18 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                           assigned = (mapSnap.data!.data() as Map<String, dynamic>)['facultyEmail'] ?? "Not Assigned";
                         }
                         return Text("Faculty: $assigned",
-                            style: TextStyle(color: assigned == "Not Assigned" ? Colors.red : Colors.green));
+                            style: TextStyle(
+                                color: assigned == "Not Assigned"
+                                    ? Colors.red
+                                    : Colors.green),
+                            overflow: TextOverflow.ellipsis); // Added overflow
                       },
                     ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.assignment_ind_rounded, color: Colors.indigo),
-                      onPressed: () => _assignFacultyToClub(clubId, clubData['clubName']),
+                      icon: const Icon(Icons.assignment_ind_rounded,
+                          color: Colors.indigo),
+                      onPressed: () =>
+                          _assignFacultyToClub(clubId, clubData['clubName']),
                     ),
                   );
                 },
@@ -110,7 +121,9 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
         .get();
 
     if (facultySnap.docs.isEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No faculty registered in your college.")));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("No faculty registered in your college.")));
       return;
     }
 
@@ -120,10 +133,12 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
         title: Text("Map Faculty to $clubName"),
         content: DropdownButtonFormField<String>(
           decoration: const InputDecoration(labelText: "Select Faculty Member"),
-          items: facultySnap.docs.map((d) => DropdownMenuItem(
-            value: d['email'] as String,
-            child: Text(d['name'] ?? d['email']),
-          )).toList(),
+          items: facultySnap.docs
+              .map((d) => DropdownMenuItem(
+                    value: d['email'] as String,
+                    child: Text(d['name'] ?? d['email']),
+                  ))
+              .toList(),
           onChanged: (v) => selectedEmail = v,
         ),
         actions: [
@@ -161,7 +176,9 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
       context: context,
       builder: (c) => AlertDialog(
         title: const Text('Add Local Club'),
-        content: TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Club Name')),
+        content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(labelText: 'Club Name')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
           ElevatedButton(
@@ -174,8 +191,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                 });
                 if (mounted) Navigator.pop(c);
               },
-              child: const Text('Add')
-          ),
+              child: const Text('Add')),
         ],
       ),
     );
@@ -187,46 +203,70 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
   Widget build(BuildContext context) {
     return WillPopScope(
         onWillPop: () async {
-        final exit = await showDialog<bool>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Exit'),
-            content: const Text('Are you sure you want to exit?'),
+          final exit = await showDialog<bool>(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('Exit'),
+              content: const Text('Are you sure you want to exit?'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('No')),
+                TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Yes')),
+              ],
+            ),
+          );
+          return exit ?? false;
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(widget.collegeName),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
-              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes')),
+              IconButton(
+                icon: const Icon(Icons.brightness_6),
+                onPressed: () async {
+                  themeNotifier.value = themeNotifier.value == ThemeMode.light
+                      ? ThemeMode.dark
+                      : ThemeMode.light;
+                  SharedPreferences prefs =
+                      await SharedPreferences.getInstance();
+                  prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
+                },
+              ),
+              IconButton(icon: const Icon(Icons.logout), onPressed: _handleLogout)
             ],
           ),
-        );
-        return exit ?? false;
-      },
-    child: Scaffold(
-      appBar: AppBar(
-        title: Text(widget.collegeName),
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        actions: [IconButton(icon: const Icon(Icons.logout), onPressed: _handleLogout)],
-      ),
-      body: Container(
-        color: Colors.grey[50],
-        child: GridView.count(
-          padding: const EdgeInsets.all(20),
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          children: [
-            _buildCard("Mapping Dashboard", Icons.map_rounded, _openMappingDashboard),
-            _buildCard("Add Local Club", Icons.add_business_rounded, _addClubDialog),
-            _buildCard("Register Faculty", Icons.person_add_rounded, () {
-              Navigator.push(context, MaterialPageRoute(builder: (c) => AddFacultyScreen(collegeName: widget.collegeName)));
-            }),
-            _buildCard("Security", Icons.security_rounded, () {
-              Navigator.push(context, MaterialPageRoute(builder: (c) => const ChangePasswordScreen()));
-            }),
-          ],
-        ),
-      ),
-    ));
+          body: Container(
+            color: Colors.grey[50],
+            child: GridView.count(
+              padding: const EdgeInsets.all(20),
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              children: [
+                _buildCard("Mapping Dashboard", Icons.map_rounded,
+                    _openMappingDashboard),
+                _buildCard(
+                    "Add Local Club", Icons.add_business_rounded, _addClubDialog),
+                _buildCard("Register Faculty", Icons.person_add_rounded, () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (c) =>
+                              AddFacultyScreen(collegeName: widget.collegeName)));
+                }),
+                _buildCard("Security", Icons.security_rounded, () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (c) => const ChangePasswordScreen()));
+                }),
+              ],
+            ),
+          ),
+        ));
   }
 
   Widget _buildCard(String title, IconData icon, VoidCallback onTap) {
@@ -241,7 +281,9 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
           children: [
             Icon(icon, size: 40, color: primaryColor),
             const SizedBox(height: 12),
-            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -282,7 +324,10 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
 
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
   }
 
@@ -294,11 +339,17 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            TextField(controller: _name, decoration: const InputDecoration(labelText: "Full Name")),
-            TextField(controller: _email, decoration: const InputDecoration(labelText: "Email")),
-            TextField(controller: _pass, decoration: const InputDecoration(labelText: "Password"), obscureText: true),
+            TextField(
+                controller: _name, decoration: const InputDecoration(labelText: "Full Name")),
+            TextField(
+                controller: _email, decoration: const InputDecoration(labelText: "Email")),
+            TextField(
+                controller: _pass,
+                decoration: const InputDecoration(labelText: "Password"),
+                obscureText: true),
             const SizedBox(height: 20),
-            ElevatedButton(onPressed: _register, child: const Text("Create Faculty Account")),
+            ElevatedButton(
+                onPressed: _register, child: const Text("Create Faculty Account")),
           ],
         ),
       ),

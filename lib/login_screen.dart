@@ -10,6 +10,7 @@ import 'change_password.dart';
 import 'student_home.dart';
 import 'student_signup_screen.dart';
 import 'main_faculty_dashboard.dart' as main_fac;
+import 'club_coordinator_dashboard.dart';
 
 // ==================== UNIFIED LOGIN SCREEN ====================
 class UnifiedLoginScreen extends StatefulWidget {
@@ -375,16 +376,16 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
           final adminEmail = FirebaseAuth.instance.currentUser?.email ?? '';
           final docs = (snapshot.data?.docs ?? [])
               .where((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                return data['createdBy'] == adminEmail;
-              })
+            final data = doc.data() as Map<String, dynamic>;
+            return data['createdBy'] == adminEmail;
+          })
               .toList()
-              ..sort((a, b) {
-                final aTime = a['createdAt'] as Timestamp?;
-                final bTime = b['createdAt'] as Timestamp?;
-                return (bTime?.compareTo(aTime ?? Timestamp.now()) ?? 0);
-              });
-          
+            ..sort((a, b) {
+              final aTime = a['createdAt'] as Timestamp?;
+              final bTime = b['createdAt'] as Timestamp?;
+              return (bTime?.compareTo(aTime ?? Timestamp.now()) ?? 0);
+            });
+
           if (docs.isEmpty) return const Center(child: Text("No clubs found."));
 
           return ListView.builder(
