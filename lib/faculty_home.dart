@@ -266,7 +266,7 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
 
     // Fetch all students from the same college
     final studentSnap = await FirebaseFirestore.instance
-        .collection('faculty') // Students are also in the 'faculty' collection but with role 'Student'
+        .collection('student') // Students are also in the 'faculty' collection but with role 'Student'
         .where('role', isEqualTo: 'Student')
         .where('college', isEqualTo: collegeName)
         .get();

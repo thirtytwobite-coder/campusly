@@ -42,7 +42,7 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
           email: _email.text.trim(), password: _pass.text.trim());
 
       // 2. Save details in 'faculty' collection (as per your login logic)
-      await FirebaseFirestore.instance.collection('faculty').doc(u.user!.uid).set({
+      await FirebaseFirestore.instance.collection('student').doc(u.user!.uid).set({
         'name': _name.text.trim(),
         'phone': _phone.text.trim(),
         'department': _dept.text.trim(),

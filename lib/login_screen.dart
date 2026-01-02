@@ -50,10 +50,11 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
       }
 
       // --- FACULTY / STUDENT NAVIGATION ---
-      var doc = await FirebaseFirestore.instance.collection('faculty').doc(u.user!.uid).get();
+      // First check if a faculty record exists for this user
+      var facultyDoc = await FirebaseFirestore.instance.collection('faculty').doc(u.user!.uid).get();
 
-      if (doc.exists) {
-        final data = doc.data()!;
+      if (facultyDoc.exists) {
+        final data = facultyDoc.data()!;
         if (data.containsKey('isActive') && data['isActive'] == false) {
           _showErrorDialog("Account disabled. Contact Admin.");
           return;
@@ -82,6 +83,24 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
             default:
               _showErrorDialog("Invalid role assigned");
           }
+        }
+      } else {
+        // If no faculty doc, check the student collection
+        var studentDoc = await FirebaseFirestore.instance.collection('student').doc(u.user!.uid).get();
+        if (studentDoc.exists) {
+          final sdata = studentDoc.data()!;
+          if (sdata.containsKey('isActive') && sdata['isActive'] == false) {
+            _showErrorDialog("Account disabled. Contact Admin.");
+            return;
+          }
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+            );
+          }
+        } else {
+          _showErrorDialog("No user record found. Please register.");
         }
       }
     } on FirebaseAuthException catch (e) {
