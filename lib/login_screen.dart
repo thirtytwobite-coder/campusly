@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-// Ensure these files exist
+import 'main.dart';
 import 'add_faculty.dart' as add_fac;
 import 'college_list.dart';
 import 'faculty_home.dart';
@@ -252,9 +253,13 @@ class AdminDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        final exit = await showDialog<bool>(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) {
+        if (didPop) {
+          return;
+        }
+        showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
             title: const Text('Exit'),
@@ -264,8 +269,11 @@ class AdminDashboard extends StatelessWidget {
               TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes')),
             ],
           ),
-        );
-        return exit ?? false;
+        ).then((value) {
+          if (value ?? false) {
+            Navigator.of(context).pop();
+          }
+        });
       },
       child: Scaffold(
         appBar: AppBar(
@@ -273,6 +281,14 @@ class AdminDashboard extends StatelessWidget {
           backgroundColor: const Color(0xFF1A237E),
           foregroundColor: Colors.white,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.brightness_6),
+              onPressed: () async {
+                themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+                SharedPreferences prefs = await SharedPreferences.getInstance();
+                prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
+              },
+            ),
             IconButton(
                 icon: const Icon(Icons.logout),
                 onPressed: () async {

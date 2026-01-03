@@ -8,8 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-// Ensure these imports match your actual file names
+import 'main.dart';
 import 'change_password.dart';
 import 'login_screen.dart';
 
@@ -216,7 +217,17 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
             title: Text(widget.collegeName),
             backgroundColor: primaryColor,
             foregroundColor: Colors.white,
-            actions: [IconButton(icon: const Icon(Icons.logout), onPressed: _handleLogout)],
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.brightness_6),
+                onPressed: () async {
+                  themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+                  SharedPreferences prefs = await SharedPreferences.getInstance();
+                  prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
+                },
+              ),
+              IconButton(icon: const Icon(Icons.logout), onPressed: _handleLogout)
+            ],
           ),
           body: Container(
             color: Colors.grey[50],
