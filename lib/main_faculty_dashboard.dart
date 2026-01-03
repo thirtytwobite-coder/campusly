@@ -10,9 +10,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'main.dart';
+// Ensure these imports match your actual file names
 import 'change_password.dart';
 import 'login_screen.dart';
+import 'main.dart';
 
 class MainFacultyDashboard extends StatefulWidget {
   final String collegeName;
@@ -23,8 +24,6 @@ class MainFacultyDashboard extends StatefulWidget {
 }
 
 class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
-  final Color primaryColor = const Color(0xFF1A237E);
-
   // --- Navigation Logic ---
 
   Future<void> _handleLogout() async {
@@ -46,23 +45,28 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
         builder: (c) => Scaffold(
           appBar: AppBar(
             title: const Text('Club-Faculty Mapping'),
-            backgroundColor: primaryColor,
-            foregroundColor: Colors.white,
           ),
           body: StreamBuilder<QuerySnapshot>(
             // We fetch all clubs and filter them on the client side
             stream: FirebaseFirestore.instance.collection('clubs').snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
               // Logic: Show club if it belongs to THIS college OR has no college (Admin/Global)
               final docs = snapshot.data!.docs.where((doc) {
                 final data = doc.data() as Map<String, dynamic>;
                 final clubCollege = data['college'];
-                return clubCollege == null || clubCollege == '' || clubCollege == widget.collegeName;
+                return clubCollege == null ||
+                    clubCollege == '' ||
+                    clubCollege == widget.collegeName;
               }).toList();
 
-              if (docs.isEmpty) return const Center(child: Text("No clubs available for mapping."));
+              if (docs.isEmpty) {
+                return const Center(
+                    child: Text("No clubs available for mapping."));
+              }
 
               return ListView.separated(
                 padding: const EdgeInsets.all(10),
@@ -71,15 +75,21 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                 itemBuilder: (context, index) {
                   final clubData = docs[index].data() as Map<String, dynamic>;
                   final clubId = docs[index].id;
-                  final bool isGlobal = clubData['college'] == null || clubData['college'] == '';
+                  final bool isGlobal =
+                      clubData['college'] == null || clubData['college'] == '';
 
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: isGlobal ? Colors.orange[100] : Colors.blue[100],
+                      backgroundColor: isGlobal
+                          ? Colors.orange.withOpacity(0.2)
+                          : Theme.of(context).colorScheme.primary.withOpacity(0.2),
                       child: Icon(isGlobal ? Icons.public : Icons.school,
-                          color: isGlobal ? Colors.orange[900] : Colors.blue[900]),
+                          color: isGlobal
+                              ? Colors.orange
+                              : Theme.of(context).colorScheme.primary),
                     ),
-                    title: Text(clubData['clubName'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                    title: Text(clubData['clubName'],
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: StreamBuilder<DocumentSnapshot>(
                       // Look up the mapping in the junction collection
                       stream: FirebaseFirestore.instance
@@ -88,16 +98,24 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                           .snapshots(),
                       builder: (context, mapSnap) {
                         String assigned = "Not Assigned";
+                        Color statusColor =
+                            Theme.of(context).colorScheme.error;
                         if (mapSnap.hasData && mapSnap.data!.exists) {
-                          assigned = (mapSnap.data!.data() as Map<String, dynamic>)['facultyEmail'] ?? "Not Assigned";
+                          assigned =
+                              (mapSnap.data!.data() as Map<String, dynamic>)[
+                                      'facultyEmail'] ??
+                                  "Not Assigned";
+                          statusColor = Colors.green;
                         }
                         return Text("Faculty: $assigned",
-                            style: TextStyle(color: assigned == "Not Assigned" ? Colors.red : Colors.green));
+                            style: TextStyle(color: statusColor));
                       },
                     ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.assignment_ind_rounded, color: Colors.indigo),
-                      onPressed: () => _assignFacultyToClub(clubId, clubData['clubName']),
+                      icon: Icon(Icons.assignment_ind_rounded,
+                          color: Theme.of(context).colorScheme.primary),
+                      onPressed: () =>
+                          _assignFacultyToClub(clubId, clubData['clubName']),
                     ),
                   );
                 },
@@ -120,7 +138,8 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
 
     if (facultySnap.docs.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No faculty registered in your college.")));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("No faculty registered in your college.")));
       }
       return;
     }
@@ -133,14 +152,15 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
           decoration: const InputDecoration(labelText: "Select Faculty Member"),
           items: facultySnap.docs
               .map((d) => DropdownMenuItem(
-            value: d['email'] as String,
-            child: Text(d['name'] ?? d['email']),
-          ))
+                    value: d['email'] as String,
+                    child: Text(d['name'] ?? d['email']),
+                  ))
               .toList(),
           onChanged: (v) => selectedEmail = v,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: const Text("Cancel")),
+          TextButton(
+              onPressed: () => Navigator.pop(c), child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () async {
               if (selectedEmail == null) return;
@@ -174,9 +194,12 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
       context: context,
       builder: (c) => AlertDialog(
         title: const Text('Add Local Club'),
-        content: TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Club Name')),
+        content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(labelText: 'Club Name')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
           ElevatedButton(
               onPressed: () async {
                 if (nameController.text.isEmpty) return;
@@ -197,57 +220,75 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-        onWillPop: () async {
-          final exit = await showDialog<bool>(
+    return PopScope(
+        canPop: false,
+        onPopInvoked: (bool didPop) async {
+          if (didPop) {
+            return;
+          }
+          final bool? shouldPop = await showDialog<bool>(
             context: context,
             builder: (_) => AlertDialog(
               title: const Text('Exit'),
               content: const Text('Are you sure you want to exit?'),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
-                TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes')),
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('No')),
+                TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Yes')),
               ],
             ),
           );
-          return exit ?? false;
+          if (shouldPop ?? false) {
+            Navigator.pop(context);
+          }
         },
         child: Scaffold(
           appBar: AppBar(
             title: Text(widget.collegeName),
-            backgroundColor: primaryColor,
-            foregroundColor: Colors.white,
             actions: [
               IconButton(
                 icon: const Icon(Icons.brightness_6),
                 onPressed: () async {
-                  themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-                  SharedPreferences prefs = await SharedPreferences.getInstance();
-                  prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
+                  themeNotifier.value = themeNotifier.value == ThemeMode.light
+                      ? ThemeMode.dark
+                      : ThemeMode.light;
+                  SharedPreferences prefs =
+                      await SharedPreferences.getInstance();
+                  prefs.setBool(
+                      'isDarkMode', themeNotifier.value == ThemeMode.dark);
                 },
               ),
-              IconButton(icon: const Icon(Icons.logout), onPressed: _handleLogout)
+              IconButton(
+                  icon: const Icon(Icons.logout), onPressed: _handleLogout)
             ],
           ),
-          body: Container(
-            color: Colors.grey[50],
-            child: GridView.count(
-              padding: const EdgeInsets.all(20),
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              children: [
-                _buildCard("Mapping Dashboard", Icons.map_rounded, _openMappingDashboard),
-                _buildCard("Add Local Club", Icons.add_business_rounded, _addClubDialog),
-                _buildCard("Register Faculty", Icons.person_add_rounded, () {
-                  Navigator.push(
-                      context, MaterialPageRoute(builder: (c) => AddFacultyScreen(collegeName: widget.collegeName)));
-                }),
-                _buildCard("Security", Icons.security_rounded, () {
-                  Navigator.push(context, MaterialPageRoute(builder: (c) => const ChangePasswordScreen()));
-                }),
-              ],
-            ),
+          body: GridView.count(
+            padding: const EdgeInsets.all(20),
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            children: [
+              _buildCard(
+                  "Mapping Dashboard", Icons.map_rounded, _openMappingDashboard),
+              _buildCard(
+                  "Add Local Club", Icons.add_business_rounded, _addClubDialog),
+              _buildCard("Register Faculty", Icons.person_add_rounded, () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (c) =>
+                            AddFacultyScreen(collegeName: widget.collegeName)));
+              }),
+              _buildCard("Security", Icons.security_rounded, () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (c) => const ChangePasswordScreen()));
+              }),
+            ],
           ),
         ));
   }
@@ -262,9 +303,11 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 40, color: primaryColor),
+            Icon(icon, size: 40, color: Theme.of(context).colorScheme.primary),
             const SizedBox(height: 12),
-            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -291,7 +334,8 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
   Future<void> _register(String name, String email, String password) async {
     // NOTE: In a production app, use a Cloud Function to create users
     // so the admin isn't logged out. This method is for demonstration.
-    UserCredential cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+    UserCredential cred =
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
       email: email.trim(),
       password: password.trim(),
     );
@@ -308,19 +352,22 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
   Future<void> _handleManualRegister() async {
     if (_name.text.isEmpty || _email.text.isEmpty || _pass.text.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("All fields are required.")));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("All fields are required.")));
       }
       return;
     }
     try {
       await _register(_name.text, _email.text, _pass.text);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Successfully registered ${_name.text}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Successfully registered ${_name.text}')));
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to register: ${e.toString()}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to register: ${e.toString()}')));
       }
     }
   }
@@ -355,12 +402,12 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
             try {
               await _register(name, email, password);
               successCount++;
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text('Registered $name successfully.')));
+              ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Registered $name successfully.')));
             } catch (e) {
               failCount++;
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text('Failed to register $name: ${e.toString()}')));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('Failed to register $name: ${e.toString()}')));
             }
           } else {
             failCount++;
@@ -370,8 +417,9 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
         }
       }
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('CSV processing finished. Success: $successCount, Failed: $failCount')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                'CSV processing finished. Success: $successCount, Failed: $failCount')));
         Navigator.pop(context);
       }
     } else {
@@ -382,7 +430,8 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
 
   Future<void> _openTemplate() async {
     try {
-      final String templateString = await rootBundle.loadString('assets/faculty_template.csv');
+      final String templateString =
+          await rootBundle.loadString('assets/faculty_template.csv');
       final Directory directory = await getApplicationDocumentsDirectory();
       final File file = File('${directory.path}/faculty_template.csv');
       await file.writeAsString(templateString);
@@ -414,12 +463,21 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            TextField(controller: _name, decoration: const InputDecoration(labelText: "Full Name")),
             TextField(
-                controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: "Email")),
-            TextField(controller: _pass, decoration: const InputDecoration(labelText: "Password"), obscureText: true),
+                controller: _name,
+                decoration: const InputDecoration(labelText: "Full Name")),
+            TextField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: "Email")),
+            TextField(
+                controller: _pass,
+                decoration: const InputDecoration(labelText: "Password"),
+                obscureText: true),
             const SizedBox(height: 20),
-            ElevatedButton(onPressed: _handleManualRegister, child: const Text("Create Faculty Account")),
+            ElevatedButton(
+                onPressed: _handleManualRegister,
+                child: const Text("Create Faculty Account")),
             const SizedBox(height: 20),
             const Divider(),
             const SizedBox(height: 10),

@@ -25,41 +25,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     _fetchClubInfo();
   }
 
-  Future<bool> _onWillPop() async {
-    final bool? shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Exit'),
-          content: const Text('Are you sure you want to Exit?'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('No'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Yes'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldLogout ?? false) {
-      await FirebaseAuth.instance.signOut();
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const UnifiedLoginScreen()),
-          (route) => false,
-        );
-      }
-      return false;
-    }
-    return false;
-  }
-
   Future<void> _fetchClubInfo() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null && user.email != null) {
@@ -129,13 +94,46 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) async {
+        if (didPop) {
+          return;
+        }
+        final bool? shouldLogout = await showDialog<bool>(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Exit'),
+              content: const Text('Are you sure you want to Exit?'),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('No'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Yes'),
+                ),
+              ],
+            );
+          },
+        );
+
+        if (shouldLogout ?? false) {
+          await FirebaseAuth.instance.signOut();
+          if (mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const UnifiedLoginScreen()),
+              (route) => false,
+            );
+          }
+        }
+      },
       child: Scaffold(
         appBar: AppBar(
           title: Text(clubName ?? 'Coordinator Dashboard'),
-          backgroundColor: Colors.indigo,
-          foregroundColor: Colors.white,
           actions: [
             IconButton(
               icon: const Icon(Icons.brightness_6),
@@ -201,7 +199,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   return Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Card(
-                      color: Colors.white,
                       elevation: 4,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       child: Padding(
@@ -213,19 +210,18 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
+                                Text(
                                   'Club Description',
-                                  style: TextStyle(
-                                      fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+                                  style: Theme.of(context).textTheme.titleLarge,
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.edit, color: Colors.blue),
+                                  icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.secondary),
                                   onPressed: () => _showEditDescriptionDialog(description),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 10),
-                            Text(description, style: const TextStyle(color: Colors.black)),
+                            Text(description),
                           ],
                         ),
                       ),

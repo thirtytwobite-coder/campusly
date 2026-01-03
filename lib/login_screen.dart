@@ -278,8 +278,6 @@ class AdminDashboard extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text("Admin Dashboard"),
-          backgroundColor: const Color(0xFF1A237E),
-          foregroundColor: Colors.white,
           actions: [
             IconButton(
               icon: const Icon(Icons.brightness_6),
@@ -327,7 +325,7 @@ class AdminDashboard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 35, color: Colors.indigo),
+            Icon(icon, size: 35, color: Theme.of(context).colorScheme.primary),
             const SizedBox(height: 10),
             Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
@@ -411,13 +409,10 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manage Clubs'),
-        backgroundColor: const Color(0xFF1A237E),
-        foregroundColor: Colors.white,
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddClubDialog,
-        backgroundColor: const Color(0xFF1A237E),
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -453,7 +448,7 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
                   title: Text(data['clubName'] ?? 'Unnamed', style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text(data['description'] ?? ""),
                   trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.redAccent),
+                    icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
                     onPressed: () => _confirmDelete(id),
                   ),
                 ),
