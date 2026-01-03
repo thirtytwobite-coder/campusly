@@ -50,7 +50,6 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
       }
 
       // --- FACULTY / STUDENT NAVIGATION ---
-      // First check if a faculty record exists for this user
       var facultyDoc = await FirebaseFirestore.instance.collection('faculty').doc(u.user!.uid).get();
 
       if (facultyDoc.exists) {
@@ -75,30 +74,16 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
               );
               break;
             case 'Student':
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
-              );
+              await _handleStudentLogin(facultyDoc);
               break;
             default:
               _showErrorDialog("Invalid role assigned");
           }
         }
       } else {
-        // If no faculty doc, check the student collection
         var studentDoc = await FirebaseFirestore.instance.collection('student').doc(u.user!.uid).get();
         if (studentDoc.exists) {
-          final sdata = studentDoc.data()!;
-          if (sdata.containsKey('isActive') && sdata['isActive'] == false) {
-            _showErrorDialog("Account disabled. Contact Admin.");
-            return;
-          }
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
-            );
-          }
+          await _handleStudentLogin(studentDoc);
         } else {
           _showErrorDialog("No user record found. Please register.");
         }
@@ -109,6 +94,40 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
+  Future<void> _handleStudentLogin(DocumentSnapshot studentDoc) async {
+    final studentData = studentDoc.data() as Map<String, dynamic>;
+
+    if (studentData.containsKey('isActive') && studentData['isActive'] == false) {
+      _showErrorDialog("Account disabled. Contact Admin.");
+      return;
+    }
+
+    final coordinatorQuery = await FirebaseFirestore.instance
+        .collection('clubs')
+        .where('coordinators', arrayContains: {
+      'studentId': studentDoc.id,
+      'studentName': studentData['name'],
+      'studentEmail': studentData['email'],
+    })
+        .limit(1)
+        .get();
+
+    if (mounted) {
+      if (coordinatorQuery.docs.isNotEmpty) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ClubCoordinatorDashboard()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+        );
+      }
+    }
+  }
+
 
   void _showErrorDialog(String message) {
     showDialog(
@@ -338,7 +357,7 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
               await FirebaseFirestore.instance.collection('clubs').add({
                 'clubName': name,
                 'description': clubDesc.text.trim(),
-                'createdBy': FirebaseAuth.instance.currentUser?.email ?? 'admin', // Store admin email
+                'createdBy': FirebaseAuth.instance.currentUser?.email ?? 'admin',
                 'createdAt': FieldValue.serverTimestamp(),
               });
             },
@@ -385,7 +404,6 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
         child: const Icon(Icons.add, color: Colors.white),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        // Filter clubs by current admin's email
         stream: FirebaseFirestore.instance
             .collection('clubs')
             .snapshots(),

@@ -42,7 +42,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const UnifiedLoginScreen()),
-          (route) => false,
+              (route) => false,
         );
       }
       // Returning false because we are handling navigation manually.
@@ -80,7 +80,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
                         builder: (context) => const UnifiedLoginScreen()),
-                    (route) => false,
+                        (route) => false,
                   );
                 }
               },
@@ -118,7 +118,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                               context,
                               MaterialPageRoute(
                                   builder: (context) =>
-                                      const ChangePasswordScreen()));
+                                  const ChangePasswordScreen()));
                         },
                       ),
                     ],
@@ -171,7 +171,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                           context,
                           MaterialPageRoute(
                               builder: (context) =>
-                                  const ChangePasswordScreen()));
+                              const ChangePasswordScreen()));
                     },
                   );
                 }
@@ -314,18 +314,25 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                             title: Text(student['name'] ?? 'Unnamed Student'),
                             onTap: () async {
                               final clubId = widget.clubMappingDoc['clubId'];
-                              await FirebaseFirestore.instance
-                                  .collection('clubs')
-                                  .doc(clubId)
-                                  .update({
-                                'coordinators': FieldValue.arrayUnion([
-                                  {
-                                    'studentId': student.id,
-                                    'studentName': student['name'],
-                                    'studentEmail': student['email'],
-                                  }
-                                ])
-                              });
+                              final studentEmail = student['email'];
+
+                              if (studentEmail != null) {
+                                await FirebaseFirestore.instance
+                                    .collection('clubs')
+                                    .doc(clubId)
+                                    .update({
+                                  'coordinators': FieldValue.arrayUnion([
+                                    {
+                                      'studentId': student.id,
+                                      'studentName': student['name'],
+                                      'studentEmail': studentEmail,
+                                    }
+                                  ]),
+                                  'coordinatorEmails':
+                                  FieldValue.arrayUnion([studentEmail])
+                                });
+                              }
+
                               if (mounted) Navigator.of(context).pop();
                             },
                           );
@@ -351,9 +358,18 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
   // Function to remove a coordinator
   Future<void> _removeCoordinator(Map<String, dynamic> coordinator) async {
     final clubId = widget.clubMappingDoc['clubId'];
-    await FirebaseFirestore.instance.collection('clubs').doc(clubId).update({
+    final studentEmail = coordinator['studentEmail'];
+
+    final updateData = {
       'coordinators': FieldValue.arrayRemove([coordinator])
-    });
+    };
+
+    if (studentEmail != null) {
+      updateData['coordinatorEmails'] = FieldValue.arrayRemove([studentEmail]);
+    }
+
+    await FirebaseFirestore.instance.collection('clubs').doc(clubId).update(updateData);
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${coordinator['studentName']} removed.')),
