@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'main.dart'; // Import main.dart to access themeNotifier
@@ -104,7 +105,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     var event = docs[index];
-                    return _eventCard(event);
+                    return _eventCard(event).animate().fadeIn(duration: 500.ms).slideY(begin: 0.5);
                   },
                 );
               },
@@ -141,7 +142,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           );
         },
       ),
-    );
+    ).animate().fadeIn(duration: 500.ms).slideX();
   }
 
 

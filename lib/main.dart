@@ -1,3 +1,4 @@
+import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
@@ -31,6 +32,16 @@ class CampuslyApp extends StatelessWidget {
         final baseTextTheme = Theme.of(context).textTheme;
         final textTheme = GoogleFonts.poppinsTextTheme(baseTextTheme);
 
+        // --- Page Transitions ---
+        const pageTransitionsTheme = PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: SharedAxisPageTransitionsBuilder(
+              transitionType: SharedAxisTransitionType.scaled,
+            ),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          },
+        );
+
         // --- Color Palette ---
         const primaryColor = Color(0xFF9575CD); // Soft purple
         const secondaryColor = Color(0xFF512DA8); // Deep violet
@@ -45,6 +56,7 @@ class CampuslyApp extends StatelessWidget {
           brightness: Brightness.light,
           scaffoldBackgroundColor: lightBackgroundColor,
           primaryColor: primaryColor,
+          pageTransitionsTheme: pageTransitionsTheme,
           colorScheme: const ColorScheme.light(
             primary: primaryColor,
             secondary: secondaryColor,
@@ -126,6 +138,7 @@ class CampuslyApp extends StatelessWidget {
           brightness: Brightness.dark,
           scaffoldBackgroundColor: darkBackgroundColor,
           primaryColor: primaryColor,
+          pageTransitionsTheme: pageTransitionsTheme,
           colorScheme: const ColorScheme.dark(
             primary: primaryColor,
             secondary: primaryColor, 

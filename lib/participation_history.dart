@@ -1,7 +1,7 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class ParticipationHistoryScreen extends StatelessWidget {
   const ParticipationHistoryScreen({super.key});
@@ -13,8 +13,6 @@ class ParticipationHistoryScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("My Participation"),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
       ),
       body: StreamBuilder<QuerySnapshot>(
         // Querying registrations where userId matches the current student
@@ -30,7 +28,7 @@ class ParticipationHistoryScreen extends StatelessWidget {
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Center(
               child: Text("You haven't registered for any events yet."),
-            );
+            ).animate().fadeIn(duration: 500.ms);
           }
 
           final registrations = snapshot.data!.docs;
@@ -42,12 +40,12 @@ class ParticipationHistoryScreen extends StatelessWidget {
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
                 child: ListTile(
-                  leading: const Icon(Icons.event_available, color: Colors.green),
+                  leading: Icon(Icons.event_available, color: Theme.of(context).primaryColor),
                   title: Text(reg['eventTitle'] ?? 'Event Name'),
-                  subtitle: Text("Status: Confirmed"),
+                  subtitle: const Text("Status: Confirmed"),
                   trailing: const Icon(Icons.info_outline),
                 ),
-              );
+              ).animate().fadeIn(duration: 500.ms, delay: (100 * index).ms).slideX();
             },
           );
         },

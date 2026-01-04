@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -116,7 +117,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                       onPressed: () =>
                           _assignFacultyToClub(clubId, clubData['clubName']),
                     ),
-                  );
+                  ).animate().fadeIn(duration: 500.ms).slideX();
                 },
               );
             },
@@ -281,13 +282,13 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                         builder: (c) =>
                             AddFacultyScreen(collegeName: widget.collegeName)));
               }),
-              _buildCard("Security", Icons.security_rounded, () {
+              _buildCard("Change Password", Icons.lock_reset, () {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (c) => const ChangePasswordScreen()));
               }),
-            ],
+            ].animate(interval: 200.ms).fadeIn(duration: 300.ms).slideY(),
           ),
         ));
   }

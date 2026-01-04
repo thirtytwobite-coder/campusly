@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class StudentSignUpScreen extends StatefulWidget {
   const StudentSignUpScreen({super.key});
@@ -22,6 +23,7 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
   String? _selectedCollege;
 
   bool _isLoading = false;
+  bool _isPasswordObscured = true;
 
   Future<void> registerStudent() async {
     // Basic validation
@@ -89,7 +91,18 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
             _buildTextField(_ktuId, "KTU ID", Icons.badge),
             _buildTextField(_email, "Email", Icons.email,
                 keyboard: TextInputType.emailAddress),
-            _buildTextField(_pass, "Password", Icons.lock, obscure: true),
+            _buildTextField(_pass, "Password", Icons.lock,
+                obscure: _isPasswordObscured,
+                suffixIcon: IconButton(
+                  icon: Icon(_isPasswordObscured
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  onPressed: () {
+                    setState(() {
+                      _isPasswordObscured = !_isPasswordObscured;
+                    });
+                  },
+                )),
             const SizedBox(height: 30),
             _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -101,7 +114,7 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
                     ),
                   ),
           ],
-        ),
+        ).animate().slideY(duration: 300.ms, delay: 200.ms).fadeIn(),
       ),
     );
   }
@@ -165,7 +178,7 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
   }
 
   Widget _buildTextField(TextEditingController controller, String label, IconData icon,
-      {bool obscure = false, TextInputType keyboard = TextInputType.text}) {
+      {bool obscure = false, TextInputType keyboard = TextInputType.text, Widget? suffixIcon}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: TextField(
@@ -175,6 +188,7 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),
+          suffixIcon: suffixIcon,
         ),
       ),
     );

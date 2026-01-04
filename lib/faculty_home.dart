@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'main.dart'; // Import main.dart to access themeNotifier
@@ -111,7 +112,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                       const SizedBox(height: 30),
                       _buildDashboardCard(
                         title: "Change Password",
-                        icon: Icons.lock,
+                        icon: Icons.lock_reset,
                         onTap: () {
                           Navigator.push(
                               context,
@@ -121,7 +122,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                         },
                       ),
                     ],
-                  ),
+                  ).animate().fadeIn(duration: 500.ms).slideY(),
                 ),
               );
             }
@@ -137,6 +138,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
               ),
               itemCount: docs.length + 1, // Add 1 for the static card
               itemBuilder: (context, index) {
+                Widget card;
                 if (index < docs.length) {
                   // Club card
                   var doc = docs[index];
@@ -145,7 +147,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                       ? data['clubName']
                       : "My Club";
 
-                  return _buildDashboardCard(
+                  card = _buildDashboardCard(
                     title: clubName,
                     icon: Icons.group_work,
                     onTap: () {
@@ -160,9 +162,9 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                   );
                 } else {
                   // Static "Change Password" card
-                  return _buildDashboardCard(
+                  card = _buildDashboardCard(
                     title: "Change Password",
-                    icon: Icons.lock,
+                    icon: Icons.lock_reset,
                     onTap: () {
                       Navigator.push(
                           context,
@@ -172,6 +174,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                     },
                   );
                 }
+                return card.animate().fadeIn(duration: 300.ms, delay: (index * 100).ms).slideX();
               },
             );
           },
@@ -322,7 +325,7 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
 
                               if (mounted) Navigator.of(context).pop();
                             },
-                          );
+                          ).animate().fadeIn(duration: 500.ms).slideX();
                         },
                       ),
                     ),
@@ -377,7 +380,7 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
         onPressed: _showAddCoordinatorDialog,
         tooltip: 'Add Coordinator',
         child: const Icon(Icons.add),
-      ),
+      ).animate().scale(),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
         child: StreamBuilder<DocumentSnapshot>(
@@ -434,7 +437,7 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                               onPressed: () => _removeCoordinator(coordinator),
                             ),
                           ),
-                        );
+                        ).animate().fadeIn(duration: 500.ms).slideX();
                       },
                     ),
                   ),

@@ -11,6 +11,7 @@ class ChangePasswordScreen extends StatefulWidget {
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _newPassController = TextEditingController();
   bool _isLoading = false;
+  bool _isPasswordObscured = true;
 
   Future<void> _updatePassword() async {
     if (_newPassController.text.length < 6) {
@@ -53,10 +54,20 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             const SizedBox(height: 20),
             TextField(
               controller: _newPassController,
-              obscureText: true,
-              decoration: const InputDecoration(
+              obscureText: _isPasswordObscured,
+              decoration: InputDecoration(
                 labelText: "New Password",
-                prefixIcon: Icon(Icons.lock_outline),
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  icon: Icon(_isPasswordObscured
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  onPressed: () {
+                    setState(() {
+                      _isPasswordObscured = !_isPasswordObscured;
+                    });
+                  },
+                ),
               ),
             ),
             const SizedBox(height: 30),

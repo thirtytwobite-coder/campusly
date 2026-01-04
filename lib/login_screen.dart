@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'main.dart';
@@ -217,7 +218,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
                     ],
                   ),
                 ],
-              ),
+              ).animate().slideY(duration: 300.ms, delay: 200.ms).fadeIn(),
             ),
           ),
         ),
@@ -289,7 +290,7 @@ class AdminDashboard extends StatelessWidget {
                     () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CollegeListView()))),
             _card(context, "Change Password", Icons.lock_reset,
                     () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePasswordScreen()))),
-          ],
+          ].animate().slideY(duration: 300.ms, delay: 200.ms).fadeIn(),
         ),
       ),
     );
@@ -390,7 +391,7 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddClubDialog,
         child: const Icon(Icons.add),
-      ),
+      ).animate().scale(),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('clubs')
@@ -429,7 +430,7 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
                     onPressed: () => _confirmDelete(id),
                   ),
                 ),
-              );
+              ).animate().fadeIn(duration: 500.ms).slideX();
             },
           );
         },
