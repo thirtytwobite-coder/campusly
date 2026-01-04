@@ -119,27 +119,39 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   Widget _buildCategoryFilter() {
     List<String> categories = ["All", "Technical", "Cultural", "Sports"];
     return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       height: 60,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: ListView(
+      child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        children: categories.map((cat) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: ChoiceChip(
-            label: Text(cat),
-            selected: selectedCategory == cat,
-            onSelected: (s) => setState(() => selectedCategory = cat),
-          ),
-        )).toList(),
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          final category = categories[index];
+          final isSelected = selectedCategory == category;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: ChoiceChip(
+              label: Text(category),
+              selected: isSelected,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() => selectedCategory = category);
+                }
+              },
+            ),
+          );
+        },
       ),
     );
   }
 
+
+
   Widget _eventCard(DocumentSnapshot doc) {
     return Card(
-      margin: const EdgeInsets.all(10),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
-        title: Text(doc['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        title: Text(doc['title'], style: Theme.of(context).textTheme.headlineSmall),
         subtitle: Text("${doc['venue']} • ${doc['category']}"),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: () => Navigator.push(

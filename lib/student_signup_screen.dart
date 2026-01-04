@@ -73,9 +73,8 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: const Text("Student Registration"),
-          backgroundColor: Colors.indigo,
-          foregroundColor: Colors.white),
+        title: const Text("Student Registration"),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -93,19 +92,12 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
             _buildTextField(_pass, "Password", Icons.lock, obscure: true),
             const SizedBox(height: 30),
             _isLoading
-                ? const CircularProgressIndicator()
+                ? const Center(child: CircularProgressIndicator())
                 : SizedBox(
                     width: double.infinity,
-                    height: 50,
                     child: ElevatedButton(
                       onPressed: registerStudent,
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.indigo,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10))),
-                      child: const Text("CREATE ACCOUNT",
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text("CREATE ACCOUNT"),
                     ),
                   ),
           ],
@@ -115,43 +107,38 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
   }
 
   Widget _buildCollegeDropdown() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('faculty')
-          .where('role', isEqualTo: 'Main Faculty')
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.only(bottom: 15),
-            child: TextField(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('faculty')
+            .where('role', isEqualTo: 'Main Faculty')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return TextField(
               decoration: InputDecoration(
                 labelText: 'No colleges available',
-                prefixIcon: Icon(Icons.school, color: Colors.grey),
-                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.school, color: Theme.of(context).disabledColor),
               ),
               enabled: false,
-            ),
-          );
-        }
+            );
+          }
 
-        final colleges = snapshot.data!.docs
-            .map((doc) => doc['college'] as String?)
-            .where((college) => college != null)
-            .toSet()
-            .toList(); // Use a Set to get unique college names
+          final colleges = snapshot.data!.docs
+              .map((doc) => doc['college'] as String?)
+              .where((college) => college != null)
+              .toSet()
+              .toList(); // Use a Set to get unique college names
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 15),
-          child: DropdownButtonFormField<String>(
+          return DropdownButtonFormField<String>(
             isExpanded: true, // Allow the dropdown to expand
             decoration: const InputDecoration(
               labelText: 'College',
-              prefixIcon: Icon(Icons.school, color: Colors.indigo),
-              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.school),
             ),
             value: _selectedCollege,
             items: colleges.map((college) {
@@ -171,9 +158,9 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
               }
               return null;
             },
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -187,10 +174,7 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
         keyboardType: keyboard,
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: Icon(icon, color: Colors.indigo),
-          border: const OutlineInputBorder(),
-          focusedBorder: const OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.indigo, width: 2)),
+          prefixIcon: Icon(icon),
         ),
       ),
     );

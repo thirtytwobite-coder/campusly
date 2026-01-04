@@ -199,8 +199,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   return Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
@@ -215,7 +213,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                                   style: Theme.of(context).textTheme.titleLarge,
                                 ),
                                 IconButton(
-                                  icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.secondary),
+                                  icon: const Icon(Icons.edit),
                                   onPressed: () => _showEditDescriptionDialog(description),
                                 ),
                               ],

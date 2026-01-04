@@ -112,7 +112,6 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                       _buildDashboardCard(
                         title: "Change Password",
                         icon: Icons.lock,
-                        color: Colors.teal,
                         onTap: () {
                           Navigator.push(
                               context,
@@ -149,7 +148,6 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                   return _buildDashboardCard(
                     title: clubName,
                     icon: Icons.group_work,
-                    color: Colors.indigo,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -165,7 +163,6 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                   return _buildDashboardCard(
                     title: "Change Password",
                     icon: Icons.lock,
-                    color: Colors.teal,
                     onTap: () {
                       Navigator.push(
                           context,
@@ -186,25 +183,16 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
   Widget _buildDashboardCard({
     required String title,
     required IconData icon,
-    required Color color,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(16.0),
       child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 30, color: color),
-            ),
+            Icon(icon, size: 40),
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -213,7 +201,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
           ],
@@ -227,19 +215,18 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(Icons.assignment_ind_outlined,
-            size: 80, color: Colors.grey[300]),
+            size: 80, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6)),
         const SizedBox(height: 16),
-        const Text(
+        Text(
           "No Clubs Assigned",
-          style: TextStyle(
-              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey),
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6)),
         ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.0),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Text(
             "Contact your college's Main Faculty to be assigned to a club.",
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
+            style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.6)),
           ),
         ),
       ],
@@ -385,8 +372,6 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Manage "$clubName"'),
-        backgroundColor: const Color(0xFF1A237E),
-        foregroundColor: Colors.white,
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddCoordinatorDialog,
@@ -414,11 +399,11 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
                   child: Text(
                     'Club Coordinators',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.headlineSmall,
                   ),
                 ),
                 const Divider(),
@@ -439,13 +424,13 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                           margin: const EdgeInsets.symmetric(
                               vertical: 4, horizontal: 8),
                           child: ListTile(
-                            leading: const Icon(Icons.person, color: Colors.indigo),
+                            leading: const Icon(Icons.person),
                             title: Text(coordinator['studentName'] ?? 'Unnamed'),
                             subtitle:
                                 Text(coordinator['studentEmail'] ?? 'No email'),
                             trailing: IconButton(
-                              icon: const Icon(Icons.remove_circle_outline,
-                                  color: Colors.red),
+                              icon: Icon(Icons.remove_circle_outline,
+                                  color: Theme.of(context).colorScheme.error),
                               onPressed: () => _removeCoordinator(coordinator),
                             ),
                           ),

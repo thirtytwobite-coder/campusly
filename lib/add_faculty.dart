@@ -106,8 +106,6 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
     return Scaffold(
       appBar: AppBar(
           title: Text("Add ${widget.role}"),
-          backgroundColor: const Color(0xFF1A237E),
-          foregroundColor: Colors.white
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),

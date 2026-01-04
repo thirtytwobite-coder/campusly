@@ -41,16 +41,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Security Settings"),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            const Text(
+            Text(
               "Enter your new password below. You will use this for your next login.",
-              style: TextStyle(color: Colors.grey),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 20),
             TextField(
@@ -58,7 +56,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               obscureText: true,
               decoration: const InputDecoration(
                 labelText: "New Password",
-                border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.lock_outline),
               ),
             ),
@@ -67,11 +64,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 ? const CircularProgressIndicator()
                 : SizedBox(
               width: double.infinity,
-              height: 50,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo),
                 onPressed: _updatePassword,
-                child: const Text("UPDATE PASSWORD", style: TextStyle(color: Colors.white)),
+                child: const Text("UPDATE PASSWORD"),
               ),
             ),
           ],

@@ -81,15 +81,15 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                   return ListTile(
                     leading: CircleAvatar(
                       backgroundColor: isGlobal
-                          ? Colors.orange.withOpacity(0.2)
-                          : Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                          ? Theme.of(context).colorScheme.secondary.withOpacity(0.1)
+                          : Theme.of(context).colorScheme.primary.withOpacity(0.1),
                       child: Icon(isGlobal ? Icons.public : Icons.school,
                           color: isGlobal
-                              ? Colors.orange
+                              ? Theme.of(context).colorScheme.secondary
                               : Theme.of(context).colorScheme.primary),
                     ),
                     title: Text(clubData['clubName'],
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                        style: Theme.of(context).textTheme.titleLarge),
                     subtitle: StreamBuilder<DocumentSnapshot>(
                       // Look up the mapping in the junction collection
                       stream: FirebaseFirestore.instance
@@ -112,8 +112,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                       },
                     ),
                     trailing: IconButton(
-                      icon: Icon(Icons.assignment_ind_rounded,
-                          color: Theme.of(context).colorScheme.primary),
+                      icon: const Icon(Icons.assignment_ind_rounded),
                       onPressed: () =>
                           _assignFacultyToClub(clubId, clubData['clubName']),
                     ),
@@ -295,19 +294,17 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
 
   Widget _buildCard(String title, IconData icon, VoidCallback onTap) {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(15.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 40, color: Theme.of(context).colorScheme.primary),
+            Icon(icon, size: 40),
             const SizedBox(height: 12),
             Text(title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+                style: Theme.of(context).textTheme.titleMedium),
           ],
         ),
       ),
@@ -462,27 +459,29 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
         // Added to prevent overflow
         padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
                 controller: _name,
                 decoration: const InputDecoration(labelText: "Full Name")),
+            const SizedBox(height: 16),
             TextField(
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(labelText: "Email")),
+            const SizedBox(height: 16),
             TextField(
                 controller: _pass,
                 decoration: const InputDecoration(labelText: "Password"),
                 obscureText: true),
-            const SizedBox(height: 20),
+            const SizedBox(height: 32),
             ElevatedButton(
                 onPressed: _handleManualRegister,
                 child: const Text("Create Faculty Account")),
             const SizedBox(height: 20),
             const Divider(),
-            const SizedBox(height: 10),
             const SizedBox(height: 20),
-            ElevatedButton.icon(
+            OutlinedButton.icon(
               onPressed: _uploadCsv,
               icon: const Icon(Icons.upload_file),
               label: const Text("Upload CSV File"),

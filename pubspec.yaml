@@ -20,6 +20,7 @@ dependencies:
   permission_handler: ^11.3.1
   shared_preferences: ^2.0.15
   open_file: ^3.3.2
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:

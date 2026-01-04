@@ -146,25 +146,16 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon, TextInputType type,
+  Widget _buildTextField(BuildContext context, TextEditingController controller, String label, IconData icon, TextInputType type,
       {bool obscure = false, Widget? suffixIcon}) {
-    return Container(
-      width: 360,
-      padding: const EdgeInsets.only(bottom: 15),
-      child: TextField(
-        controller: controller,
-        obscureText: obscure,
-        keyboardType: type,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: Colors.white70),
-          prefixIcon: Icon(icon, color: Colors.white70),
-          suffixIcon: suffixIcon,
-          filled: true,
-          fillColor: Colors.white.withOpacity(0.1),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      keyboardType: type,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        suffixIcon: suffixIcon,
       ),
     );
   }
@@ -172,77 +163,64 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 46, 55, 155),
       body: SafeArea(
-        child: CustomScrollView(
-          physics: const ClampingScrollPhysics(),
-          slivers: [
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.rocket_launch_sharp, size: 60, color: Colors.white),
-                    const SizedBox(height: 15),
-                    const Text("CAMPUSLY",
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
+        child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Icon(Icons.rocket_launch_sharp, size: 60, color: Theme.of(context).primaryColor),
+                  const SizedBox(height: 15),
+                  Text("CAMPUSLY",
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
                             fontWeight: FontWeight.bold,
-                            letterSpacing: 2)),
-                    const SizedBox(height: 40),
-                    _buildTextField(_loginEmail, "Email", Icons.email, TextInputType.emailAddress),
-                    _buildTextField(
-                      _loginPass,
-                      "Password",
-                      Icons.lock,
-                      TextInputType.text,
-                      obscure: _isPasswordObscured,
-                      suffixIcon: IconButton(
-                        icon: Icon(_isPasswordObscured ? Icons.visibility_off : Icons.visibility, color: Colors.white70),
-                        onPressed: () => setState(() => _isPasswordObscured = !_isPasswordObscured),
-                      ),
+                            letterSpacing: 2,
+                          )),
+                  const SizedBox(height: 40),
+                  _buildTextField(context, _loginEmail, "Email", Icons.email, TextInputType.emailAddress),
+                   const SizedBox(height: 15),
+                  _buildTextField(
+                    context,
+                    _loginPass,
+                    "Password",
+                    Icons.lock,
+                    TextInputType.text,
+                    obscure: _isPasswordObscured,
+                    suffixIcon: IconButton(
+                      icon: Icon(_isPasswordObscured ? Icons.visibility_off : Icons.visibility),
+                      onPressed: () => setState(() => _isPasswordObscured = !_isPasswordObscured),
                     ),
-                    const SizedBox(height: 30),
-                    _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : SizedBox(
-                      width: 360,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _login,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.indigo,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  const SizedBox(height: 30),
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : ElevatedButton(
+                          onPressed: _login,
+                          child: const Text("LOGIN"),
                         ),
-                        child: const Text("LOGIN", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text("New student? ", style: Theme.of(context).textTheme.bodyMedium),
+                      GestureDetector(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentSignUpScreen())),
+                        child: Text("Register here",
+                            style: TextStyle(
+                                color: Theme.of(context).primaryColor,
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline)),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text("New student? ", style: TextStyle(color: Colors.white70)),
-                        GestureDetector(
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentSignUpScreen())),
-                          child: const Text("Register here",
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  decoration: TextDecoration.underline)),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
-      ),
     );
   }
 }
@@ -321,13 +299,12 @@ class AdminDashboard extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Card(
-        elevation: 3,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 35, color: Theme.of(context).colorScheme.primary),
+            Icon(icon, size: 35),
             const SizedBox(height: 10),
-            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.labelLarge),
           ],
         ),
       ),
@@ -445,7 +422,7 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
 
               return Card(
                 child: ListTile(
-                  title: Text(data['clubName'] ?? 'Unnamed', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(data['clubName'] ?? 'Unnamed', style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
                   subtitle: Text(data['description'] ?? ""),
                   trailing: IconButton(
                     icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
