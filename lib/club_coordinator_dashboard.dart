@@ -178,102 +178,106 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             ),
           ],
         ),
-        body: clubId == null
-            ? const Center(child: Text("You are not a coordinator for any club."))
-            : StreamBuilder<DocumentSnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('clubs')
-                    .doc(clubId!)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (!snapshot.hasData || !snapshot.data!.exists) {
-                    return const Center(child: Text("Club data not found."));
-                  }
+        body: Column(
+          children: [
+            Expanded(
+              child: clubId == null
+                  ? const Center(child: Text("You are not a coordinator for any club."))
+                  : StreamBuilder<DocumentSnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('clubs')
+                          .doc(clubId!)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (!snapshot.hasData || !snapshot.data!.exists) {
+                          return const Center(child: Text("Club data not found."));
+                        }
 
-                  final clubData =
-                      snapshot.data!.data() as Map<String, dynamic>?;
-                  final description = clubData?['description'] as String? ??
-                      'No description available.';
+                        final clubData = snapshot.data!.data() as Map<String, dynamic>?;
+                        final description = clubData?['description'] as String? ?? 'No description available.';
 
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Club Description',
-                                      style: Theme.of(context).textTheme.titleLarge,
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.edit),
-                                      onPressed: () => _showEditDescriptionDialog(description),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Text(description),
-                              ],
-                            ),
-                          ),
-                        ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.5),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Quick Actions',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 12),
-                        GridView.count(
-                          crossAxisCount: 2,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          children: [
-                            _ActionCard(
-                              icon: Icons.event_note,
-                              title: 'Programs',
-                              description: 'Manage club programs',
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ManageProgramsScreen(
-                                      clubId: clubId!,
-                                      clubName: clubName ?? 'Club',
-                                    ),
+                        return SingleChildScrollView(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Club Description',
+                                            style: Theme.of(context).textTheme.titleLarge,
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.edit),
+                                            onPressed: () => _showEditDescriptionDialog(description),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(description),
+                                    ],
                                   ),
-                                );
-                              },
-                            ),
-                            _ActionCard(
-                              icon: Icons.people,
-                              title: 'Members',
-                              description: 'View members',
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Members feature coming soon')),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
+                                ),
+                              ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.5),
+                              const SizedBox(height: 24),
+                              Text(
+                                'Quick Actions',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: 12),
+                              GridView.count(
+                                crossAxisCount: 2,
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 12,
+                                children: [
+                                  _ActionCard(
+                                    icon: Icons.event_note,
+                                    title: 'Programs',
+                                    description: 'Manage club programs',
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ManageProgramsScreen(
+                                            clubId: clubId!,
+                                            clubName: clubName ?? 'Club',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  _ActionCard(
+                                    icon: Icons.people,
+                                    title: 'Members',
+                                    description: 'View members',
+                                    onTap: () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Members feature coming soon')),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -13,6 +13,7 @@ import 'student_home.dart';
 import 'student_signup_screen.dart';
 import 'main_faculty_dashboard.dart' as main_fac;
 import 'club_coordinator_dashboard.dart';
+import 'role_selection_screen.dart';
 
 // ==================== UNIFIED LOGIN SCREEN ====================
 class UnifiedLoginScreen extends StatefulWidget {
@@ -119,7 +120,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
       if (coordinatorQuery.docs.isNotEmpty) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const ClubCoordinatorDashboard()),
+          MaterialPageRoute(builder: (_) => RoleSelectionScreen()),
         );
       } else {
         Navigator.pushReplacement(
