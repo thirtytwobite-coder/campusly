@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'change_password.dart';
 import 'login_screen.dart';
 import 'main.dart';
+import 'manage_programs.dart';
 
 class ClubCoordinatorDashboard extends StatefulWidget {
   const ClubCoordinatorDashboard({super.key});
@@ -197,37 +198,149 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   final description = clubData?['description'] as String? ??
                       'No description available.';
 
-                  return Padding(
+                  return SingleChildScrollView(
                     padding: const EdgeInsets.all(16.0),
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'Club Description',
-                                  style: Theme.of(context).textTheme.titleLarge,
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Club Description',
+                                      style: Theme.of(context).textTheme.titleLarge,
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.edit),
+                                      onPressed: () => _showEditDescriptionDialog(description),
+                                    ),
+                                  ],
                                 ),
-                                IconButton(
-                                  icon: const Icon(Icons.edit),
-                                  onPressed: () => _showEditDescriptionDialog(description),
-                                ),
+                                const SizedBox(height: 10),
+                                Text(description),
                               ],
                             ),
-                            const SizedBox(height: 10),
-                            Text(description),
+                          ),
+                        ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.5),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Quick Actions',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 12),
+                        GridView.count(
+                          crossAxisCount: 2,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          children: [
+                            _ActionCard(
+                              icon: Icons.event_note,
+                              title: 'Programs',
+                              description: 'Manage club programs',
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ManageProgramsScreen(
+                                      clubId: clubId!,
+                                      clubName: clubName ?? 'Club',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            _ActionCard(
+                              icon: Icons.people,
+                              title: 'Members',
+                              description: 'View members',
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Members feature coming soon')),
+                                );
+                              },
+                            ),
                           ],
                         ),
-                      ),
-                    ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.5),
+                      ],
+                    ),
                   );
                 },
               ),
+      ),
+    );
+  }
+}
+
+class _ActionCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  final VoidCallback onTap;
+
+  const _ActionCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Card(
+        elevation: 2,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF1A237E).withOpacity(0.1),
+                const Color(0xFF1A237E).withOpacity(0.05),
+              ],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 40,
+                  color: const Color(0xFF1A237E),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
