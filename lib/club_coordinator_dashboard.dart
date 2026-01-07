@@ -8,6 +8,7 @@ import 'change_password.dart';
 import 'login_screen.dart';
 import 'main.dart';
 import 'manage_programs.dart';
+import 'profile_screen.dart';
 
 class ClubCoordinatorDashboard extends StatefulWidget {
   const ClubCoordinatorDashboard({super.key});
@@ -20,6 +21,7 @@ class ClubCoordinatorDashboard extends StatefulWidget {
 class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   String? clubId;
   String? clubName;
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -44,6 +46,18 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
           clubName = clubData['name'] as String?;
         });
       }
+    }
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+      );
     }
   }
 
@@ -277,6 +291,21 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                     ),
             ),
           ],
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'Profile',
+            ),
+          ],
+          currentIndex: _selectedIndex,
+          selectedItemColor: Theme.of(context).colorScheme.primary,
+          onTap: _onItemTapped,
         ),
       ),
     );

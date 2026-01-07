@@ -9,11 +9,20 @@ class ChangePasswordScreen extends StatefulWidget {
 }
 
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
+  final _oldPassController = TextEditingController();
   final _newPassController = TextEditingController();
+  final _confirmPassController = TextEditingController();
   bool _isLoading = false;
   bool _isPasswordObscured = true;
 
   Future<void> _updatePassword() async {
+    if (_newPassController.text != _confirmPassController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("New passwords do not match.")),
+      );
+      return;
+    }
+
     if (_newPassController.text.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Password must be at least 6 characters")),
@@ -23,7 +32,16 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await FirebaseAuth.instance.currentUser!.updatePassword(_newPassController.text.trim());
+      // Re-authenticate user before changing password for security
+      AuthCredential credential = EmailAuthProvider.credential(
+        email: FirebaseAuth.instance.currentUser!.email!,
+        password: _oldPassController.text.trim(),
+      );
+      await FirebaseAuth.instance.currentUser!
+          .reauthenticateWithCredential(credential);
+
+      await FirebaseAuth.instance.currentUser!
+          .updatePassword(_newPassController.text.trim());
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Password updated successfully!")),
       );
@@ -47,9 +65,23 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            Text(
-              "Enter your new password below. You will use this for your next login.",
-              style: Theme.of(context).textTheme.bodyMedium,
+            TextField(
+              controller: _oldPassController,
+              obscureText: _isPasswordObscured,
+              decoration: InputDecoration(
+                labelText: "Old Password",
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  icon: Icon(_isPasswordObscured
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  onPressed: () {
+                    setState(() {
+                      _isPasswordObscured = !_isPasswordObscured;
+                    });
+                  },
+                ),
+              ),
             ),
             const SizedBox(height: 20),
             TextField(
@@ -57,6 +89,25 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               obscureText: _isPasswordObscured,
               decoration: InputDecoration(
                 labelText: "New Password",
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  icon: Icon(_isPasswordObscured
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  onPressed: () {
+                    setState(() {
+                      _isPasswordObscured = !_isPasswordObscured;
+                    });
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _confirmPassController,
+              obscureText: _isPasswordObscured,
+              decoration: InputDecoration(
+                labelText: "Confirm New Password",
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
                   icon: Icon(_isPasswordObscured

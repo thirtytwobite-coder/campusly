@@ -8,6 +8,7 @@ import 'event_details.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'login_screen.dart'; // To navigate back to RoleSelection
 import 'participation_history.dart';
+import 'profile_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -18,6 +19,7 @@ class StudentHomeScreen extends StatefulWidget {
 
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
   String selectedCategory = "All";
+  int _selectedIndex = 0;
 
   Future<bool> _onWillPop() async {
     return await showDialog(
@@ -39,6 +41,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         );
       },
     ) ?? false;
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+      );
+    }
   }
 
   @override
@@ -112,6 +126,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 ),
           ),
         ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: Theme.of(context).colorScheme.primary,
+        onTap: _onItemTapped,
       ),
     ),
   );

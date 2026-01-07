@@ -131,6 +131,19 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
     }
   }
 
+  Future<void> _handleForgotPassword() async {
+    if (_loginEmail.text.isEmpty) {
+      _showErrorDialog("Please enter your email to reset the password.");
+      return;
+    }
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: _loginEmail.text.trim());
+      _showErrorDialog("Password reset email sent. Please check your inbox.");
+    } catch (e) {
+      _showErrorDialog("Error: ${e.toString()}");
+    }
+  }
+
 
   void _showErrorDialog(String message) {
     showDialog(
@@ -196,7 +209,15 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
                       onPressed: () => setState(() => _isPasswordObscured = !_isPasswordObscured),
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _handleForgotPassword,
+                      child: Text("Forgot Password?"),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : ElevatedButton(
@@ -335,7 +356,7 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(controller: clubName, decoration: const InputDecoration(labelText: 'Club Name')),
-            TextField(controller: clubDesc, decoration: const InputDecoration(labelText: 'Description')),
+            TextField(controller: clubDesc, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
           ],
         ),
         actions: [

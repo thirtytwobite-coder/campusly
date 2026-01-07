@@ -18,8 +18,8 @@ class CollegeListView extends StatelessWidget {
               var doc = snap.data!.docs[index];
               bool isActive = doc.data().toString().contains('isActive') ? doc['isActive'] : true;
               return ListTile(
-                title: Text(doc['college'] ?? 'N/A'),
-                subtitle: Text(doc['name'] ?? 'N/A'),
+                title: Text(doc['name'] ?? 'N/A', style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(doc['college'] ?? 'N/A'),
                 trailing: Switch(value: isActive, onChanged: (v) => FirebaseFirestore.instance.collection('faculty').doc(doc.id).update({'isActive': v})),
               );
             },

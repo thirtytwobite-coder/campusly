@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart'; // Import main.dart to access themeNotifier
 import 'login_screen.dart';
 import 'change_password.dart';
+import 'profile_screen.dart';
 
 class FacultyHomeScreen extends StatefulWidget {
   const FacultyHomeScreen({super.key});
@@ -16,6 +17,8 @@ class FacultyHomeScreen extends StatefulWidget {
 }
 
 class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
+  int _selectedIndex = 0;
+
   Future<bool> _onWillPop() async {
     final bool? shouldLogout = await showDialog<bool>(
       context: context,
@@ -55,6 +58,18 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
     return false;
   }
 
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -90,97 +105,111 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
         ),
         body: StreamBuilder<QuerySnapshot>(
 
-                stream: FirebaseFirestore.instance
-                    .collection('club_mappings')
-                    .where('facultyEmail', isEqualTo: user?.email)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+          stream: FirebaseFirestore.instance
+              .collection('club_mappings')
+              .where('facultyEmail', isEqualTo: user?.email)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    // If no clubs are assigned, still show the Change Password option
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              // If no clubs are assigned, still show the Change Password option
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
 
-                            _buildEmptyState(),
-                            const SizedBox(height: 30),
-                            _buildDashboardCard(
-                              title: "Change Password",
-                              icon: Icons.lock_reset,
-                              onTap: () {
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                        const ChangePasswordScreen()));
-                              },
-                            ),
-                          ],
-                        ).animate().fadeIn(duration: 500.ms).slideY(),
-                      ),
-                    );
-                  }
-
-                  final docs = snapshot.data!.docs;
-
-                  return GridView.builder(
-                    padding: const EdgeInsets.all(16),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                    ),
-                    itemCount: docs.length + 1, // Add 1 for the static card
-                    itemBuilder: (context, index) {
-                      Widget card;
-                      if (index < docs.length) {
-                        // Club card
-                        var doc = docs[index];
-                        var data = doc.data() as Map<String, dynamic>;
-                        String clubName = data.containsKey('clubName')
-                            ? data['clubName']
-                            : "My Club";
-
-                        card = _buildDashboardCard(
-                          title: clubName,
-                          icon: Icons.group_work,
-                          onTap: () {
-                            Navigator.push(
+                      _buildEmptyState(),
+                      const SizedBox(height: 30),
+                      _buildDashboardCard(
+                        title: "Change Password",
+                        icon: Icons.lock_reset,
+                        onTap: () {
+                          Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    ClubManagementScreen(clubMappingDoc: doc),
-                              ),
-                            );
-                          },
-                        );
-                      } else {
-                        // Static "Change Password" card
-                        card = _buildDashboardCard(
-                          title: "Change Password",
-                          icon: Icons.lock_reset,
-                          onTap: () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                    const ChangePasswordScreen()));
-                          },
-                        );
-                      }
-                      return card.animate().fadeIn(duration: 300.ms, delay: (index * 100).ms).slideX();
+                                  builder: (context) =>
+                                  const ChangePasswordScreen()));
+                        },
+                      ),
+                    ],
+                  ).animate().fadeIn(duration: 500.ms).slideY(),
+                ),
+              );
+            }
+
+            final docs = snapshot.data!.docs;
+
+            return GridView.builder(
+              padding: const EdgeInsets.all(16),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+              ),
+              itemCount: docs.length + 1, // Add 1 for the static card
+              itemBuilder: (context, index) {
+                Widget card;
+                if (index < docs.length) {
+                  // Club card
+                  var doc = docs[index];
+                  var data = doc.data() as Map<String, dynamic>;
+                  String clubName = data.containsKey('clubName')
+                      ? data['clubName']
+                      : "My Club";
+
+                  card = _buildDashboardCard(
+                    title: clubName,
+                    icon: Icons.group_work,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ClubManagementScreen(clubMappingDoc: doc),
+                        ),
+                      );
                     },
                   );
-                },
-              ),
+                } else {
+                  // Static "Change Password" card
+                  card = _buildDashboardCard(
+                    title: "Change Password",
+                    icon: Icons.lock_reset,
+                    onTap: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                              const ChangePasswordScreen()));
+                    },
+                  );
+                }
+                return card.animate().fadeIn(duration: 300.ms, delay: (index * 100).ms).slideX();
+              },
+            );
+          },
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'Profile',
+            ),
+          ],
+          currentIndex: _selectedIndex,
+          selectedItemColor: Theme.of(context).colorScheme.primary,
+          onTap: _onItemTapped,
+        ),
       ),
-      
     );
   }
 

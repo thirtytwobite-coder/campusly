@@ -84,7 +84,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                       backgroundColor: isGlobal
                           ? Theme.of(context).colorScheme.secondary.withOpacity(0.1)
                           : Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                      child: Icon(isGlobal ? Icons.public : Icons.school,
+                      child: Icon(isGlobal ? Icons.public_outlined : Icons.school_outlined,
                           color: isGlobal
                               ? Theme.of(context).colorScheme.secondary
                               : Theme.of(context).colorScheme.primary),
@@ -113,7 +113,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                       },
                     ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.assignment_ind_rounded),
+                      icon: const Icon(Icons.rule_folder_outlined),
                       onPressed: () =>
                           _assignFacultyToClub(clubId, clubData['clubName']),
                     ),
@@ -250,7 +250,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
             title: Text(widget.collegeName),
             actions: [
               IconButton(
-                icon: const Icon(Icons.brightness_6),
+                icon: const Icon(Icons.light_mode_outlined),
                 onPressed: () async {
                   themeNotifier.value = themeNotifier.value == ThemeMode.light
                       ? ThemeMode.dark
@@ -262,7 +262,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                 },
               ),
               IconButton(
-                  icon: const Icon(Icons.logout), onPressed: _handleLogout)
+                  icon: const Icon(Icons.exit_to_app_outlined), onPressed: _handleLogout)
             ],
           ),
           body: GridView.count(
@@ -272,17 +272,17 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
             mainAxisSpacing: 16,
             children: [
               _buildCard(
-                  "Mapping Dashboard", Icons.map_rounded, _openMappingDashboard),
+                  "Mapping Dashboard", Icons.rule_folder_outlined, _openMappingDashboard),
               _buildCard(
-                  "Add Local Club", Icons.add_business_rounded, _addClubDialog),
-              _buildCard("Register Faculty", Icons.person_add_rounded, () {
+                  "Add Local Club", Icons.add_business_outlined, _addClubDialog),
+              _buildCard("Register Faculty", Icons.person_add_alt_1_outlined, () {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (c) =>
                             AddFacultyScreen(collegeName: widget.collegeName)));
               }),
-              _buildCard("Change Password", Icons.lock_reset, () {
+              _buildCard("Security", Icons.shield_outlined, () {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -295,17 +295,29 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
 
   Widget _buildCard(String title, IconData icon, VoidCallback onTap) {
     return Card(
+      elevation: 2.0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(15.0),
+        borderRadius: BorderRadius.circular(20),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 40),
-            const SizedBox(height: 12),
-            Text(title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium),
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              child: Icon(icon, size: 28, color: Theme.of(context).colorScheme.primary),
+            ),
+            const SizedBox(height: 15),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),
@@ -484,7 +496,7 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
             const SizedBox(height: 20),
             OutlinedButton.icon(
               onPressed: _uploadCsv,
-              icon: const Icon(Icons.upload_file),
+              icon: const Icon(Icons.upload_file_outlined),
               label: const Text("Upload CSV File"),
             ),
             const SizedBox(height: 10),

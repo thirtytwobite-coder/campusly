@@ -100,59 +100,76 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: Text("Add ${widget.role}"),
+        title: Text("Add ${widget.role}"),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              TextField(controller: _n, decoration: const InputDecoration(labelText: "Full Name")),
-              TextField(controller: _e, decoration: const InputDecoration(labelText: "Email")),
-              TextField(controller: _p, decoration: const InputDecoration(labelText: "Password / Faculty ID")),
-              TextField(
-                  controller: _c,
-                  decoration: const InputDecoration(labelText: "College"),
-                  enabled: widget.autoCollege == null
-              ),
-              const SizedBox(height: 30),
-              _isLoading
-                  ? const CircularProgressIndicator()
-                  : SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                    onPressed: () async {
-                      if(_e.text.isEmpty || _p.text.isEmpty) return;
-                      setState(() => _isLoading = true);
-                      try {
-                        UserCredential u = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-                            email: _e.text.trim(), password: _p.text.trim());
-                        await FirebaseFirestore.instance.collection('faculty').doc(u.user!.uid).set({
-                          'name': _n.text,
-                          'email': _e.text,
-                          'role': widget.role,
-                          'college': _c.text,
-                          'isActive': true,
-                        });
-                        Navigator.pop(context);
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                      } finally {
-                        setState(() => _isLoading = false);
-                      }
-                    },
-                    child: const Text("Create Account")
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 10),
+            _buildTextField(_n, "Full Name", Icons.person_outline),
+            const SizedBox(height: 20),
+            _buildTextField(_e, "Email", Icons.email_outlined),
+            const SizedBox(height: 20),
+            _buildTextField(_p, "Password / Faculty ID", Icons.lock_outline, obscure: true),
+            const SizedBox(height: 20),
+            _buildTextField(_c, "College", Icons.school_outlined, enabled: widget.autoCollege == null),
+            const SizedBox(height: 40),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ElevatedButton(
+              onPressed: () async {
+                if (_e.text.isEmpty || _p.text.isEmpty) return;
+                setState(() => _isLoading = true);
+                try {
+                  UserCredential u = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                      email: _e.text.trim(), password: _p.text.trim());
+                  await FirebaseFirestore.instance.collection('faculty').doc(u.user!.uid).set({
+                    'name': _n.text,
+                    'email': _e.text,
+                    'role': widget.role,
+                    'college': _c.text,
+                    'isActive': true,
+                  });
+                  Navigator.pop(context);
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                } finally {
+                  setState(() => _isLoading = false);
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-            ],
-          ),
+              child: const Text("CREATE ACCOUNT", style: TextStyle(fontSize: 16)),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, {bool obscure = false, bool enabled = true}) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      enabled: enabled,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        filled: true,
+        fillColor: Theme.of(context).inputDecorationTheme.fillColor,
       ),
     );
   }
