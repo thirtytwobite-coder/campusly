@@ -116,10 +116,12 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                         Color statusColor =
                             Theme.of(context).colorScheme.error;
                         if (mapSnap.hasData && mapSnap.data!.exists) {
+                          final mappingData = mapSnap.data!.data() as Map<String, dynamic>;
+                          // Display faculty name if available, otherwise fall back to email
                           assigned =
-                              (mapSnap.data!.data() as Map<String, dynamic>)[
-                                      'facultyEmail'] ??
-                                  "Not Assigned";
+                              mappingData['facultyName'] ??
+                              mappingData['facultyEmail'] ??
+                              "Not Assigned";
                           statusColor = Colors.green;
                         }
                         return Text("Faculty: $assigned",
@@ -143,6 +145,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
 
   Future<void> _assignFacultyToClub(String clubId, String clubName) async {
     String? selectedEmail;
+    String? selectedName;
 
     // Fetch local faculty from the server to ensure the list is up-to-date
     final facultySnap = await FirebaseFirestore.instance
@@ -170,14 +173,22 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                     child: Text(d['name'] ?? d['email']),
                   ))
               .toList(),
-          onChanged: (v) => selectedEmail = v,
+          onChanged: (v) {
+            selectedEmail = v;
+            // Get the faculty name for the selected email
+            final selectedDoc = facultySnap.docs.firstWhere(
+              (doc) => doc['email'] == v,
+              orElse: () => throw Exception('Faculty not found'),
+            );
+            selectedName = selectedDoc['name'] as String?;
+          },
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(c), child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () async {
-              if (selectedEmail == null) return;
+              if (selectedEmail == null || selectedName == null) return;
 
               // This mapping document belongs ONLY to this college
               await FirebaseFirestore.instance
@@ -188,6 +199,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                 'clubName': clubName,
                 'college': widget.collegeName,
                 'facultyEmail': selectedEmail,
+                'facultyName': selectedName,
                 'lastUpdated': FieldValue.serverTimestamp(),
               });
 
@@ -264,7 +276,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
             title: Text(widget.collegeName),
             actions: [
               IconButton(
-                icon: const Icon(Icons.light_mode_outlined),
+                icon: const Icon(Icons.brightness_6),
                 onPressed: () async {
                   themeNotifier.value = themeNotifier.value == ThemeMode.light
                       ? ThemeMode.dark
@@ -368,6 +380,7 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _pass = TextEditingController();
+  final _phone = TextEditingController();
 
   // Generic registration function, throws error on failure
   Future<void> _register(String name, String email, String password) async {
@@ -384,18 +397,42 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
       'email': email.trim(),
       'college': widget.collegeName,
       'role': 'Faculty',
+      'phone': '',
     });
   }
 
   // Handler for the manual "Create" button
   Future<void> _handleManualRegister() async {
-    if (_name.text.isEmpty || _email.text.isEmpty || _pass.text.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("All fields are required.")));
-      }
+    if (_name.text.trim().isEmpty) {
+      _showError("Full Name is required");
       return;
     }
+
+    if (_email.text.trim().isEmpty) {
+      _showError("Email is required");
+      return;
+    }
+
+    if (!_isValidEmail(_email.text.trim())) {
+      _showError("Please enter a valid email address");
+      return;
+    }
+
+    if (_pass.text.isEmpty) {
+      _showError("Password is required");
+      return;
+    }
+
+    if (_pass.text.length < 6) {
+      _showError("Password must be at least 6 characters");
+      return;
+    }
+
+    if (_phone.text.isNotEmpty && !_isValidPhoneNumber(_phone.text)) {
+      _showError("Please enter a valid 10-digit phone number");
+      return;
+    }
+
     try {
       await _register(_name.text, _email.text, _pass.text);
       if (mounted) {
@@ -409,6 +446,22 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
             SnackBar(content: Text('Failed to register: ${e.toString()}')));
       }
     }
+  }
+
+  bool _isValidPhoneNumber(String phone) {
+    final digitsOnly = phone.replaceAll(RegExp(r'\D'), '');
+    return digitsOnly.length == 10;
+  }
+
+  bool _isValidEmail(String email) {
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    return emailRegex.hasMatch(email);
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
   }
 
   // CSV Upload Logic
@@ -516,6 +569,11 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
                 controller: _pass,
                 decoration: const InputDecoration(labelText: "Password"),
                 obscureText: true),
+            const SizedBox(height: 16),
+            TextField(
+                controller: _phone,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: "Phone Number")),
             const SizedBox(height: 32),
             ElevatedButton(
                 onPressed: _handleManualRegister,

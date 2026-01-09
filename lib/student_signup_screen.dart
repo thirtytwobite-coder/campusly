@@ -26,14 +26,64 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
   bool _isPasswordObscured = true;
 
   Future<void> registerStudent() async {
-    // Basic validation
-    if (_email.text.isEmpty ||
-        _pass.text.isEmpty ||
-        _ktuId.text.isEmpty ||
-        _name.text.isEmpty ||
-        _selectedCollege == null) { // Check if college is selected
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("All fields are required!")));
+    // Validate all fields
+    if (_name.text.trim().isEmpty) {
+      _showError("Full Name is required");
+      return;
+    }
+
+    if (_phone.text.trim().isEmpty) {
+      _showError("Phone Number is required");
+      return;
+    }
+
+    if (!_isValidPhoneNumber(_phone.text)) {
+      _showError("Please enter a valid 10-digit phone number");
+      return;
+    }
+
+    if (_selectedCollege == null || _selectedCollege!.isEmpty) {
+      _showError("Please select a college");
+      return;
+    }
+
+    if (_dept.text.trim().isEmpty) {
+      _showError("Department is required");
+      return;
+    }
+
+    if (_year.text.trim().isEmpty) {
+      _showError("Year is required");
+      return;
+    }
+
+    if (_semester.text.trim().isEmpty) {
+      _showError("Semester is required");
+      return;
+    }
+
+    if (_ktuId.text.trim().isEmpty) {
+      _showError("KTU ID is required");
+      return;
+    }
+
+    if (_email.text.trim().isEmpty) {
+      _showError("Email is required");
+      return;
+    }
+
+    if (!_isValidEmail(_email.text.trim())) {
+      _showError("Please enter a valid email address");
+      return;
+    }
+
+    if (_pass.text.isEmpty) {
+      _showError("Password is required");
+      return;
+    }
+
+    if (_pass.text.length < 6) {
+      _showError("Password must be at least 6 characters");
       return;
     }
 
@@ -52,7 +102,7 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
         'semester': _semester.text.trim(),
         'ktuId': _ktuId.text.trim().toUpperCase(),
         'email': _email.text.trim(),
-        'college': _selectedCollege, // Save selected college
+        'college': _selectedCollege,
         'role': 'Student',
         'isActive': true,
         'createdAt': FieldValue.serverTimestamp(),
@@ -61,7 +111,7 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Account Created! Please Login.")));
-        Navigator.pop(context); // Go back to login
+        Navigator.pop(context);
       }
     } catch (e) {
       ScaffoldMessenger.of(context)
@@ -69,6 +119,22 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  bool _isValidPhoneNumber(String phone) {
+    final digitsOnly = phone.replaceAll(RegExp(r'\D'), '');
+    return digitsOnly.length == 10;
+  }
+
+  bool _isValidEmail(String email) {
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    return emailRegex.hasMatch(email);
   }
 
   @override

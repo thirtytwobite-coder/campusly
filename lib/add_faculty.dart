@@ -20,6 +20,7 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
   final _n = TextEditingController();
   final _e = TextEditingController();
   final _p = TextEditingController();
+  final _ph = TextEditingController();
   final _c = TextEditingController();
   bool _isLoading = false;
 
@@ -35,7 +36,7 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
   static Future<void> downloadCSVTemplate(BuildContext context) async {
     try {
       List<List<dynamic>> csvData = [
-        ["Name", "Email", "FacultyID_OR_Password"]
+        ["Name", "Email", "FacultyID_OR_Password", "Phone"]
       ];
       String csvString = const ListToCsvConverter().convert(csvData);
 
@@ -88,6 +89,7 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
           await FirebaseFirestore.instance.collection('faculty').doc(u.user!.uid).set({
             'name': fields[i][0].toString(),
             'email': fields[i][1].toString(),
+            'phone': fields[i].length > 3 ? fields[i][3].toString() : '',
             'role': 'Faculty',
             'college': college,
             'isActive': true,
@@ -118,13 +120,50 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
             const SizedBox(height: 20),
             _buildTextField(_p, "Password / Faculty ID", Icons.lock_outline, obscure: true),
             const SizedBox(height: 20),
+            _buildTextField(_ph, "Phone Number", Icons.phone_outlined),
+            const SizedBox(height: 20),
             _buildTextField(_c, "College", Icons.school_outlined, enabled: widget.autoCollege == null),
             const SizedBox(height: 40),
             _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : ElevatedButton(
               onPressed: () async {
-                if (_e.text.isEmpty || _p.text.isEmpty) return;
+                // Validate all fields
+                if (_n.text.trim().isEmpty) {
+                  _showError("Full Name is required");
+                  return;
+                }
+
+                if (_e.text.trim().isEmpty) {
+                  _showError("Email is required");
+                  return;
+                }
+
+                if (!_isValidEmail(_e.text.trim())) {
+                  _showError("Please enter a valid email address");
+                  return;
+                }
+
+                if (_p.text.isEmpty) {
+                  _showError("Password is required");
+                  return;
+                }
+
+                if (_p.text.length < 6) {
+                  _showError("Password must be at least 6 characters");
+                  return;
+                }
+
+                if (_ph.text.isNotEmpty && !_isValidPhoneNumber(_ph.text)) {
+                  _showError("Please enter a valid 10-digit phone number");
+                  return;
+                }
+
+                if (_c.text.trim().isEmpty) {
+                  _showError("College is required");
+                  return;
+                }
+
                 setState(() => _isLoading = true);
                 try {
                   UserCredential u = await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -132,6 +171,7 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
                   await FirebaseFirestore.instance.collection('faculty').doc(u.user!.uid).set({
                     'name': _n.text,
                     'email': _e.text,
+                    'phone': _ph.text,
                     'role': widget.role,
                     'college': _c.text,
                     'isActive': true,
@@ -171,6 +211,22 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
         filled: true,
         fillColor: Theme.of(context).inputDecorationTheme.fillColor,
       ),
+    );
+  }
+
+  bool _isValidPhoneNumber(String phone) {
+    final digitsOnly = phone.replaceAll(RegExp(r'\D'), '');
+    return digitsOnly.length == 10;
+  }
+
+  bool _isValidEmail(String email) {
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    return emailRegex.hasMatch(email);
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 }
