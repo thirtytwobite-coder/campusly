@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'change_password.dart';
 import 'login_screen.dart';
 import 'main.dart';
+import 'profile_screen.dart';
 
 class MainFacultyDashboard extends StatefulWidget {
   final String collegeName;
@@ -26,6 +27,7 @@ class MainFacultyDashboard extends StatefulWidget {
 
 class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
   // --- Navigation Logic ---
+  int _selectedIndex = 0;
 
   Future<void> _handleLogout() async {
     await FirebaseAuth.instance.signOut();
@@ -33,6 +35,18 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const UnifiedLoginScreen()),
+      );
+    }
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProfileScreen()),
       );
     }
   }
@@ -289,6 +303,21 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                         builder: (c) => const ChangePasswordScreen()));
               }),
             ].animate(interval: 200.ms).fadeIn(duration: 300.ms).slideY(),
+          ),
+          bottomNavigationBar: BottomNavigationBar(
+            items: const <BottomNavigationBarItem>[
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: 'Profile',
+              ),
+            ],
+            currentIndex: _selectedIndex,
+            selectedItemColor: Theme.of(context).colorScheme.primary,
+            onTap: _onItemTapped,
           ),
         ));
   }
