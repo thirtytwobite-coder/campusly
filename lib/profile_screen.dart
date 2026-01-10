@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -77,21 +78,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     // Validate phone number if provided
-    if (_phoneController.text.isNotEmpty && !_isValidPhoneNumber(_phoneController.text)) {
-      _showError('Please enter a valid 10-digit phone number');
+    String phone = _phoneController.text.trim();
+    if (phone.isNotEmpty && !_isValidPhoneNumber(phone)) {
+      _showError('Please enter a valid 10-digit phone number (digits only)');
       return;
     }
 
     try {
       final updateData = {
         'name': _nameController.text.trim(),
-        'phone': _phoneController.text.trim(),
+        'phone': phone,
       };
 
       // Add role-specific fields
       if (userData?['role'] == 'Student') {
-        updateData['year'] = _yearController.text.trim();
-        updateData['semester'] = _semesterController.text.trim();
+        String yearStr = _yearController.text.trim();
+        String semStr = _semesterController.text.trim();
+        String ktuId = _ktuIdController.text.trim().toUpperCase();
+
+        int? year = int.tryParse(yearStr);
+        if (year == null || year < 1 || year > 4) {
+          _showError('Year must be between 1 and 4');
+          return;
+        }
+
+        int? sem = int.tryParse(semStr);
+        if (sem == null || sem < 1 || sem > 8) {
+          _showError('Semester must be between 1 and 8');
+          return;
+        }
+
+        if (ktuId.isEmpty) {
+          _showError('KTU ID is required');
+          return;
+        }
+
+        if (!_isValidKtuId(ktuId)) {
+          _showError('Invalid KTU ID format (Example: IDK23IT040 or LIDK23IT040)');
+          return;
+        }
+
+        updateData['year'] = yearStr;
+        updateData['semester'] = semStr;
+        updateData['ktuId'] = ktuId;
       }
 
       // Determine which collection to update
@@ -121,10 +150,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   bool _isValidPhoneNumber(String phone) {
-    // Remove all non-digit characters
-    final digitsOnly = phone.replaceAll(RegExp(r'\D'), '');
-    // Check if it's exactly 10 digits
-    return digitsOnly.length == 10;
+    return RegExp(r'^\d{10}$').hasMatch(phone);
+  }
+
+  bool _isValidKtuId(String ktuId) {
+    // Optional L, then IDK, then year 22-25, then dept, then constant 0, then 2 digits 00-99
+    final ktuIdRegex = RegExp(r'^L?IDK(2[2-5])(CSE|IT|ME|EC|EEE|AI)0\d{2}$');
+    return ktuIdRegex.hasMatch(ktuId);
   }
 
   void _showError(String message) {
@@ -210,7 +242,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const SizedBox(height: 16),
                               if (isEditing)
                                 _buildEditableField(
-                                    _phoneController, 'Phone', Icons.phone_outlined)
+                                    _phoneController, 'Phone', Icons.phone_outlined,
+                                    keyboardType: TextInputType.phone,
+                                    inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)])
                               else if (userData?['phone'] != null &&
                                   (userData?['phone'] as String).isNotEmpty)
                                 _buildProfileInfoRow(
@@ -227,7 +261,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 const SizedBox(height: 16),
                                 if (isEditing)
                                   _buildEditableField(_yearController, 'Year',
-                                      Icons.calendar_today_outlined)
+                                      Icons.calendar_today_outlined,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)])
                                 else
                                   _buildProfileInfoRow(
                                       Icons.calendar_today_outlined,
@@ -236,17 +272,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 const SizedBox(height: 16),
                                 if (isEditing)
                                   _buildEditableField(_semesterController,
-                                      'Semester', Icons.format_list_numbered_outlined)
+                                      'Semester', Icons.format_list_numbered_outlined,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)])
                                 else
                                   _buildProfileInfoRow(
                                       Icons.format_list_numbered_outlined,
                                       'Semester',
                                       userData?['semester'] ?? 'N/A'),
                                 const SizedBox(height: 16),
-                                _buildProfileInfoRow(
-                                    Icons.badge_outlined,
-                                    'KTU ID',
-                                    userData?['ktuId'] ?? 'N/A'),
+                                if (isEditing)
+                                  _buildEditableField(_ktuIdController, 'KTU ID',
+                                      Icons.badge_outlined,
+                                      inputFormatters: [UpperCaseTextFormatter()])
+                                else
+                                  _buildProfileInfoRow(
+                                      Icons.badge_outlined,
+                                      'KTU ID',
+                                      userData?['ktuId'] ?? 'N/A'),
                               ],
                               if (isEditing) ...[
                                 const SizedBox(height: 32),
@@ -304,9 +347,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildEditableField(
-      TextEditingController controller, String label, IconData icon) {
+      TextEditingController controller, String label, IconData icon,
+      {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
     return TextField(
       controller: controller,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
@@ -316,6 +362,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         filled: true,
         fillColor: Theme.of(context).inputDecorationTheme.fillColor,
       ),
+    );
+  }
+}
+
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    return TextEditingValue(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
     );
   }
 }

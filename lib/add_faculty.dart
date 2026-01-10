@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
@@ -42,8 +43,6 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
 
       Directory? dir;
       if (Platform.isAndroid) {
-        // Using getExternalStorageDirectory avoids the "Permission Denied" popup
-        // while still saving to the phone's storage.
         dir = await getExternalStorageDirectory();
       } else {
         dir = await getApplicationDocumentsDirectory();
@@ -53,10 +52,10 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
       await file.writeAsString(csvString);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text("Saved to: Android/data/com.example.../files"),
           backgroundColor: Colors.green,
-          duration: const Duration(seconds: 5),
+          duration: Duration(seconds: 5),
         ),
       );
     } catch (e) {
@@ -81,6 +80,10 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
         for (var i = 1; i < fields.length; i++) {
           if (fields[i].length < 3) continue;
 
+          String phone = fields[i].length > 3 ? fields[i][3].toString().trim() : '';
+          // Optional: You could add a check here to skip invalid phone numbers in CSV
+          // if (phone.isNotEmpty && !RegExp(r'^\d{10}$').hasMatch(phone)) continue;
+
           UserCredential u = await FirebaseAuth.instance.createUserWithEmailAndPassword(
               email: fields[i][1].toString().trim(),
               password: fields[i][2].toString().trim()
@@ -89,7 +92,7 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
           await FirebaseFirestore.instance.collection('faculty').doc(u.user!.uid).set({
             'name': fields[i][0].toString(),
             'email': fields[i][1].toString(),
-            'phone': fields[i].length > 3 ? fields[i][3].toString() : '',
+            'phone': phone,
             'role': 'Faculty',
             'college': college,
             'isActive': true,
@@ -116,11 +119,16 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
             const SizedBox(height: 10),
             _buildTextField(_n, "Full Name", Icons.person_outline),
             const SizedBox(height: 20),
-            _buildTextField(_e, "Email", Icons.email_outlined),
+            _buildTextField(_e, "Email", Icons.email_outlined, keyboardType: TextInputType.emailAddress),
             const SizedBox(height: 20),
             _buildTextField(_p, "Password / Faculty ID", Icons.lock_outline, obscure: true),
             const SizedBox(height: 20),
-            _buildTextField(_ph, "Phone Number", Icons.phone_outlined),
+            _buildTextField(_ph, "Phone Number", Icons.phone_outlined, 
+                keyboardType: TextInputType.phone,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ]),
             const SizedBox(height: 20),
             _buildTextField(_c, "College", Icons.school_outlined, enabled: widget.autoCollege == null),
             const SizedBox(height: 40),
@@ -154,7 +162,8 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
                   return;
                 }
 
-                if (_ph.text.isNotEmpty && !_isValidPhoneNumber(_ph.text)) {
+                String phone = _ph.text.trim();
+                if (phone.isNotEmpty && !_isValidPhoneNumber(phone)) {
                   _showError("Please enter a valid 10-digit phone number");
                   return;
                 }
@@ -171,7 +180,7 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
                   await FirebaseFirestore.instance.collection('faculty').doc(u.user!.uid).set({
                     'name': _n.text,
                     'email': _e.text,
-                    'phone': _ph.text,
+                    'phone': phone,
                     'role': widget.role,
                     'college': _c.text,
                     'isActive': true,
@@ -197,11 +206,14 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon, {bool obscure = false, bool enabled = true}) {
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, 
+      {bool obscure = false, bool enabled = true, TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
     return TextField(
       controller: controller,
       obscureText: obscure,
       enabled: enabled,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
@@ -215,8 +227,7 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
   }
 
   bool _isValidPhoneNumber(String phone) {
-    final digitsOnly = phone.replaceAll(RegExp(r'\D'), '');
-    return digitsOnly.length == 10;
+    return RegExp(r'^\d{10}$').hasMatch(phone);
   }
 
   bool _isValidEmail(String email) {

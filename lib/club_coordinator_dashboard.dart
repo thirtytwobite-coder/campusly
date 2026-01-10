@@ -50,14 +50,53 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   void _onItemTapped(int index) {
+    if (index == 0) {
+      setState(() {
+        _selectedIndex = index;
+      });
+      return;
+    }
+
     setState(() {
       _selectedIndex = index;
     });
+
     if (index == 1) {
+      if (clubId != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ManageProgramsScreen(
+              clubId: clubId!,
+              clubName: clubName ?? 'Club',
+            ),
+          ),
+        ).then((_) {
+          if (mounted) {
+            setState(() {
+              _selectedIndex = 0;
+            });
+          }
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Club information not loaded yet.')),
+        );
+        setState(() {
+          _selectedIndex = 0;
+        });
+      }
+    } else if (index == 2) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const ProfileScreen()),
-      );
+      ).then((_) {
+        if (mounted) {
+          setState(() {
+            _selectedIndex = 0;
+          });
+        }
+      });
     }
   }
 
@@ -257,22 +296,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                                 crossAxisSpacing: 12,
                                 children: [
                                   _ActionCard(
-                                    icon: Icons.event_note,
-                                    title: 'Programs',
-                                    description: 'Manage club programs',
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => ManageProgramsScreen(
-                                            clubId: clubId!,
-                                            clubName: clubName ?? 'Club',
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  _ActionCard(
                                     icon: Icons.people,
                                     title: 'Members',
                                     description: 'View members',
@@ -293,10 +316,15 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
           ],
         ),
         bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
           items: const <BottomNavigationBarItem>[
             BottomNavigationBarItem(
               icon: Icon(Icons.home),
               label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.add_circle, size: 32),
+              label: 'Programs',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person),

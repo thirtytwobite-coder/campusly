@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -11,7 +12,6 @@ class StudentSignUpScreen extends StatefulWidget {
 }
 
 class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
-  // Added missing controllers for Year and Semester
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _dept = TextEditingController();
@@ -32,12 +32,13 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
       return;
     }
 
-    if (_phone.text.trim().isEmpty) {
+    String phone = _phone.text.trim();
+    if (phone.isEmpty) {
       _showError("Phone Number is required");
       return;
     }
 
-    if (!_isValidPhoneNumber(_phone.text)) {
+    if (!_isValidPhoneNumber(phone)) {
       _showError("Please enter a valid 10-digit phone number");
       return;
     }
@@ -52,18 +53,26 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
       return;
     }
 
-    if (_year.text.trim().isEmpty) {
-      _showError("Year is required");
+    int? year = int.tryParse(_year.text.trim());
+    if (year == null || year < 1 || year > 4) {
+      _showError("Year must be between 1 and 4");
       return;
     }
 
-    if (_semester.text.trim().isEmpty) {
-      _showError("Semester is required");
+    int? sem = int.tryParse(_semester.text.trim());
+    if (sem == null || sem < 1 || sem > 8) {
+      _showError("Semester must be between 1 and 8");
       return;
     }
 
-    if (_ktuId.text.trim().isEmpty) {
+    String ktuId = _ktuId.text.trim().toUpperCase();
+    if (ktuId.isEmpty) {
       _showError("KTU ID is required");
+      return;
+    }
+
+    if (!_isValidKtuId(ktuId)) {
+      _showError("Invalid KTU ID format (Example: IDK23IT040 or LIDK23IT040)");
       return;
     }
 
@@ -89,18 +98,16 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
 
     setState(() => _isLoading = true);
     try {
-      // 1. Create user in Firebase Authentication
       UserCredential u = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _email.text.trim(), password: _pass.text.trim());
 
-      // 2. Save details in 'faculty' collection (as per your login logic)
       await FirebaseFirestore.instance.collection('student').doc(u.user!.uid).set({
         'name': _name.text.trim(),
-        'phone': _phone.text.trim(),
+        'phone': phone,
         'department': _dept.text.trim(),
         'year': _year.text.trim(),
         'semester': _semester.text.trim(),
-        'ktuId': _ktuId.text.trim().toUpperCase(),
+        'ktuId': ktuId,
         'email': _email.text.trim(),
         'college': _selectedCollege,
         'role': 'Student',
@@ -128,13 +135,18 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
   }
 
   bool _isValidPhoneNumber(String phone) {
-    final digitsOnly = phone.replaceAll(RegExp(r'\D'), '');
-    return digitsOnly.length == 10;
+    return RegExp(r'^\d{10}$').hasMatch(phone);
   }
 
   bool _isValidEmail(String email) {
     final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
     return emailRegex.hasMatch(email);
+  }
+
+  bool _isValidKtuId(String ktuId) {
+    // Optional L, then IDK, then year 22-25, then dept, then constant 0, then 2 digits 00-99
+    final ktuIdRegex = RegExp(r'^L?IDK(2[2-5])(CSE|IT|ME|EC|EEE|AI)0\d{2}$');
+    return ktuIdRegex.hasMatch(ktuId);
   }
 
   @override
@@ -149,12 +161,18 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
           children: [
             _buildTextField(_name, "Full Name", Icons.person),
             _buildTextField(_phone, "Phone Number", Icons.phone,
-                keyboard: TextInputType.phone),
-            _buildCollegeDropdown(), // Add college dropdown
+                keyboard: TextInputType.phone,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)]),
+            _buildCollegeDropdown(),
             _buildTextField(_dept, "Department", Icons.school),
-            _buildTextField(_year, "Year", Icons.calendar_today),
-            _buildTextField(_semester, "Semester", Icons.format_list_numbered),
-            _buildTextField(_ktuId, "KTU ID", Icons.badge),
+            _buildTextField(_year, "Year (1-4)", Icons.calendar_today,
+                keyboard: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)]),
+            _buildTextField(_semester, "Semester (1-8)", Icons.format_list_numbered,
+                keyboard: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)]),
+            _buildTextField(_ktuId, "KTU ID (e.g. IDK23IT040)", Icons.badge,
+                inputFormatters: [UpperCaseTextFormatter()]),
             _buildTextField(_email, "Email", Icons.email,
                 keyboard: TextInputType.emailAddress),
             _buildTextField(_pass, "Password", Icons.lock,
@@ -211,10 +229,10 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
               .map((doc) => doc['college'] as String?)
               .where((college) => college != null)
               .toSet()
-              .toList(); // Use a Set to get unique college names
+              .toList();
 
           return DropdownButtonFormField<String>(
-            isExpanded: true, // Allow the dropdown to expand
+            isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'College',
               prefixIcon: Icon(Icons.school),
@@ -223,7 +241,7 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
             items: colleges.map((college) {
               return DropdownMenuItem<String>(
                 value: college,
-                child: Text(college ?? '--', overflow: TextOverflow.ellipsis), // Handle overflow
+                child: Text(college ?? '--', overflow: TextOverflow.ellipsis),
               );
             }).toList(),
             onChanged: (value) {
@@ -244,19 +262,30 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
   }
 
   Widget _buildTextField(TextEditingController controller, String label, IconData icon,
-      {bool obscure = false, TextInputType keyboard = TextInputType.text, Widget? suffixIcon}) {
+      {bool obscure = false, TextInputType keyboard = TextInputType.text, Widget? suffixIcon, List<TextInputFormatter>? inputFormatters}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: TextField(
         controller: controller,
         obscureText: obscure,
         keyboardType: keyboard,
+        inputFormatters: inputFormatters,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),
           suffixIcon: suffixIcon,
         ),
       ),
+    );
+  }
+}
+
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    return TextEditingValue(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
     );
   }
 }
