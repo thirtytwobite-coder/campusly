@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'dart:math' as math;
 
 class ManageProgramsScreen extends StatefulWidget {
   final String clubId;
@@ -101,7 +102,9 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     final locationController = TextEditingController();
     final timeController = TextEditingController();
     final prizeAmountController = TextEditingController();
+    final posterLinkController = TextEditingController();
     bool hasPrizePool = false;
+    String visibility = 'college'; // 'college' or 'public'
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -111,6 +114,17 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                TextField(
+                  controller: posterLinkController,
+                  decoration: const InputDecoration(
+                    labelText: 'https://drive.google.com/drive/folders/12Ru1KjEO2k2jynTgH3d2vuBJ_2cdtxMV',
+                    hintText: 'https://drive.google.com/file/d/1csUPujcTjvMLSX942_9i95ulfkTkAoaj/view?usp=drivesdk',
+                    helperText: 'Works with Google Drive links and image URLs',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.image),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 TextField(
                   controller: nameController,
                   decoration: const InputDecoration(
@@ -208,6 +222,38 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                     keyboardType: TextInputType.number,
                   ),
                 ],
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                const Text(
+                  'Event Visibility',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                RadioListTile<String>(
+                  value: 'college',
+                  groupValue: visibility,
+                  onChanged: (value) {
+                    setDialogState(() {
+                      visibility = value!;
+                    });
+                  },
+                  title: const Text('College Only'),
+                  subtitle: const Text('Only students from this college can participate'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                RadioListTile<String>(
+                  value: 'public',
+                  groupValue: visibility,
+                  onChanged: (value) {
+                    setDialogState(() {
+                      visibility = value!;
+                    });
+                  },
+                  title: const Text('Public'),
+                  subtitle: const Text('Students from other colleges can also participate'),
+                  contentPadding: EdgeInsets.zero,
+                ),
               ],
             ),
           ),
@@ -242,6 +288,8 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                   locationController.text,
                   hasPrizePool,
                   prizeAmountController.text,
+                  _convertGoogleDriveLink(posterLinkController.text),
+                  visibility,
                 );
                 Navigator.pop(ctx);
               },
@@ -265,6 +313,10 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     final locationController =
         TextEditingController(text: programData['location']);
     final timeController = TextEditingController(text: programData['time']);
+    final posterLinkController = TextEditingController(text: programData['posterLink'] ?? '');
+    final prizeAmountController = TextEditingController(text: programData['prizeAmount'] ?? '');
+    String visibility = programData['visibility'] ?? 'college';
+    bool hasPrizePool = programData['hasPrizePool'] ?? false;
 
     showDialog(
       context: context,
@@ -274,6 +326,15 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              TextField(
+                controller: posterLinkController,
+                decoration: const InputDecoration(
+                  labelText: 'Poster Link (Google Drive)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.image),
+                ),
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: nameController,
                 decoration: const InputDecoration(
@@ -338,6 +399,74 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
+              const SizedBox(height: 12),
+              StatefulBuilder(
+                builder: (context, setDialogState) => CheckboxListTile(
+                  value: hasPrizePool,
+                  onChanged: (value) {
+                    setDialogState(() {
+                      hasPrizePool = value ?? false;
+                      if (!hasPrizePool) {
+                        prizeAmountController.clear();
+                      }
+                    });
+                  },
+                  title: const Text('Prize Pool Available'),
+                  subtitle: const Text('Does this program have prize rewards?'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              if (hasPrizePool) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: prizeAmountController,
+                  decoration: const InputDecoration(
+                    labelText: 'Prize Amount',
+                    hintText: 'e.g., 5000, 10000',
+                    border: OutlineInputBorder(),
+                    prefixText: '₹ ',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              const Text(
+                'Event Visibility',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              StatefulBuilder(
+                builder: (context, setDialogState) => Column(
+                  children: [
+                    RadioListTile<String>(
+                      value: 'college',
+                      groupValue: visibility,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          visibility = value!;
+                        });
+                      },
+                      title: const Text('College Only'),
+                      subtitle: const Text('Only students from this college can participate'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    RadioListTile<String>(
+                      value: 'public',
+                      groupValue: visibility,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          visibility = value!;
+                        });
+                      },
+                      title: const Text('Public'),
+                      subtitle: const Text('Students from other colleges can also participate'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -371,6 +500,10 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                 dateController.text,
                 timeController.text,
                 locationController.text,
+                _convertGoogleDriveLink(posterLinkController.text),
+                visibility,
+                hasPrizePool,
+                prizeAmountController.text,
               );
               Navigator.pop(ctx);
             },
@@ -399,6 +532,32 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     return null;
   }
 
+  String _convertGoogleDriveLink(String link) {
+    if (link.isEmpty) return '';
+    
+    // If it's already a direct image URL, return as is
+    if (link.contains('.jpg') || link.contains('.jpeg') || link.contains('.png') || link.contains('.gif') || link.contains('.webp')) {
+      return link;
+    }
+    
+    // If already a drive.google.com/uc link, return as is
+    if (link.contains('drive.google.com/uc?export=view')) {
+      return link;
+    }
+    
+    // Convert Google Drive sharing link to direct download link
+    // Format: https://drive.google.com/file/d/{id}/view -> https://drive.google.com/uc?export=view&id={id}
+    final regex = RegExp(r'(?:drive\.google\.com/file/d/|id=)([a-zA-Z0-9-_]+)');
+    final match = regex.firstMatch(link);
+    
+    if (match != null) {
+      final fileId = match.group(1);
+      return 'https://drive.google.com/uc?export=view&id=$fileId';
+    }
+    
+    return link;
+  }
+
   Future<void> _addProgram(
     String name,
     String description,
@@ -407,6 +566,8 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     String location,
     bool hasPrizePool,
     String prizeAmount,
+    String posterLink,
+    String visibility,
   ) async {
     try {
       await FirebaseFirestore.instance
@@ -419,8 +580,10 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
         'date': date,
         'time': time,
         'location': location.trim(),
+        'posterLink': posterLink.isNotEmpty ? posterLink.trim() : null,
         'hasPrizePool': hasPrizePool,
         'prizeAmount': hasPrizePool && prizeAmount.isNotEmpty ? prizeAmount : null,
+        'visibility': visibility,
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -447,6 +610,10 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     String date,
     String time,
     String location,
+    String posterLink,
+    String visibility,
+    bool hasPrizePool,
+    String prizeAmount,
   ) async {
     try {
       await FirebaseFirestore.instance
@@ -460,6 +627,10 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
         'date': date,
         'time': time,
         'location': location.trim(),
+        'posterLink': posterLink.isNotEmpty ? posterLink.trim() : null,
+        'visibility': visibility,
+        'hasPrizePool': hasPrizePool,
+        'prizeAmount': hasPrizePool && prizeAmount.isNotEmpty ? prizeAmount.trim() : null,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
@@ -560,6 +731,7 @@ class ProgramCard extends StatelessWidget {
     final status = (programData['status'] ?? 'pending').toString().toLowerCase();
     final statusColor = _getStatusColor(status);
     final statusIcon = _getStatusIcon(status);
+    final posterLink = programData['posterLink'] as String?;
 
     return Card(
       elevation: 2,
@@ -569,6 +741,70 @@ class ProgramCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Poster Image
+            if (posterLink != null && posterLink.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    posterLink,
+                    width: double.infinity,
+                    height: 200,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) {
+                        return child;
+                      }
+                      return Container(
+                        width: double.infinity,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: double.infinity,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
+                            const SizedBox(height: 8),
+                            const Text('Image unavailable', style: TextStyle(color: Colors.grey)),
+                            const SizedBox(height: 8),
+                            GestureDetector(
+                              onTap: () {
+                                // Show the link for debugging
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Link: ${posterLink.substring(0, math.min(50, posterLink.length))}...'),
+                                    duration: const Duration(seconds: 3),
+                                  ),
+                                );
+                              },
+                              child: const Text(
+                                'Tap for details',
+                                style: TextStyle(color: Colors.blue, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -619,6 +855,14 @@ class ProgramCard extends StatelessWidget {
                 _InfoRow(
                   icon: Icons.location_on,
                   text: programData['location'] ?? 'No location',
+                ),
+                _InfoRow(
+                  icon: (programData['visibility'] ?? 'college') == 'public' 
+                      ? Icons.public 
+                      : Icons.lock,
+                  text: (programData['visibility'] ?? 'college') == 'public' 
+                      ? 'Public Event' 
+                      : 'College Only',
                 ),
                 if (programData['hasPrizePool'] ?? false) ...[
                   _InfoRow(
