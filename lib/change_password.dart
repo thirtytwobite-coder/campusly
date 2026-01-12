@@ -13,7 +13,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _newPassController = TextEditingController();
   final _confirmPassController = TextEditingController();
   bool _isLoading = false;
-  bool _isPasswordObscured = true;
+  
+  bool _isOldPasswordObscured = true;
+  bool _isNewPasswordObscured = true;
+  bool _isConfirmPasswordObscured = true;
 
   Future<void> _updatePassword() async {
     if (_newPassController.text != _confirmPassController.text) {
@@ -67,17 +70,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           children: [
             TextField(
               controller: _oldPassController,
-              obscureText: _isPasswordObscured,
+              obscureText: _isOldPasswordObscured,
               decoration: InputDecoration(
                 labelText: "Old Password",
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  icon: Icon(_isPasswordObscured
+                  icon: Icon(_isOldPasswordObscured
                       ? Icons.visibility_off
                       : Icons.visibility),
                   onPressed: () {
                     setState(() {
-                      _isPasswordObscured = !_isPasswordObscured;
+                      _isOldPasswordObscured = !_isOldPasswordObscured;
                     });
                   },
                 ),
@@ -86,17 +89,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             const SizedBox(height: 20),
             TextField(
               controller: _newPassController,
-              obscureText: _isPasswordObscured,
+              obscureText: _isNewPasswordObscured,
               decoration: InputDecoration(
                 labelText: "New Password",
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  icon: Icon(_isPasswordObscured
+                  icon: Icon(_isNewPasswordObscured
                       ? Icons.visibility_off
                       : Icons.visibility),
                   onPressed: () {
                     setState(() {
-                      _isPasswordObscured = !_isPasswordObscured;
+                      _isNewPasswordObscured = !_isNewPasswordObscured;
                     });
                   },
                 ),
@@ -105,17 +108,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             const SizedBox(height: 20),
             TextField(
               controller: _confirmPassController,
-              obscureText: _isPasswordObscured,
+              obscureText: _isConfirmPasswordObscured,
               decoration: InputDecoration(
                 labelText: "Confirm New Password",
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  icon: Icon(_isPasswordObscured
+                  icon: Icon(_isConfirmPasswordObscured
                       ? Icons.visibility_off
                       : Icons.visibility),
                   onPressed: () {
                     setState(() {
-                      _isPasswordObscured = !_isPasswordObscured;
+                      _isConfirmPasswordObscured = !_isConfirmPasswordObscured;
                     });
                   },
                 ),
