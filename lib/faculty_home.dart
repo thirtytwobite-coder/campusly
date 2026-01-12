@@ -86,19 +86,6 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                 prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
               },
             ),
-            IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-                if (context.mounted) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                        builder: (context) => const UnifiedLoginScreen()),
-                        (route) => false,
-                  );
-                }
-              },
-            )
           ],
         ),
         body: StreamBuilder<QuerySnapshot>(
@@ -117,21 +104,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildEmptyState(),
-                      const SizedBox(height: 30),
-                      _buildDashboardCard(
-                        title: "Change Password",
-                        icon: Icons.lock_reset,
-                        onTap: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                  const ChangePasswordScreen()));
-                        },
-                      ),
-                    ],
+
                   ).animate().fadeIn(duration: 500.ms).slideY(),
                 ),
               );
@@ -146,6 +119,29 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                     child: _buildApprovalSummaryCard(clubIds),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Your Clubs', style: Theme.of(context).textTheme.titleLarge),
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RejectedEventsScreen(clubIds: clubIds),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.history_toggle_off, color: Colors.red),
+                          label: const Text('Rejected Events', style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 SliverPadding(
@@ -178,22 +174,75 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                               );
                             },
                           ).animate().fadeIn(duration: 300.ms, delay: (index * 100).ms).slideX();
-                        } else {
-                          return _buildDashboardCard(
-                            title: "Change Password",
-                            icon: Icons.lock_reset,
-                            onTap: () {
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) =>
-                                      const ChangePasswordScreen()));
-                            },
-                          ).animate().fadeIn(duration: 300.ms, delay: (index * 100).ms).slideX();
                         }
+
                       },
                       childCount: docs.length + 1,
                     ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text('Approved Events', style: Theme.of(context).textTheme.titleLarge),
+                  ),
+                ),
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final clubId = clubIds[index];
+                      return StreamBuilder<DocumentSnapshot>(
+                        stream: FirebaseFirestore.instance.collection('clubs').doc(clubId).snapshots(),
+                        builder: (context, clubSnap) {
+                          if (!clubSnap.hasData || !clubSnap.data!.exists) return const SizedBox.shrink();
+                          final clubData = clubSnap.data!.data() as Map<String, dynamic>;
+                          final clubName = clubData['name'] ?? 'Club';
+                          
+                          return StreamBuilder<QuerySnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('clubs')
+                                .doc(clubId)
+                                .collection('programs')
+                                .where('status', isEqualTo: 'approved')
+                                .snapshots(),
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              return Column(
+                                children: snapshot.data!.docs.map((doc) {
+                                  final data = doc.data() as Map<String, dynamic>;
+                                  return Card(
+                                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    child: ListTile(
+                                      leading: const Icon(Icons.event_available, color: Colors.green),
+                                      title: Text(data['name'] ?? 'Unnamed Program'),
+                                      subtitle: Text('${data['date'] ?? 'N/A'} at ${data['time'] ?? 'N/A'}'),
+                                      trailing: const Icon(Icons.chevron_right),
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => ProgramApprovalDetailScreen(
+                                              programId: doc.id,
+                                              clubId: clubId,
+                                              clubName: clubName,
+                                              data: data,
+                                              readOnly: true,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  );
+                                }).toList(),
+                              );
+                            },
+                          );
+                        }
+                      );
+                    },
+                    childCount: clubIds.length,
                   ),
                 ),
               ],
@@ -326,6 +375,78 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
   }
 }
 
+class RejectedEventsScreen extends StatelessWidget {
+  final List<String> clubIds;
+  const RejectedEventsScreen({required this.clubIds, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Rejected Events')),
+      body: ListView.builder(
+        itemCount: clubIds.length,
+        itemBuilder: (context, index) {
+          final clubId = clubIds[index];
+          return StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance.collection('clubs').doc(clubId).snapshots(),
+            builder: (context, clubSnap) {
+              if (!clubSnap.hasData || !clubSnap.data!.exists) return const SizedBox.shrink();
+              final clubData = clubSnap.data!.data() as Map<String, dynamic>;
+              final clubName = clubData['name'] ?? 'Club';
+
+              return StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('clubs')
+                    .doc(clubId)
+                    .collection('programs')
+                    .where('status', isEqualTo: 'rejected')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ...snapshot.data!.docs.map((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        return Card(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          color: Colors.red[50],
+                          child: ListTile(
+                            leading: const Icon(Icons.cancel, color: Colors.red),
+                            title: Text(data['name'] ?? 'Unnamed'),
+                            subtitle: Text('Reason: ${data['rejectionReason'] ?? 'No reason'}'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ProgramApprovalDetailScreen(
+                                    programId: doc.id,
+                                    clubId: clubId,
+                                    clubName: clubName,
+                                    data: data,
+                                    readOnly: true,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                  );
+                },
+              );
+            }
+          );
+        },
+      ),
+    );
+  }
+}
+
 class MultiClubApprovalScreen extends StatelessWidget {
   final List<String> clubIds;
   const MultiClubApprovalScreen({required this.clubIds, super.key});
@@ -445,12 +566,14 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
   final String clubId;
   final String clubName;
   final Map<String, dynamic> data;
+  final bool readOnly;
 
   const ProgramApprovalDetailScreen({
     required this.programId,
     required this.clubId,
     required this.clubName,
     required this.data,
+    this.readOnly = false,
     super.key,
   });
 
@@ -560,6 +683,25 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (data['posterLink'] != null && data['posterLink'].toString().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    data['posterLink'],
+                    width: double.infinity,
+                    height: 250,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: double.infinity,
+                      height: 200,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                    ),
+                  ),
+                ),
+              ),
             Text(data['name'] ?? 'Unnamed', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             Text(data['description'] ?? 'No description'),
@@ -569,41 +711,53 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
             _infoRow(Icons.location_on, 'Venue', data['location']),
             _infoRow(Icons.group, 'Club', clubName),
             _infoRow(Icons.person, 'Coordinator', data['coordinatorName']),
+            if (data['hasPrizePool'] == true)
+              _infoRow(Icons.monetization_on, 'Prize Amount', '₹ ${data['prizeAmount'] ?? 'TBD'}', color: Colors.green),
+            _infoRow(
+              (data['visibility'] ?? 'college') == 'public' ? Icons.public : Icons.lock,
+              'Visibility',
+              (data['visibility'] ?? 'college') == 'public' ? 'Public Event' : 'College Only',
+              color: Colors.blue,
+            ),
+            if (data['status'] == 'rejected')
+              _infoRow(Icons.error_outline, 'Rejection Reason', data['rejectionReason'], color: Colors.red),
             const SizedBox(height: 40),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _showRejectDialog(context),
-                    style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red)),
-                    child: const Text('REJECT'),
+            if (!readOnly)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _showRejectDialog(context),
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red)),
+                      child: const Text('REJECT'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _approveEvent(context),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-                    child: const Text('APPROVE'),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _approveEvent(context),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                      child: const Text('APPROVE'),
+                    ),
                   ),
-                ),
-              ],
-            )
+                ],
+              )
           ],
         ),
       ),
     );
   }
 
-  Widget _infoRow(IconData icon, String label, String? value) {
+  Widget _infoRow(IconData icon, String label, String? value, {Color? color}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: Colors.grey),
+          Icon(icon, size: 20, color: color ?? Colors.grey),
           const SizedBox(width: 12),
-          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
-          Text(value ?? 'N/A'),
+          Text('$label: ', style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+          Expanded(child: Text(value ?? 'N/A', style: TextStyle(color: color))),
         ],
       ),
     );

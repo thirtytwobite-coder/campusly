@@ -287,8 +287,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                       'isDarkMode', themeNotifier.value == ThemeMode.dark);
                 },
               ),
-              IconButton(
-                  icon: const Icon(Icons.exit_to_app_outlined), onPressed: _handleLogout)
+
             ],
           ),
           body: GridView.count(
@@ -308,12 +307,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                         builder: (c) =>
                             AddFacultyScreen(collegeName: widget.collegeName)));
               }),
-              _buildCard("Security", Icons.shield_outlined, () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (c) => const ChangePasswordScreen()));
-              }),
+
             ].animate(interval: 200.ms).fadeIn(duration: 300.ms).slideY(),
           ),
           bottomNavigationBar: BottomNavigationBar(

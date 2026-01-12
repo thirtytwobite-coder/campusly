@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'change_password.dart';
+import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -291,8 +293,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       'KTU ID',
                                       userData?['ktuId'] ?? 'N/A'),
                               ],
+                              
+                              const SizedBox(height: 32),
+                              const Divider(),
+                              const SizedBox(height: 16),
+                              
                               if (isEditing) ...[
-                                const SizedBox(height: 32),
                                 Row(
                                   children: [
                                     Expanded(
@@ -312,6 +318,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         onPressed: _saveChanges,
                                         child: const Text('Save Changes'),
                                       ),
+                                    ),
+                                  ],
+                                ),
+                              ] else ...[
+                                // Account Actions
+                                Column(
+                                  children: [
+                                    ListTile(
+                                      leading: const Icon(Icons.lock_reset, color: Colors.blue),
+                                      title: const Text('Change Password'),
+                                      trailing: const Icon(Icons.chevron_right),
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
+                                        );
+                                      },
+                                    ),
+                                    ListTile(
+                                      leading: const Icon(Icons.logout, color: Colors.red),
+                                      title: const Text('Logout', style: TextStyle(color: Colors.red)),
+                                      trailing: const Icon(Icons.chevron_right, color: Colors.red),
+                                      onTap: () async {
+                                        await FirebaseAuth.instance.signOut();
+                                        if (mounted) {
+                                          Navigator.pushAndRemoveUntil(
+                                            context,
+                                            MaterialPageRoute(builder: (context) => const UnifiedLoginScreen()),
+                                            (route) => false,
+                                          );
+                                        }
+                                      },
                                     ),
                                   ],
                                 ),

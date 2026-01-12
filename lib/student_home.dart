@@ -79,18 +79,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               MaterialPageRoute(builder: (c) => const ParticipationHistoryScreen()),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              if (context.mounted) {
-                Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (c) => const UnifiedLoginScreen())
-                );
-              }
-            },
-          ),
         ],
       ),
       body: Column(

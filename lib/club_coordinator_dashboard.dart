@@ -9,6 +9,7 @@ import 'login_screen.dart';
 import 'main.dart';
 import 'manage_programs.dart';
 import 'profile_screen.dart';
+import 'student_home.dart';
 
 class ClubCoordinatorDashboard extends StatefulWidget {
   const ClubCoordinatorDashboard({super.key});
@@ -201,7 +202,13 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             ),
             PopupMenuButton<String>(
               onSelected: (value) async {
-                if (value == 'changePassword') {
+                if (value == 'switchRole') {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const StudentHomeScreen()),
+                    (route) => false,
+                  );
+                } else if (value == 'changePassword') {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
@@ -219,13 +226,16 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
               itemBuilder: (BuildContext context) {
                 return [
                   const PopupMenuItem<String>(
-                    value: 'changePassword',
-                    child: Text('Change Password'),
+                    value: 'switchRole',
+                    child: Row(
+                      children: [
+                        Icon(Icons.switch_account, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text('Switch to Student Dashboard'),
+                      ],
+                    ),
                   ),
-                  const PopupMenuItem<String>(
-                    value: 'logout',
-                    child: Text('Logout'),
-                  ),
+
                 ];
               },
             ),
