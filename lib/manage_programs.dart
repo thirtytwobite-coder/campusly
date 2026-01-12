@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
 
@@ -117,8 +118,8 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                 TextField(
                   controller: posterLinkController,
                   decoration: const InputDecoration(
-                    labelText: 'https://drive.google.com/drive/folders/12Ru1KjEO2k2jynTgH3d2vuBJ_2cdtxMV',
-                    hintText: 'https://drive.google.com/file/d/1csUPujcTjvMLSX942_9i95ulfkTkAoaj/view?usp=drivesdk',
+                    labelText: 'Poster Link',
+                    hintText: 'Google Drive or image URL',
                     helperText: 'Works with Google Drive links and image URLs',
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.image),
@@ -535,18 +536,14 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
   String _convertGoogleDriveLink(String link) {
     if (link.isEmpty) return '';
     
-    // If it's already a direct image URL, return as is
     if (link.contains('.jpg') || link.contains('.jpeg') || link.contains('.png') || link.contains('.gif') || link.contains('.webp')) {
       return link;
     }
     
-    // If already a drive.google.com/uc link, return as is
     if (link.contains('drive.google.com/uc?export=view')) {
       return link;
     }
     
-    // Convert Google Drive sharing link to direct download link
-    // Format: https://drive.google.com/file/d/{id}/view -> https://drive.google.com/uc?export=view&id={id}
     final regex = RegExp(r'(?:drive\.google\.com/file/d/|id=)([a-zA-Z0-9-_]+)');
     final match = regex.firstMatch(link);
     
@@ -570,6 +567,12 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     String visibility,
   ) async {
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      
+      // Fetch current student details for coordinator info
+      final studentDoc = await FirebaseFirestore.instance.collection('student').doc(user?.uid).get();
+      final coordinatorName = studentDoc.data()?['name'] ?? 'Unknown';
+
       await FirebaseFirestore.instance
           .collection('clubs')
           .doc(widget.clubId)
@@ -585,13 +588,18 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
         'prizeAmount': hasPrizePool && prizeAmount.isNotEmpty ? prizeAmount : null,
         'visibility': visibility,
         'status': 'pending',
+        'clubId': widget.clubId,
+        'clubName': widget.clubName,
+        'coordinatorId': user?.uid,
+        'coordinatorName': coordinatorName,
+        'coordinatorEmail': user?.email,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Program created successfully!')),
+          const SnackBar(content: Text('Program sent for approval!')),
         );
       }
     } catch (e) {
@@ -631,12 +639,13 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
         'visibility': visibility,
         'hasPrizePool': hasPrizePool,
         'prizeAmount': hasPrizePool && prizeAmount.isNotEmpty ? prizeAmount.trim() : null,
+        'status': 'pending', // Reset status on edit
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Program updated successfully!')),
+          const SnackBar(content: Text('Program updated and sent for re-approval!')),
         );
       }
     } catch (e) {
@@ -732,6 +741,13 @@ class ProgramCard extends StatelessWidget {
     final statusColor = _getStatusColor(status);
     final statusIcon = _getStatusIcon(status);
     final posterLink = programData['posterLink'] as String?;
+    final rejectionReason = programData['rejectionReason'] as String?;
+
+    // Fix for DropdownButton error: Ensure 'approved' is in the list of items if the current status is 'approved'
+    final List<String> availableStatuses = ['ongoing', 'completed', 'cancelled'];
+    if (status == 'approved') {
+      availableStatuses.insert(0, 'approved');
+    }
 
     return Card(
       elevation: 2,
@@ -741,7 +757,6 @@ class ProgramCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Poster Image
             if (posterLink != null && posterLink.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12.0),
@@ -753,53 +768,18 @@ class ProgramCard extends StatelessWidget {
                     height: 200,
                     fit: BoxFit.cover,
                     loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) {
-                        return child;
-                      }
+                      if (loadingProgress == null) return child;
                       return Container(
-                        width: double.infinity,
-                        height: 200,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Center(
-                          child: CircularProgressIndicator(),
-                        ),
+                        width: double.infinity, height: 200,
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator()),
                       );
                     },
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
-                        width: double.infinity,
-                        height: 200,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
-                            const SizedBox(height: 8),
-                            const Text('Image unavailable', style: TextStyle(color: Colors.grey)),
-                            const SizedBox(height: 8),
-                            GestureDetector(
-                              onTap: () {
-                                // Show the link for debugging
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Link: ${posterLink.substring(0, math.min(50, posterLink.length))}...'),
-                                    duration: const Duration(seconds: 3),
-                                  ),
-                                );
-                              },
-                              child: const Text(
-                                'Tap for details',
-                                style: TextStyle(color: Colors.blue, fontSize: 12),
-                              ),
-                            ),
-                          ],
-                        ),
+                        width: double.infinity, height: 200,
+                        color: Colors.grey[300],
+                        child: const Center(child: Icon(Icons.image_not_supported, size: 48, color: Colors.grey)),
                       );
                     },
                   ),
@@ -814,103 +794,79 @@ class ProgramCard extends StatelessWidget {
                     children: [
                       Text(
                         programData['name'] ?? 'Unnamed Program',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         programData['description'] ?? '',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-                StatusBadge(
-                  status: status,
-                  color: statusColor,
-                  icon: statusIcon,
-                ),
+                StatusBadge(status: status, color: statusColor, icon: statusIcon),
               ],
             ),
+            if (status == 'rejected' && rejectionReason != null)
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(4)),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.red, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Reason: $rejectionReason',
+                        style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 12),
             Wrap(
-              spacing: 16,
-              runSpacing: 8,
+              spacing: 16, runSpacing: 8,
               children: [
+                _InfoRow(icon: Icons.calendar_today, text: programData['date'] ?? 'No date'),
+                _InfoRow(icon: Icons.schedule, text: programData['time'] ?? 'No time'),
+                _InfoRow(icon: Icons.location_on, text: programData['location'] ?? 'No location'),
                 _InfoRow(
-                  icon: Icons.calendar_today,
-                  text: programData['date'] ?? 'No date',
+                  icon: (programData['visibility'] ?? 'college') == 'public' ? Icons.public : Icons.lock,
+                  text: (programData['visibility'] ?? 'college') == 'public' ? 'Public Event' : 'College Only',
                 ),
-                _InfoRow(
-                  icon: Icons.schedule,
-                  text: programData['time'] ?? 'No time',
-                ),
-                _InfoRow(
-                  icon: Icons.location_on,
-                  text: programData['location'] ?? 'No location',
-                ),
-                _InfoRow(
-                  icon: (programData['visibility'] ?? 'college') == 'public' 
-                      ? Icons.public 
-                      : Icons.lock,
-                  text: (programData['visibility'] ?? 'college') == 'public' 
-                      ? 'Public Event' 
-                      : 'College Only',
-                ),
-                if (programData['hasPrizePool'] ?? false) ...[
-                  _InfoRow(
-                    icon: Icons.card_giftcard,
-                    text: 'Prize Pool Available',
-                  ),
-                  if (programData['prizeAmount'] != null &&
-                      programData['prizeAmount'].toString().isNotEmpty)
-                    _InfoRow(
-                      icon: Icons.monetization_on,
-                      text: '₹ ${programData['prizeAmount']}',
-                    ),
-                ],
               ],
             ),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                DropdownButton<String>(
-                  value: status,
-                  items: ['pending', 'ongoing', 'completed', 'cancelled']
-                      .map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value[0].toUpperCase() + value.substring(1)),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    if (newValue != null) {
-                      onStatusChange(newValue);
-                    }
-                  },
-                  underline: Container(
-                    height: 2,
-                    color: statusColor,
+                if (status != 'pending' && status != 'rejected')
+                  DropdownButton<String>(
+                    value: status,
+                    items: availableStatuses
+                        .map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value[0].toUpperCase() + value.substring(1)),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) onStatusChange(newValue);
+                    },
+                  )
+                else
+                  Text(
+                    status == 'pending' ? 'Awaiting Approval' : 'Event Rejected',
+                    style: TextStyle(color: statusColor, fontStyle: FontStyle.italic, fontSize: 12),
                   ),
-                ),
                 Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.blue),
-                      onPressed: onEdit,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: onDelete,
-                    ),
+                    IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: onEdit),
+                    IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: onDelete),
                   ],
                 ),
               ],
@@ -923,31 +879,25 @@ class ProgramCard extends StatelessWidget {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'pending':
-        return Colors.orange;
-      case 'ongoing':
-        return Colors.blue;
-      case 'completed':
-        return Colors.green;
-      case 'cancelled':
-        return Colors.red;
-      default:
-        return Colors.grey;
+      case 'pending': return Colors.orange;
+      case 'approved': return Colors.blue;
+      case 'ongoing': return Colors.blue;
+      case 'completed': return Colors.green;
+      case 'cancelled': return Colors.red;
+      case 'rejected': return Colors.red;
+      default: return Colors.grey;
     }
   }
 
   IconData _getStatusIcon(String status) {
     switch (status) {
-      case 'pending':
-        return Icons.schedule;
-      case 'ongoing':
-        return Icons.play_circle_filled;
-      case 'completed':
-        return Icons.check_circle;
-      case 'cancelled':
-        return Icons.cancel;
-      default:
-        return Icons.help;
+      case 'pending': return Icons.schedule;
+      case 'approved': return Icons.check_circle_outline;
+      case 'ongoing': return Icons.play_circle_filled;
+      case 'completed': return Icons.check_circle;
+      case 'cancelled': return Icons.cancel;
+      case 'rejected': return Icons.error_outline;
+      default: return Icons.help;
     }
   }
 }
@@ -957,12 +907,7 @@ class StatusBadge extends StatelessWidget {
   final Color color;
   final IconData icon;
 
-  const StatusBadge({
-    required this.status,
-    required this.color,
-    required this.icon,
-    super.key,
-  });
+  const StatusBadge({required this.status, required this.color, required this.icon, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -980,11 +925,7 @@ class StatusBadge extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             status[0].toUpperCase() + status.substring(1),
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
           ),
         ],
       ),
@@ -995,12 +936,7 @@ class StatusBadge extends StatelessWidget {
 class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String text;
-
-  const _InfoRow({
-    required this.icon,
-    required this.text,
-  });
-
+  const _InfoRow({required this.icon, required this.text});
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -1008,10 +944,7 @@ class _InfoRow extends StatelessWidget {
       children: [
         Icon(icon, size: 16, color: Colors.grey),
         const SizedBox(width: 4),
-        Text(
-          text,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
+        Text(text, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
     );
   }
