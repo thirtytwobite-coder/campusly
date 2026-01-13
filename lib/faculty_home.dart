@@ -153,7 +153,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                       mainAxisSpacing: 16,
                     ),
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) {
+                          (context, index) {
                         if (index < docs.length) {
                           var doc = docs[index];
                           var data = doc.data() as Map<String, dynamic>;
@@ -189,57 +189,57 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                 ),
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) {
+                        (context, index) {
                       final clubId = clubIds[index];
                       return StreamBuilder<DocumentSnapshot>(
-                        stream: FirebaseFirestore.instance.collection('clubs').doc(clubId).snapshots(),
-                        builder: (context, clubSnap) {
-                          if (!clubSnap.hasData || !clubSnap.data!.exists) return const SizedBox.shrink();
-                          final clubData = clubSnap.data!.data() as Map<String, dynamic>;
-                          final clubName = clubData['name'] ?? 'Club';
-                          
-                          return StreamBuilder<QuerySnapshot>(
-                            stream: FirebaseFirestore.instance
-                                .collection('clubs')
-                                .doc(clubId)
-                                .collection('programs')
-                                .where('status', isEqualTo: 'approved')
-                                .snapshots(),
-                            builder: (context, snapshot) {
-                              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                                return const SizedBox.shrink();
-                              }
-                              return Column(
-                                children: snapshot.data!.docs.map((doc) {
-                                  final data = doc.data() as Map<String, dynamic>;
-                                  return Card(
-                                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    child: ListTile(
-                                      leading: const Icon(Icons.event_available, color: Colors.green),
-                                      title: Text(data['name'] ?? 'Unnamed Program'),
-                                      subtitle: Text('${data['date'] ?? 'N/A'} at ${data['time'] ?? 'N/A'}'),
-                                      trailing: const Icon(Icons.chevron_right),
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => ProgramApprovalDetailScreen(
-                                              programId: doc.id,
-                                              clubId: clubId,
-                                              clubName: clubName,
-                                              data: data,
-                                              readOnly: true,
+                          stream: FirebaseFirestore.instance.collection('clubs').doc(clubId).snapshots(),
+                          builder: (context, clubSnap) {
+                            if (!clubSnap.hasData || !clubSnap.data!.exists) return const SizedBox.shrink();
+                            final clubData = clubSnap.data!.data() as Map<String, dynamic>;
+                            final clubName = clubData['name'] ?? 'Club';
+
+                            return StreamBuilder<QuerySnapshot>(
+                              stream: FirebaseFirestore.instance
+                                  .collection('clubs')
+                                  .doc(clubId)
+                                  .collection('programs')
+                                  .where('status', isEqualTo: 'approved')
+                                  .snapshots(),
+                              builder: (context, snapshot) {
+                                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Column(
+                                  children: snapshot.data!.docs.map((doc) {
+                                    final data = doc.data() as Map<String, dynamic>;
+                                    return Card(
+                                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                      child: ListTile(
+                                        leading: const Icon(Icons.event_available, color: Colors.green),
+                                        title: Text(data['name'] ?? 'Unnamed Program'),
+                                        subtitle: Text('${data['date'] ?? 'N/A'} at ${data['time'] ?? 'N/A'}'),
+                                        trailing: const Icon(Icons.chevron_right),
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => ProgramApprovalDetailScreen(
+                                                programId: doc.id,
+                                                clubId: clubId,
+                                                clubName: clubName,
+                                                data: data,
+                                                readOnly: true,
+                                              ),
                                             ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  );
-                                }).toList(),
-                              );
-                            },
-                          );
-                        }
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  }).toList(),
+                                );
+                              },
+                            );
+                          }
                       );
                     },
                     childCount: clubIds.length,
@@ -306,12 +306,12 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
 
   Stream<int> _getPendingCountStream(List<String> clubIds) {
     return Stream.fromFuture(Future.wait(
-      clubIds.map((clubId) => FirebaseFirestore.instance
-          .collection('clubs')
-          .doc(clubId)
-          .collection('programs')
-          .where('status', isEqualTo: 'pending')
-          .get())
+        clubIds.map((clubId) => FirebaseFirestore.instance
+            .collection('clubs')
+            .doc(clubId)
+            .collection('programs')
+            .where('status', isEqualTo: 'pending')
+            .get())
     )).map((snapshots) {
       int total = 0;
       for (var snap in snapshots) {
@@ -388,58 +388,58 @@ class RejectedEventsScreen extends StatelessWidget {
         itemBuilder: (context, index) {
           final clubId = clubIds[index];
           return StreamBuilder<DocumentSnapshot>(
-            stream: FirebaseFirestore.instance.collection('clubs').doc(clubId).snapshots(),
-            builder: (context, clubSnap) {
-              if (!clubSnap.hasData || !clubSnap.data!.exists) return const SizedBox.shrink();
-              final clubData = clubSnap.data!.data() as Map<String, dynamic>;
-              final clubName = clubData['name'] ?? 'Club';
+              stream: FirebaseFirestore.instance.collection('clubs').doc(clubId).snapshots(),
+              builder: (context, clubSnap) {
+                if (!clubSnap.hasData || !clubSnap.data!.exists) return const SizedBox.shrink();
+                final clubData = clubSnap.data!.data() as Map<String, dynamic>;
+                final clubName = clubData['name'] ?? 'Club';
 
-              return StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('clubs')
-                    .doc(clubId)
-                    .collection('programs')
-                    .where('status', isEqualTo: 'rejected')
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ...snapshot.data!.docs.map((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          color: Colors.red[50],
-                          child: ListTile(
-                            leading: const Icon(Icons.cancel, color: Colors.red),
-                            title: Text(data['name'] ?? 'Unnamed'),
-                            subtitle: Text('Reason: ${data['rejectionReason'] ?? 'No reason'}'),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ProgramApprovalDetailScreen(
-                                    programId: doc.id,
-                                    clubId: clubId,
-                                    clubName: clubName,
-                                    data: data,
-                                    readOnly: true,
+                return StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('clubs')
+                      .doc(clubId)
+                      .collection('programs')
+                      .where('status', isEqualTo: 'rejected')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ...snapshot.data!.docs.map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          return Card(
+                            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            color: Colors.red[50],
+                            child: ListTile(
+                              leading: const Icon(Icons.cancel, color: Colors.red),
+                              title: Text(data['name'] ?? 'Unnamed'),
+                              subtitle: Text('Reason: ${data['rejectionReason'] ?? 'No reason'}'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ProgramApprovalDetailScreen(
+                                      programId: doc.id,
+                                      clubId: clubId,
+                                      clubName: clubName,
+                                      data: data,
+                                      readOnly: true,
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      }).toList(),
-                    ],
-                  );
-                },
-              );
-            }
+                                );
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ],
+                    );
+                  },
+                );
+              }
           );
         },
       ),
@@ -469,7 +469,7 @@ class MultiClubApprovalScreen extends StatelessWidget {
               if (!clubSnap.hasData || !clubSnap.data!.exists) return const SizedBox.shrink();
               final clubData = clubSnap.data!.data() as Map<String, dynamic>;
               final clubName = clubData['name'] ?? 'Club';
-              
+
               return StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('clubs')
@@ -481,7 +481,7 @@ class MultiClubApprovalScreen extends StatelessWidget {
                   if (!programSnap.hasData || programSnap.data!.docs.isEmpty) {
                     return const SizedBox.shrink();
                   }
-                  
+
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -931,8 +931,8 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
 
                 final clubData = snapshot.data!.data() as Map<String, dynamic>?;
                 final coordinators = (clubData?['coordinators'] as List<dynamic>?)
-                        ?.map((e) => e as Map<String, dynamic>)
-                        .toList() ??
+                    ?.map((e) => e as Map<String, dynamic>)
+                    .toList() ??
                     [];
 
                 if (coordinators.isEmpty) {
