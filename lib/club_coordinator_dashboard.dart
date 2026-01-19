@@ -10,6 +10,7 @@ import 'main.dart';
 import 'manage_programs.dart';
 import 'profile_screen.dart';
 import 'student_home.dart';
+import 'analytics_screen.dart';
 
 class ClubCoordinatorDashboard extends StatefulWidget {
   const ClubCoordinatorDashboard({super.key});
@@ -210,7 +211,20 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                     "View Registrations",
                     Icons.bar_chart,
                     Colors.green,
-                        () => _showComingSoonSnackBar("Analytics"),
+                        () {
+                      if (clubId != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AnalyticsScreen(
+                              clubId: clubId!,
+                              clubName: clubName ?? 'Club',
+                              coordinatorId: FirebaseAuth.instance.currentUser?.uid,
+                            ),
+                          ),
+                        );
+                      }
+                    },
                   ),
                 ],
               ),
