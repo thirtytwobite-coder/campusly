@@ -8,7 +8,6 @@ import 'main.dart'; // Import main.dart to access themeNotifier
 import 'login_screen.dart';
 import 'change_password.dart';
 import 'profile_screen.dart';
-import 'program_approval_screen.dart';
 
 class FacultyHomeScreen extends StatefulWidget {
   const FacultyHomeScreen({super.key});
@@ -102,10 +101,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
               return Center(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-
-                  ).animate().fadeIn(duration: 500.ms).slideY(),
+                  child: _buildEmptyState(),
                 ),
               );
             }
@@ -175,9 +171,9 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                             },
                           ).animate().fadeIn(duration: 300.ms, delay: (index * 100).ms).slideX();
                         }
-
+                        return null;
                       },
-                      childCount: docs.length + 1,
+                      childCount: docs.length,
                     ),
                   ),
                 ),
@@ -203,7 +199,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                                   .collection('clubs')
                                   .doc(clubId)
                                   .collection('programs')
-                                  .where('status', isEqualTo: 'approved')
+                                  .where('status', whereIn: ['approved', 'ongoing', 'completed'])
                                   .snapshots(),
                               builder: (context, snapshot) {
                                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -215,9 +211,12 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                                     return Card(
                                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                       child: ListTile(
-                                        leading: const Icon(Icons.event_available, color: Colors.green),
+                                        leading: Icon(
+                                          data['status'] == 'completed' ? Icons.task_alt : Icons.event_available,
+                                          color: data['status'] == 'completed' ? Colors.grey : Colors.green
+                                        ),
                                         title: Text(data['name'] ?? 'Unnamed Program'),
-                                        subtitle: Text('${data['date'] ?? 'N/A'} at ${data['time'] ?? 'N/A'}'),
+                                        subtitle: Text('${data['date'] ?? 'N/A'} at ${data['time'] ?? 'N/A'} • ${data['status']?.toUpperCase()}'),
                                         trailing: const Icon(Icons.chevron_right),
                                         onTap: () {
                                           Navigator.push(
@@ -287,8 +286,8 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
               backgroundColor: Colors.orange,
               child: Text('$count', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
-            title: const Text('Pending Event Approvals', style: TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('You have $count events waiting for your review'),
+            title: const Text('Pending Requests', style: TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text('You have $count requests waiting for your review'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.orange),
             onTap: () {
               Navigator.push(
@@ -455,7 +454,7 @@ class MultiClubApprovalScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pending Approvals'),
+        title: const Text('Pending Requests'),
         backgroundColor: const Color(0xFF1A237E),
         foregroundColor: Colors.white,
       ),
@@ -468,7 +467,7 @@ class MultiClubApprovalScreen extends StatelessWidget {
             builder: (context, clubSnap) {
               if (!clubSnap.hasData || !clubSnap.data!.exists) return const SizedBox.shrink();
               final clubData = clubSnap.data!.data() as Map<String, dynamic>;
-              final clubName = clubData['name'] ?? 'Club';
+              final clubName = clubData['name'] ?? clubData['clubName'] ?? 'Club';
 
               return StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
@@ -529,13 +528,23 @@ class _ApprovalListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String? requestedStatus = data['requestedStatus'];
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: requestedStatus != null ? Colors.orange[50] : null,
       child: ListTile(
         title: Text(data['name'] ?? 'Unnamed Program', style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (requestedStatus != null)
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(4)),
+                child: Text('REQUEST: ${requestedStatus.toUpperCase()}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+              ),
             Text('${data['date'] ?? 'No Date'} at ${data['time'] ?? 'No Time'}'),
             Text('Venue: ${data['location'] ?? 'No Venue'}'),
             Text('By: ${data['coordinatorName'] ?? 'Unknown'}', style: const TextStyle(fontStyle: FontStyle.italic)),
@@ -577,41 +586,80 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
     super.key,
   });
 
-  Future<void> _approveEvent(BuildContext context) async {
+  Future<void> _approveRequest(BuildContext context) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('clubs')
-          .doc(clubId)
-          .collection('programs')
-          .doc(programId)
-          .update({
-        'status': 'approved',
-        'approvedAt': FieldValue.serverTimestamp(),
-      });
+      final String? requestedStatus = data['requestedStatus'];
+      
+      if (requestedStatus != null) {
+        // --- CASE 1: APPROVING A STATUS UPDATE (Ongoing/Completed/etc.) ---
+        await FirebaseFirestore.instance
+            .collection('clubs')
+            .doc(clubId)
+            .collection('programs')
+            .doc(programId)
+            .update({
+          'status': requestedStatus,
+          'requestedStatus': FieldValue.delete(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
 
-      await FirebaseFirestore.instance.collection('events').add({
-        'title': data['name'],
-        'description': data['description'],
-        'venue': data['location'],
-        'date': data['date'],
-        'time': data['time'],
-        'clubName': clubName,
-        'clubId': clubId,
-        'programId': programId,
-        'category': data['category'] ?? 'Technical',
-        'maxSeats': 100,
-        'filledSeats': 0,
-        'posterLink': data['posterLink'],
-        'visibility': data['visibility'],
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+        // Update the event in global collection
+        final eventQuery = await FirebaseFirestore.instance
+            .collection('events')
+            .where('programId', isEqualTo: programId)
+            .limit(1)
+            .get();
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Event Approved and Published!')),
-        );
-        Navigator.pop(context);
+        if (eventQuery.docs.isNotEmpty) {
+          await eventQuery.docs.first.reference.update({
+            'status': requestedStatus,
+          });
+        }
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Status update to $requestedStatus approved!')),
+          );
+        }
+      } else {
+        // --- CASE 2: NEW PROGRAM APPROVAL ---
+        await FirebaseFirestore.instance
+            .collection('clubs')
+            .doc(clubId)
+            .collection('programs')
+            .doc(programId)
+            .update({
+          'status': 'approved',
+          'approvedAt': FieldValue.serverTimestamp(),
+        });
+
+        await FirebaseFirestore.instance.collection('events').add({
+          'title': data['name'],
+          'description': data['description'],
+          'venue': data['location'],
+          'date': data['date'],
+          'time': data['time'],
+          'clubName': clubName,
+          'clubId': clubId,
+          'programId': programId,
+          'category': data['category'] ?? 'Technical',
+          'status': 'approved',
+          'maxSeats': 100,
+          'filledSeats': 0,
+          'posterLink': data['posterLink'],
+          'visibility': data['visibility'] ?? 'college',
+          'college': data['college'],
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Event Approved and Published!')),
+          );
+        }
       }
+      
+      if (context.mounted) Navigator.pop(context);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -623,15 +671,17 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
 
   Future<void> _showRejectDialog(BuildContext context) async {
     final reasonController = TextEditingController();
+    final String? requestedStatus = data['requestedStatus'];
+
     return showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Reject Event'),
+        title: Text(requestedStatus != null ? 'Reject Status Change' : 'Reject Event'),
         content: TextField(
           controller: reasonController,
           decoration: const InputDecoration(
             labelText: 'Reason for Rejection',
-            hintText: 'e.g., Venue already booked',
+            hintText: 'e.g., Change not allowed',
           ),
           maxLines: 3,
         ),
@@ -649,20 +699,37 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
                 );
                 return;
               }
-              await FirebaseFirestore.instance
-                  .collection('clubs')
-                  .doc(clubId)
-                  .collection('programs')
-                  .doc(programId)
-                  .update({
-                'status': 'rejected',
-                'rejectionReason': reasonController.text.trim(),
-                'rejectedAt': FieldValue.serverTimestamp(),
-              });
+
+              if (requestedStatus != null) {
+                // Revert to approved status
+                await FirebaseFirestore.instance
+                    .collection('clubs')
+                    .doc(clubId)
+                    .collection('programs')
+                    .doc(programId)
+                    .update({
+                  'status': 'approved',
+                  'requestedStatus': FieldValue.delete(),
+                  'rejectionReason': 'Status change to $requestedStatus rejected: ${reasonController.text.trim()}',
+                  'rejectedAt': FieldValue.serverTimestamp(),
+                });
+              } else {
+                await FirebaseFirestore.instance
+                    .collection('clubs')
+                    .doc(clubId)
+                    .collection('programs')
+                    .doc(programId)
+                    .update({
+                  'status': 'rejected',
+                  'rejectionReason': reasonController.text.trim(),
+                  'rejectedAt': FieldValue.serverTimestamp(),
+                });
+              }
+
               if (context.mounted) {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Event Rejected')),
+                  const SnackBar(content: Text('Request Rejected')),
                 );
                 Navigator.pop(context);
               }
@@ -676,6 +743,8 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String? requestedStatus = data['requestedStatus'];
+
     return Scaffold(
       appBar: AppBar(title: const Text('Program Details')),
       body: SingleChildScrollView(
@@ -683,6 +752,18 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (requestedStatus != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(color: Colors.orange[100], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.orange)),
+                child: Text(
+                  "ACTION REQUIRED: Request to change event condition to ${requestedStatus.toUpperCase()}",
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orangeAccent),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             if (data['posterLink'] != null && data['posterLink'].toString().isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 20.0),
@@ -735,9 +816,12 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => _approveEvent(context),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-                      child: const Text('APPROVE'),
+                      onPressed: () => _approveRequest(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: requestedStatus != null ? Colors.orange : Colors.green, 
+                        foregroundColor: Colors.white
+                      ),
+                      child: Text(requestedStatus != null ? 'APPROVE UPDATE' : 'APPROVE EVENT'),
                     ),
                   ),
                 ],

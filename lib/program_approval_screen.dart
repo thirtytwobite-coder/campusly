@@ -79,42 +79,83 @@ class _ApprovalCard extends StatelessWidget {
 
   Future<void> _approveEvent(BuildContext context) async {
     try {
-      // 1. Update program status to 'approved'
-      await FirebaseFirestore.instance
-          .collection('clubs')
-          .doc(clubId)
-          .collection('programs')
-          .doc(programId)
-          .update({
-        'status': 'approved',
-        'approvedAt': FieldValue.serverTimestamp(),
-      });
+      final String? requestedStatus = data['requestedStatus'];
+      
+      if (requestedStatus != null) {
+        // --- CASE 1: APPROVING A STATUS CHANGE (Ongoing/Completed/etc.) ---
+        
+        // 1. Update program status to the requested status
+        await FirebaseFirestore.instance
+            .collection('clubs')
+            .doc(clubId)
+            .collection('programs')
+            .doc(programId)
+            .update({
+          'status': requestedStatus,
+          'requestedStatus': FieldValue.delete(),
+          'approvedAt': FieldValue.serverTimestamp(),
+        });
 
-      // 2. Add to global 'events' collection so students can see it
-      await FirebaseFirestore.instance.collection('events').add({
-        'title': data['name'],
-        'description': data['description'],
-        'venue': data['location'],
-        'date': data['date'],
-        'time': data['time'],
-        'clubName': data['clubName'],
-        'clubId': clubId,
-        'programId': programId,
-        'category': data['category'] ?? 'Technical',
-        'maxSeats': 100, // Default
-        'filledSeats': 0,
-        'posterLink': data['posterLink'],
-        'visibility': data['visibility'] ?? 'college',
-        'college': data['college'],
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+        // 2. Update the status in the global 'events' collection
+        final eventQuery = await FirebaseFirestore.instance
+            .collection('events')
+            .where('programId', isEqualTo: programId)
+            .limit(1)
+            .get();
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Event Approved and Published!')),
-        );
-        onProcessed();
+        if (eventQuery.docs.isNotEmpty) {
+          await eventQuery.docs.first.reference.update({
+            'status': requestedStatus,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Status update to $requestedStatus approved!')),
+          );
+        }
+      } else {
+        // --- CASE 2: NEW PROGRAM APPROVAL ---
+        
+        // 1. Update program status to 'approved'
+        await FirebaseFirestore.instance
+            .collection('clubs')
+            .doc(clubId)
+            .collection('programs')
+            .doc(programId)
+            .update({
+          'status': 'approved',
+          'approvedAt': FieldValue.serverTimestamp(),
+        });
+
+        // 2. Add to global 'events' collection
+        await FirebaseFirestore.instance.collection('events').add({
+          'title': data['name'],
+          'description': data['description'],
+          'venue': data['location'],
+          'date': data['date'],
+          'time': data['time'],
+          'clubName': data['clubName'],
+          'clubId': clubId,
+          'programId': programId,
+          'category': data['category'] ?? 'Technical',
+          'status': 'approved', // Initial status
+          'maxSeats': 100,
+          'filledSeats': 0,
+          'posterLink': data['posterLink'],
+          'visibility': data['visibility'] ?? 'college',
+          'college': data['college'],
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Event Approved and Published!')),
+          );
+        }
       }
+      onProcessed();
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -129,12 +170,12 @@ class _ApprovalCard extends StatelessWidget {
     return showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Reject Event'),
+        title: const Text('Reject Request'),
         content: TextField(
           controller: reasonController,
           decoration: const InputDecoration(
             labelText: 'Reason for Rejection',
-            hintText: 'e.g., Venue already booked',
+            hintText: 'e.g., Change not allowed',
           ),
           maxLines: 3,
         ),
@@ -152,20 +193,42 @@ class _ApprovalCard extends StatelessWidget {
                 );
                 return;
               }
-              await FirebaseFirestore.instance
-                  .collection('clubs')
-                  .doc(clubId)
-                  .collection('programs')
-                  .doc(programId)
-                  .update({
-                'status': 'rejected',
-                'rejectionReason': reasonController.text.trim(),
-                'rejectedAt': FieldValue.serverTimestamp(),
-              });
+
+              final String? requestedStatus = data['requestedStatus'];
+              
+              if (requestedStatus != null) {
+                // Rejecting a status change: Revert to previous status (which we'll assume was the one before pending)
+                // However, without historical state, we might just set it back to something sensible or leave as 'approved'
+                // For now, let's revert to 'approved' if it was a status change request
+                await FirebaseFirestore.instance
+                    .collection('clubs')
+                    .doc(clubId)
+                    .collection('programs')
+                    .doc(programId)
+                    .update({
+                  'status': 'approved', // Revert from pending
+                  'requestedStatus': FieldValue.delete(),
+                  'rejectionReason': 'Status change to $requestedStatus rejected: ${reasonController.text.trim()}',
+                  'rejectedAt': FieldValue.serverTimestamp(),
+                });
+              } else {
+                // Rejecting a new program
+                await FirebaseFirestore.instance
+                    .collection('clubs')
+                    .doc(clubId)
+                    .collection('programs')
+                    .doc(programId)
+                    .update({
+                  'status': 'rejected',
+                  'rejectionReason': reasonController.text.trim(),
+                  'rejectedAt': FieldValue.serverTimestamp(),
+                });
+              }
+              
               if (context.mounted) {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Event Rejected')),
+                  const SnackBar(content: Text('Request Rejected')),
                 );
                 onProcessed();
               }
@@ -179,13 +242,49 @@ class _ApprovalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String? requestedStatus = data['requestedStatus'];
+    final bool isStatusChange = requestedStatus != null;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
+      elevation: isStatusChange ? 4 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isStatusChange 
+            ? BorderSide(color: Colors.orange.shade300, width: 2) 
+            : BorderSide.none,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (isStatusChange)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "STATUS CHANGE REQUEST: ${requestedStatus.toUpperCase()}",
+                        style: TextStyle(
+                          color: Colors.orange.shade900,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -236,11 +335,11 @@ class _ApprovalCard extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: () => _approveEvent(context),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
+                      backgroundColor: isStatusChange ? Colors.orange : Colors.green,
                       foregroundColor: Colors.white,
                     ),
                     icon: const Icon(Icons.check),
-                    label: const Text('Approve'),
+                    label: Text(isStatusChange ? 'Approve Update' : 'Approve Event'),
                   ),
                 ),
               ],
