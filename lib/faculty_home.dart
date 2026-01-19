@@ -245,7 +245,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                             builder: (context, clubSnap) {
                               if (!clubSnap.hasData || !clubSnap.data!.exists) return const SizedBox.shrink();
                               final clubData = clubSnap.data!.data() as Map<String, dynamic>;
-                              final clubName = clubData['name'] ?? 'Club';
+                              final clubName = clubData['clubName'] ?? clubData['name'] ?? 'Club';
 
                               return StreamBuilder<QuerySnapshot>(
                                 stream: FirebaseFirestore.instance
@@ -443,7 +443,7 @@ class RejectedEventsScreen extends StatelessWidget {
               builder: (context, clubSnap) {
                 if (!clubSnap.hasData || !clubSnap.data!.exists) return const SizedBox.shrink();
                 final clubData = clubSnap.data!.data() as Map<String, dynamic>;
-                final clubName = clubData['name'] ?? 'Club';
+                final clubName = clubData['clubName'] ?? clubData['name'] ?? 'Club';
 
                 return StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
@@ -519,7 +519,7 @@ class MultiClubApprovalScreen extends StatelessWidget {
             builder: (context, clubSnap) {
               if (!clubSnap.hasData || !clubSnap.data!.exists) return const SizedBox.shrink();
               final clubData = clubSnap.data!.data() as Map<String, dynamic>;
-              final clubName = clubData['name'] ?? 'Club';
+              final clubName = clubData['clubName'] ?? clubData['name'] ?? 'Club';
 
               return StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance

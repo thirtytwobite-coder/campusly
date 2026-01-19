@@ -4,13 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'change_password.dart';
+import 'analytics_screen.dart';
 import 'login_screen.dart';
 import 'main.dart';
 import 'manage_programs.dart';
 import 'profile_screen.dart';
 import 'student_home.dart';
-import 'analytics_screen.dart';
 
 class ClubCoordinatorDashboard extends StatefulWidget {
   final String? initialClubId;
@@ -23,82 +22,94 @@ class ClubCoordinatorDashboard extends StatefulWidget {
   });
 
   @override
-  State<ClubCoordinatorDashboard> createState() => _ClubCoordinatorDashboardState();
+  State<ClubCoordinatorDashboard> createState() =>
+      _ClubCoordinatorDashboardState();
 }
 
 class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   String? clubId;
   String? clubName;
   int _selectedIndex = 0;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     clubId = widget.initialClubId;
     clubName = widget.initialClubName;
+
     if (clubId == null) {
       _fetchClubInfo();
+    } else {
+      _loading = false;
     }
   }
 
-  // --- Fetching the specific club this user manages ---
+  // 🔹 Fetch club managed by coordinator
   Future<void> _fetchClubInfo() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user != null && user.email != null) {
-      final clubsQuery = await FirebaseFirestore.instance
-          .collection('clubs')
-          .where('coordinatorEmails', arrayContains: user.email)
-          .limit(1)
-          .get();
+    if (user?.email == null) {
+      setState(() => _loading = false);
+      return;
+    }
 
-      if (mounted && clubsQuery.docs.isNotEmpty) {
-        final clubDoc = clubsQuery.docs.first;
-        final clubData = clubDoc.data();
-        setState(() {
-          clubId = clubDoc.id;
-          clubName = (clubData['name'] ?? clubData['clubName']) as String?;
-        });
-      }
+    final query = await FirebaseFirestore.instance
+        .collection('clubs')
+        .where('coordinatorEmails', arrayContains: user!.email)
+        .limit(1)
+        .get();
+
+    if (mounted && query.docs.isNotEmpty) {
+      final doc = query.docs.first;
+      final data = doc.data();
+      setState(() {
+        clubId = doc.id;
+        clubName = data['name'] ?? data['clubName'];
+        _loading = false;
+      });
+    } else {
+      setState(() => _loading = false);
     }
   }
 
-  void _onItemTapped(int index) {
+  // 🔹 Bottom navigation handler
+  void _onItemTapped(int index) async {
     if (index == _selectedIndex) return;
-    setState(() => _selectedIndex = index);
 
-    if (index == 1) {
-      if (clubId != null) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ManageProgramsScreen(
-              clubId: clubId!,
-              clubName: clubName ?? 'Club',
-            ),
-          ),
-        ).then((_) => setState(() => _selectedIndex = 0));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Club information not loaded yet.')),
-        );
-        setState(() => _selectedIndex = 0);
-      }
-    } else if (index == 2) {
-      Navigator.push(
+    if (index == 1 && clubId != null) {
+      await Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const ProfileScreen()),
-      ).then((_) => setState(() => _selectedIndex = 0));
+        MaterialPageRoute(
+          builder: (_) => ManageProgramsScreen(
+            clubId: clubId!,
+            clubName: clubName ?? 'Club',
+          ),
+        ),
+      );
+    } else if (index == 2) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ProfileScreen()),
+      );
     }
+
+    setState(() => _selectedIndex = 0);
+  }
+
+  void _toggleTheme() async {
+    themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
   }
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      onPopInvoked: (bool didPop) async {
+      onPopInvoked: (didPop) async {
         if (didPop) return;
-        final bool shouldExit = await _showExitDialog() ?? false;
-        if (shouldExit && mounted) Navigator.pop(context);
+        final exit = await _showExitDialog() ?? false;
+        if (exit && mounted) Navigator.pop(context);
       },
       child: Scaffold(
         appBar: AppBar(
@@ -106,32 +117,34 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
           actions: [
             IconButton(
               icon: const Icon(Icons.brightness_6),
-              onPressed: () async {
-                themeNotifier.value = themeNotifier.value == ThemeMode.light
-                    ? ThemeMode.dark
-                    : ThemeMode.light;
-                SharedPreferences prefs = await SharedPreferences.getInstance();
-                prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
-              },
+              onPressed: _toggleTheme,
             ),
             _buildSettingsMenu(),
           ],
         ),
-        body: clubId == null ? _buildLoadingState() : _buildDashboardBody(),
+        body: _loading
+            ? _buildLoadingState()
+            : clubId == null
+            ? const Center(child: Text("No club assigned"))
+            : _buildDashboardBody(),
         bottomNavigationBar: BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.add_circle), label: 'Programs'),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.dashboard), label: 'Home'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.add_circle), label: 'Programs'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.person), label: 'Profile'),
           ],
         ),
       ),
     );
   }
 
+  // 🔹 Loading state
   Widget _buildLoadingState() {
     return const Center(
       child: Column(
@@ -145,62 +158,51 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     );
   }
 
+  // 🔹 Main dashboard body
   Widget _buildDashboardBody() {
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('clubs').doc(clubId!).snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('clubs')
+          .doc(clubId!)
+          .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-        final clubData = snapshot.data!.data() as Map<String, dynamic>;
-        final description = clubData['description'] ?? 'No description set.';
+        final clubData =
+        snapshot.data!.data() as Map<String, dynamic>;
+        final description =
+            clubData['description'] ?? 'No description set.';
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- WELCOME HEADER ---
-              Text(
-                "Welcome Back,",
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey),
-              ),
+              Text("Welcome Back,",
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(color: Colors.grey)),
               Text(
                 clubName ?? "Coordinator",
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 25),
 
-              // --- CLUB DESCRIPTION CARD ---
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text("Club Description", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                          IconButton(
-                            icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
-                            onPressed: () => _showEditDescriptionDialog(description),
-                          ),
-                        ],
-                      ),
-                      const Divider(),
-                      Text(description, style: const TextStyle(height: 1.5, color: Colors.black87)),
-                    ],
-                  ),
-                ),
-              ).animate().fadeIn().slideY(begin: 0.1),
+              _clubDescriptionCard(description),
 
               const SizedBox(height: 30),
 
-              // --- QUICK ACTIONS ---
-              const Text("Management Actions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              const Text("Management Actions",
+                  style:
+                  TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               const SizedBox(height: 15),
+
               GridView.count(
                 crossAxisCount: 2,
                 shrinkWrap: true,
@@ -209,7 +211,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 crossAxisSpacing: 15,
                 children: [
                   _buildQuickActionCard(
-                    context,
                     "Event List",
                     "Manage Programs",
                     Icons.event_note,
@@ -217,24 +218,22 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                         () => _onItemTapped(1),
                   ),
                   _buildQuickActionCard(
-                    context,
                     "Analytics",
                     "View Registrations",
                     Icons.bar_chart,
                     Colors.green,
                         () {
-                      if (clubId != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AnalyticsScreen(
-                              clubId: clubId!,
-                              clubName: clubName ?? 'Club',
-                              coordinatorId: FirebaseAuth.instance.currentUser?.uid,
-                            ),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AnalyticsScreen(
+                            clubId: clubId!,
+                            clubName: clubName ?? 'Club',
+                            coordinatorId: FirebaseAuth
+                                .instance.currentUser?.uid,
                           ),
-                        );
-                      }
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -246,7 +245,36 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     );
   }
 
-  Widget _buildQuickActionCard(BuildContext context, String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
+  // 🔹 Club description card
+  Widget _clubDescriptionCard(String description) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("Club Description",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                IconButton(
+                  icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
+                  onPressed: () => _showEditDescriptionDialog(description),
+                ),
+              ],
+            ),
+            const Divider(),
+            Text(description, style: const TextStyle(height: 1.5, color: Colors.black87)),
+          ],
+        ),
+      ),
+    ).animate().fadeIn().slideY(begin: 0.1);
+  }
+
+  Widget _buildQuickActionCard(String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -278,13 +306,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       },
       itemBuilder: (context) => [
         const PopupMenuItem(value: 'switch', child: Text("Switch to Student View")),
-
       ],
     );
-  }
-
-  void _showComingSoonSnackBar(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$feature feature is coming soon!")));
   }
 
   Future<bool?> _showExitDialog() {
@@ -314,7 +337,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             onPressed: () async {
               if (clubId != null) {
                 await FirebaseFirestore.instance.collection('clubs').doc(clubId!).update({'description': controller.text});
-                Navigator.pop(context);
+                if (mounted) Navigator.pop(context);
               }
             },
             child: const Text("Save"),
