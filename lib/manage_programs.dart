@@ -621,9 +621,14 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
 
-      final studentDoc = await FirebaseFirestore.instance.collection('student').doc(user?.uid).get();
-      final coordinatorName = studentDoc.data()?['name'] ?? 'Unknown';
-      final college = studentDoc.data()?['college'] ?? 'Unknown College';
+      // Try fetching from both student and faculty collections to be safe
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('student').doc(user?.uid).get();
+      if (!userDoc.exists) {
+        userDoc = await FirebaseFirestore.instance.collection('faculty').doc(user?.uid).get();
+      }
+
+      final coordinatorName = (userDoc.data() as Map<String, dynamic>?)?['name'] ?? 'Unknown';
+      final college = (userDoc.data() as Map<String, dynamic>?)?['college'] ?? 'Unknown College';
 
       await FirebaseFirestore.instance
           .collection('clubs')

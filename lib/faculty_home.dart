@@ -104,7 +104,9 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-
+                    children: [
+                      _buildEmptyState(),
+                    ],
                   ).animate().fadeIn(duration: 500.ms).slideY(),
                 ),
               );
@@ -175,9 +177,9 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                             },
                           ).animate().fadeIn(duration: 300.ms, delay: (index * 100).ms).slideX();
                         }
-
+                        return null;
                       },
-                      childCount: docs.length + 1,
+                      childCount: docs.length,
                     ),
                   ),
                 ),
@@ -599,6 +601,7 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
         'clubId': clubId,
         'programId': programId,
         'category': data['category'] ?? 'Technical',
+        'college': data['college'] ?? 'Unknown',
         'maxSeats': 100,
         'filledSeats': 0,
         'posterLink': data['posterLink'],
