@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart';
 
 import 'main.dart';
 import 'event_details.dart';
@@ -11,7 +10,6 @@ import 'profile_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
-
 
   @override
   State<StudentHomeScreen> createState() => _StudentHomeScreenState();
@@ -23,7 +21,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   String _searchQuery = "";
   String? studentCollege;
   bool _isLoadingCollege = true;
-  DateTime? _selectedDate;
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -53,20 +50,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       }
     }
     if (mounted) setState(() => _isLoadingCollege = false);
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
   }
 
   @override
@@ -127,17 +110,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           if (!isFromMyCollege) return false;
                         }
 
-                        // Category & Search & Date Filters
+                        // Category & Search Filters
                         bool matchesCategory = (selectedCategory == "All" || data['category'] == selectedCategory);
                         bool matchesSearch = (data['title'] ?? "").toString().toLowerCase().contains(_searchQuery);
-                        
-                        bool matchesDate = true;
-                        if (_selectedDate != null) {
-                          String formattedSelectedDate = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-                          matchesDate = (data['date'] == formattedSelectedDate);
-                        }
 
-                        return matchesCategory && matchesSearch && matchesDate;
+                        return matchesCategory && matchesSearch;
                       }).toList();
 
                       if (filteredDocs.isEmpty) {
@@ -193,25 +170,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         decoration: InputDecoration(
           hintText: "Search events...",
           prefixIcon: const Icon(Icons.search),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_selectedDate != null)
-                IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  onPressed: () => setState(() => _selectedDate = null),
-                  tooltip: "Clear date filter",
-                ),
-              IconButton(
-                icon: Icon(
-                  Icons.calendar_month, 
-                  color: _selectedDate != null ? Colors.blue : null
-                ),
-                onPressed: () => _selectDate(context),
-                tooltip: "Filter by date",
-              ),
-            ],
-          ),
           filled: true,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         ),
@@ -266,7 +224,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           ),
         ),
         title: Text(
-          data['title'] ?? data['name'] ?? "Untitled Event",
+          data['title'] ?? "Untitled Event",
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         subtitle: Column(
@@ -277,14 +235,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               data['college'] ?? "General Event",
               style: TextStyle(color: Colors.grey[600], fontSize: 13),
             ),
-            if (data['date'] != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Text(
-                  "📅 ${data['date']}",
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-              ),
             const SizedBox(height: 6),
             Row(
               children: [

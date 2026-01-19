@@ -257,6 +257,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       ),
     );
   }
+
   Widget _buildSettingsMenu() {
     return PopupMenuButton<String>(
       onSelected: (value) async {
