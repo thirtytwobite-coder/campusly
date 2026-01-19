@@ -401,10 +401,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                       'isDarkMode', themeNotifier.value == ThemeMode.dark);
                 },
               ),
-              IconButton(
-                icon: const Icon(Icons.logout),
-                onPressed: _handleLogout,
-              ),
+
             ],
           ),
           body: GridView.count(
