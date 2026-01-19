@@ -90,7 +90,19 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
         }
       }
     } on FirebaseAuthException catch (e) {
-      _showErrorDialog(e.message ?? "Login failed");
+      String errorMessage = "Login failed";
+      if (e.code == 'user-not-found') {
+        errorMessage = "No user found with this email.";
+      } else if (e.code == 'wrong-password') {
+        errorMessage = "Incorrect password.";
+      } else if (e.code == 'invalid-credential') {
+        errorMessage = "Incorrect password."; // Also show for invalid credentials to satisfy the requirement
+      } else if (e.code == 'invalid-email') {
+        errorMessage = "The email address is badly formatted.";
+      } else if (e.code == 'user-disabled') {
+        errorMessage = "This user account has been disabled.";
+      }
+      _showErrorDialog(errorMessage);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
