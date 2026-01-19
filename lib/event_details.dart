@@ -24,15 +24,18 @@ class EventDetailsScreen extends StatelessWidget {
     final bool hasPrize = prizeText.trim().isNotEmpty;
 
     // 4. General Details
-    final String title = data['title'] ?? 'Untitled Event';
+    final String title = data['title'] ?? data['name'] ?? 'Untitled Event';
     final String description = data['description'] ?? 'No description provided by the coordinator.';
     final String date = data['date'] ?? 'TBD';
-    final String venue = data['venue'] ?? 'TBD';
+    final String venue = data['location'] ?? data['venue'] ?? 'TBD';
+    final String time = data['time'] ?? 'TBD';
+    final String clubName = data['clubName'] ?? 'Club';
+    final String coordinatorName = data['coordinatorName'] ?? 'TBD';
     final String? imageUrl = data['posterLink'] ?? data['imageUrl'];
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Event Information"),
+        title: const Text("Program Details"),
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -47,41 +50,36 @@ class EventDetailsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- VISIBILITY BADGE (College Only vs Public) ---
-                  _buildVisibilityBadge(isCollegeOnly, collegeName),
-
-                  const SizedBox(height: 16),
                   Text(
                     title,
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF4A4A4A)),
                   ),
-
-                  const SizedBox(height: 20),
-
-                  // --- PRIZE BANNER ---
-                  if (hasPrize) _buildPrizeBanner(prizeText),
-
-                  const Divider(height: 40),
-
-                  // --- LOGISTICS INFO ---
-                  _buildInfoRow(Icons.calendar_today, "DATE & TIME", date),
-                  const SizedBox(height: 16),
-                  _buildInfoRow(Icons.location_on_outlined, "VENUE", venue),
-                  const SizedBox(height: 16),
-                  _buildInfoRow(Icons.school_outlined, "ORGANIZING COLLEGE", collegeName),
-
-                  const Divider(height: 40),
-
-                  // --- DESCRIPTION ---
-                  const Text(
-                    "EVENT DESCRIPTION",
-                    style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1, fontSize: 13, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Text(
                     description,
-                    style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
+                    style: const TextStyle(fontSize: 16, color: Colors.grey),
                   ),
+
+                  const SizedBox(height: 32),
+
+                  // --- LOGISTICS INFO ---
+                  _buildInfoRow(Icons.calendar_today_outlined, "Date: $date"),
+                  const SizedBox(height: 16),
+                  _buildInfoRow(Icons.access_time, "Time: $time"),
+                  const SizedBox(height: 16),
+                  _buildInfoRow(Icons.location_on_outlined, venue),
+                  const SizedBox(height: 16),
+                  _buildInfoRow(Icons.groups_outlined, "Club: $clubName"),
+                  const SizedBox(height: 16),
+                  _buildInfoRow(Icons.person_outline, "Coordinator: $coordinatorName"),
+                  const SizedBox(height: 16),
+                  _buildVisibilityBadge(isCollegeOnly, collegeName),
+
+                  // --- PRIZE BANNER ---
+                  if (hasPrize) ...[
+                    const SizedBox(height: 24),
+                    _buildPrizeBanner(prizeText),
+                  ],
 
                   const SizedBox(height: 120), // Padding for the bottom button
                 ],
@@ -99,7 +97,7 @@ class EventDetailsScreen extends StatelessWidget {
     return Container(
       height: 240,
       width: double.infinity,
-      color: Colors.grey[200],
+      color: Colors.grey[100],
       child: url != null && url.isNotEmpty
           ? Image.network(url, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 80, color: Colors.grey))
           : const Icon(Icons.image_outlined, size: 80, color: Colors.grey),
@@ -107,37 +105,24 @@ class EventDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildVisibilityBadge(bool isCollegeOnly, String college) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isCollegeOnly ? Colors.indigo.withOpacity(0.1) : Colors.green.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isCollegeOnly ? Colors.indigo : Colors.green, width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isCollegeOnly ? Icons.lock_outline : Icons.public,
-            size: 16,
-            color: isCollegeOnly ? Colors.indigo : Colors.green,
+    return Row(
+      children: [
+        Icon(
+          isCollegeOnly ? Icons.lock_outline : Icons.public,
+          size: 20,
+          color: Colors.blue,
+        ),
+        const SizedBox(width: 15),
+        Text(
+          isCollegeOnly ? "Visibility: College Only" : "Visibility: Public",
+          style: const TextStyle(
+            color: Colors.blue,
+            fontWeight: FontWeight.w500,
+            fontSize: 15,
           ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              isCollegeOnly ? "COLLEGE ONLY: $college" : "PUBLIC EVENT (OPEN TO ALL)",
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-              style: TextStyle(
-                color: isCollegeOnly ? Colors.indigo[900] : Colors.green[900],
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn().slideX(begin: -0.2);
+        ),
+      ],
+    ).animate().fadeIn();
   }
 
   Widget _buildPrizeBanner(String amount) {
@@ -168,22 +153,16 @@ class EventDetailsScreen extends StatelessWidget {
     ).animate().shimmer(duration: 1200.ms);
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(IconData icon, String value) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Icon(icon, size: 22, color: Colors.blueGrey[600]),
+        Icon(icon, size: 20, color: Colors.grey),
         const SizedBox(width: 15),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-              Text(
-                value, 
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-              ),
-            ],
+          child: Text(
+            value, 
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: Color(0xFF616161)),
           ),
         ),
       ],
@@ -197,7 +176,7 @@ class EventDetailsScreen extends StatelessWidget {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           minimumSize: const Size(double.infinity, 55),
-          backgroundColor: Theme.of(context).primaryColor,
+          backgroundColor: const Color(0xFF673AB7), // Purple color from the screenshot
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
