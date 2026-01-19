@@ -10,10 +10,16 @@ import 'main.dart';
 import 'manage_programs.dart';
 import 'profile_screen.dart';
 import 'student_home.dart';
-import 'analytics_screen.dart';
 
 class ClubCoordinatorDashboard extends StatefulWidget {
-  const ClubCoordinatorDashboard({super.key});
+  final String? initialClubId;
+  final String? initialClubName;
+
+  const ClubCoordinatorDashboard({
+    super.key, 
+    this.initialClubId, 
+    this.initialClubName
+  });
 
   @override
   State<ClubCoordinatorDashboard> createState() => _ClubCoordinatorDashboardState();
@@ -22,32 +28,52 @@ class ClubCoordinatorDashboard extends StatefulWidget {
 class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   String? clubId;
   String? clubName;
+  String? coordinatorCollege;
   int _selectedIndex = 0;
+  bool _isLoadingInfo = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchClubInfo();
+    _fetchDashboardInfo();
   }
 
-  // --- Fetching the specific club this user manages ---
-  Future<void> _fetchClubInfo() async {
+  // --- Fetching college and specific club this user manages ---
+  Future<void> _fetchDashboardInfo() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user != null && user.email != null) {
-      final clubsQuery = await FirebaseFirestore.instance
-          .collection('clubs')
-          .where('coordinatorEmails', arrayContains: user.email)
-          .limit(1)
-          .get();
+    if (user != null) {
+      try {
+        // 1. Fetch Coordinator's College from student profile
+        final studentDoc = await FirebaseFirestore.instance.collection('student').doc(user.uid).get();
+        if (studentDoc.exists) {
+          coordinatorCollege = studentDoc.data()?['college'];
+        }
 
-      if (mounted && clubsQuery.docs.isNotEmpty) {
-        final clubDoc = clubsQuery.docs.first;
-        final clubData = clubDoc.data();
-        setState(() {
-          clubId = clubDoc.id;
-          clubName = clubData['name'] as String?;
-        });
+        // 2. Load Club Info
+        if (widget.initialClubId != null) {
+          clubId = widget.initialClubId;
+          clubName = widget.initialClubName;
+        } else {
+          // Fallback: Fetch the first club they manage if none was passed
+          final clubsQuery = await FirebaseFirestore.instance
+              .collection('clubs')
+              .where('coordinatorEmails', arrayContains: user.email)
+              .limit(1)
+              .get();
+
+          if (clubsQuery.docs.isNotEmpty) {
+            final clubDoc = clubsQuery.docs.first;
+            clubId = clubDoc.id;
+            clubName = clubDoc.data()['clubName'] as String?;
+          }
+        }
+      } catch (e) {
+        debugPrint("Error loading dashboard info: $e");
       }
+    }
+    
+    if (mounted) {
+      setState(() => _isLoadingInfo = false);
     }
   }
 
@@ -91,8 +117,16 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(clubName ?? 'Coordinator Dashboard'),
+          title: const Text('Coordinator Dashboard'),
           actions: [
+            IconButton(
+              tooltip: "Switch to Student View",
+              icon: const Icon(Icons.person_pin_circle_sharp),
+              onPressed: () => Navigator.pushReplacement(
+                context, 
+                MaterialPageRoute(builder: (_) => const StudentHomeScreen())
+              ),
+            ),
             IconButton(
               icon: const Icon(Icons.brightness_6),
               onPressed: () async {
@@ -103,10 +137,10 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
               },
             ),
-            _buildSettingsMenu(),
+
           ],
         ),
-        body: clubId == null ? _buildLoadingState() : _buildDashboardBody(),
+        body: _isLoadingInfo ? _buildLoadingState() : _buildDashboardBody(),
         bottomNavigationBar: BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           currentIndex: _selectedIndex,
@@ -135,103 +169,133 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   Widget _buildDashboardBody() {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('clubs').doc(clubId!).snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
-        final clubData = snapshot.data!.data() as Map<String, dynamic>;
-        final description = clubData['description'] ?? 'No description set.';
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // --- WELCOME HEADER ---
-              Text(
-                "Welcome Back,",
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey),
-              ),
-              Text(
-                clubName ?? "Coordinator",
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 25),
-
-              // --- CLUB DESCRIPTION CARD ---
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text("Club Description", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                          IconButton(
-                            icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
-                            onPressed: () => _showEditDescriptionDialog(description),
-                          ),
-                        ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // --- INSTITUTION & CLUB HEADER ---
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.account_balance, color: Colors.blueAccent, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        coordinatorCollege ?? "Institution Unknown",
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
-                      const Divider(),
-                      Text(description, style: const TextStyle(height: 1.5, color: Colors.black87)),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ).animate().fadeIn().slideY(begin: 0.1),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.stars, color: Colors.orange, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        clubName ?? "Unassigned Club",
+                        style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ).animate().fadeIn().slideY(begin: -0.1),
 
-              const SizedBox(height: 30),
+          const SizedBox(height: 25),
 
-              // --- QUICK ACTIONS ---
-              const Text("Management Actions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-              const SizedBox(height: 15),
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 15,
-                crossAxisSpacing: 15,
-                children: [
-                  _buildQuickActionCard(
-                    context,
-                    "Event List",
-                    "Manage Programs",
-                    Icons.event_note,
-                    Colors.orange,
-                        () => _onItemTapped(1),
-                  ),
-                  _buildQuickActionCard(
-                    context,
-                    "Analytics",
-                    "View Registrations",
-                    Icons.bar_chart,
-                    Colors.green,
-                        () {
-                      if (clubId != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AnalyticsScreen(
-                              clubId: clubId!,
-                              clubName: clubName ?? 'Club',
-                              coordinatorId: FirebaseAuth.instance.currentUser?.uid,
+          Text(
+            "Welcome Back,",
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey),
+          ),
+          const SizedBox(height: 5),
+          
+          // --- CLUB DESCRIPTION CARD ---
+          if (clubId != null)
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance.collection('clubs').doc(clubId!).snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const SizedBox.shrink();
+
+                final clubData = snapshot.data!.data() as Map<String, dynamic>;
+                final description = clubData['description'] ?? 'No description set.';
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text("Club Description", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                                IconButton(
+                                  icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
+                                  onPressed: () => _showEditDescriptionDialog(description),
+                                ),
+                              ],
                             ),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                ],
+                            const Divider(),
+                            Text(description, style: const TextStyle(height: 1.5)),
+                          ],
+                        ),
+                      ),
+                    ).animate().fadeIn().slideY(begin: 0.1),
+                  ],
+                );
+              },
+            ),
+
+          const SizedBox(height: 30),
+
+          // --- QUICK ACTIONS ---
+          const Text("Management Actions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          const SizedBox(height: 15),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 15,
+            crossAxisSpacing: 15,
+            children: [
+              _buildQuickActionCard(
+                context,
+                "Event List",
+                "Manage Programs",
+                Icons.event_note,
+                Colors.orange,
+                    () => _onItemTapped(1),
+              ),
+              _buildQuickActionCard(
+                context,
+                "Analytics",
+                "View Registrations",
+                Icons.bar_chart,
+                Colors.green,
+                    () => _showComingSoonSnackBar("Analytics"),
               ),
             ],
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -258,19 +322,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     );
   }
 
-  Widget _buildSettingsMenu() {
-    return PopupMenuButton<String>(
-      onSelected: (value) async {
-        if (value == 'switch') {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const StudentHomeScreen()));
-        }
-      },
-      itemBuilder: (context) => [
-        const PopupMenuItem(value: 'switch', child: Text("Switch to Student View")),
 
-      ],
-    );
-  }
 
   void _showComingSoonSnackBar(String feature) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$feature feature is coming soon!")));

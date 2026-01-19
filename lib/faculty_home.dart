@@ -19,6 +19,31 @@ class FacultyHomeScreen extends StatefulWidget {
 
 class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
   int _selectedIndex = 0;
+  String? facultyCollege;
+  bool _isLoadingInfo = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchFacultyInfo();
+  }
+
+  Future<void> _fetchFacultyInfo() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final doc = await FirebaseFirestore.instance.collection('faculty').doc(user.uid).get();
+        if (doc.exists && mounted) {
+          setState(() {
+            facultyCollege = doc.data()?['college'];
+          });
+        }
+      } catch (e) {
+        debugPrint("Error fetching faculty info: $e");
+      }
+    }
+    if (mounted) setState(() => _isLoadingInfo = false);
+  }
 
   Future<bool> _onWillPop() async {
     final bool? shouldLogout = await showDialog<bool>(
@@ -88,7 +113,9 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
             ),
           ],
         ),
-        body: StreamBuilder<QuerySnapshot>(
+        body: _isLoadingInfo 
+          ? const Center(child: CircularProgressIndicator())
+          : StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('club_mappings')
               .where('facultyEmail', isEqualTo: user?.email)
@@ -98,63 +125,87 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-
-                  ).animate().fadeIn(duration: 500.ms).slideY(),
-                ),
-              );
-            }
-
-            final docs = snapshot.data!.docs;
+            final docs = snapshot.data?.docs ?? [];
             final clubIds = docs.map((d) => d['clubId'] as String).toList();
 
             return CustomScrollView(
               slivers: [
+                // --- INSTITUTION HEADER ---
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: _buildApprovalSummaryCard(clubIds),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.3)),
+                    ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Your Clubs', style: Theme.of(context).textTheme.titleLarge),
-                        TextButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => RejectedEventsScreen(clubIds: clubIds),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.history_toggle_off, color: Colors.red),
-                          label: const Text('Rejected Events', style: TextStyle(color: Colors.red)),
+                        const Icon(Icons.account_balance, color: Colors.blueAccent, size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            facultyCollege ?? "Institution Unknown",
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                          ),
                         ),
                       ],
                     ),
-                  ),
+                  ).animate().fadeIn().slideY(begin: -0.1),
                 ),
-                SliverPadding(
-                  padding: const EdgeInsets.all(16),
-                  sliver: SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
+
+                if (docs.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: _buildEmptyState(),
+                      ).animate().fadeIn(duration: 500.ms).slideY(),
                     ),
-                    delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                        if (index < docs.length) {
+                  ),
+
+                if (docs.isNotEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: _buildApprovalSummaryCard(clubIds),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Your Clubs', style: Theme.of(context).textTheme.titleLarge),
+                          TextButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => RejectedEventsScreen(clubIds: clubIds),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.history_toggle_off, color: Colors.red),
+                            label: const Text('Rejected Events', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverGrid(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                            (context, index) {
                           var doc = docs[index];
                           var data = doc.data() as Map<String, dynamic>;
                           String clubName = data.containsKey('clubName')
@@ -174,77 +225,76 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                               );
                             },
                           ).animate().fadeIn(duration: 300.ms, delay: (index * 100).ms).slideX();
-                        }
-
-                      },
-                      childCount: docs.length + 1,
+                        },
+                        childCount: docs.length,
+                      ),
                     ),
                   ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text('Approved Events', style: Theme.of(context).textTheme.titleLarge),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                      child: Text('Approved Events', style: Theme.of(context).textTheme.titleLarge),
+                    ),
                   ),
-                ),
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                      final clubId = clubIds[index];
-                      return StreamBuilder<DocumentSnapshot>(
-                          stream: FirebaseFirestore.instance.collection('clubs').doc(clubId).snapshots(),
-                          builder: (context, clubSnap) {
-                            if (!clubSnap.hasData || !clubSnap.data!.exists) return const SizedBox.shrink();
-                            final clubData = clubSnap.data!.data() as Map<String, dynamic>;
-                            final clubName = clubData['name'] ?? 'Club';
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                        final clubId = clubIds[index];
+                        return StreamBuilder<DocumentSnapshot>(
+                            stream: FirebaseFirestore.instance.collection('clubs').doc(clubId).snapshots(),
+                            builder: (context, clubSnap) {
+                              if (!clubSnap.hasData || !clubSnap.data!.exists) return const SizedBox.shrink();
+                              final clubData = clubSnap.data!.data() as Map<String, dynamic>;
+                              final clubName = clubData['name'] ?? 'Club';
 
-                            return StreamBuilder<QuerySnapshot>(
-                              stream: FirebaseFirestore.instance
-                                  .collection('clubs')
-                                  .doc(clubId)
-                                  .collection('programs')
-                                  .where('status', isEqualTo: 'approved')
-                                  .snapshots(),
-                              builder: (context, snapshot) {
-                                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                                  return const SizedBox.shrink();
-                                }
-                                return Column(
-                                  children: snapshot.data!.docs.map((doc) {
-                                    final data = doc.data() as Map<String, dynamic>;
-                                    return Card(
-                                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                      child: ListTile(
-                                        leading: const Icon(Icons.event_available, color: Colors.green),
-                                        title: Text(data['name'] ?? 'Unnamed Program'),
-                                        subtitle: Text('${data['date'] ?? 'N/A'} at ${data['time'] ?? 'N/A'}'),
-                                        trailing: const Icon(Icons.chevron_right),
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => ProgramApprovalDetailScreen(
-                                                programId: doc.id,
-                                                clubId: clubId,
-                                                clubName: clubName,
-                                                data: data,
-                                                readOnly: true,
+                              return StreamBuilder<QuerySnapshot>(
+                                stream: FirebaseFirestore.instance
+                                    .collection('clubs')
+                                    .doc(clubId)
+                                    .collection('programs')
+                                    .where('status', isEqualTo: 'approved')
+                                    .snapshots(),
+                                builder: (context, snapshot) {
+                                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Column(
+                                    children: snapshot.data!.docs.map((doc) {
+                                      final data = doc.data() as Map<String, dynamic>;
+                                      return Card(
+                                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                        child: ListTile(
+                                          leading: const Icon(Icons.event_available, color: Colors.green),
+                                          title: Text(data['name'] ?? 'Unnamed Program'),
+                                          subtitle: Text('${data['date'] ?? 'N/A'} at ${data['time'] ?? 'N/A'}'),
+                                          trailing: const Icon(Icons.chevron_right),
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) => ProgramApprovalDetailScreen(
+                                                  programId: doc.id,
+                                                  clubId: clubId,
+                                                  clubName: clubName,
+                                                  data: data,
+                                                  readOnly: true,
+                                                ),
                                               ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    );
-                                  }).toList(),
-                                );
-                              },
-                            );
-                          }
-                      );
-                    },
-                    childCount: clubIds.length,
+                                            );
+                                          },
+                                        ),
+                                      );
+                                    }).toList(),
+                                  );
+                                },
+                              );
+                            }
+                        );
+                      },
+                      childCount: clubIds.length,
+                    ),
                   ),
-                ),
+                ],
               ],
             );
           },
@@ -305,6 +355,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
   }
 
   Stream<int> _getPendingCountStream(List<String> clubIds) {
+    if (clubIds.isEmpty) return Stream.value(0);
     return Stream.fromFuture(Future.wait(
         clubIds.map((clubId) => FirebaseFirestore.instance
             .collection('clubs')
@@ -599,6 +650,7 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
         'clubId': clubId,
         'programId': programId,
         'category': data['category'] ?? 'Technical',
+        'college': data['college'] ?? 'Unknown',
         'maxSeats': 100,
         'filledSeats': 0,
         'posterLink': data['posterLink'],
