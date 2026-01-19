@@ -13,7 +13,14 @@ import 'student_home.dart';
 import 'analytics_screen.dart';
 
 class ClubCoordinatorDashboard extends StatefulWidget {
-  const ClubCoordinatorDashboard({super.key});
+  final String? initialClubId;
+  final String? initialClubName;
+
+  const ClubCoordinatorDashboard({
+    super.key,
+    this.initialClubId,
+    this.initialClubName,
+  });
 
   @override
   State<ClubCoordinatorDashboard> createState() => _ClubCoordinatorDashboardState();
@@ -27,7 +34,11 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   @override
   void initState() {
     super.initState();
-    _fetchClubInfo();
+    clubId = widget.initialClubId;
+    clubName = widget.initialClubName;
+    if (clubId == null) {
+      _fetchClubInfo();
+    }
   }
 
   // --- Fetching the specific club this user manages ---
@@ -45,7 +56,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         final clubData = clubDoc.data();
         setState(() {
           clubId = clubDoc.id;
-          clubName = clubData['name'] as String?;
+          clubName = (clubData['name'] ?? clubData['clubName']) as String?;
         });
       }
     }
