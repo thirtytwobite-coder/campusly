@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'main.dart';
 import 'event_details.dart';
 import 'profile_screen.dart';
+import 'club_coordinator_dashboard.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -23,20 +24,22 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   String? studentCollege;
   bool _isLoadingCollege = true;
   DateTime? _selectedDate;
+  List<DocumentSnapshot> managedClubs = [];
 
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _fetchStudentCollege();
+    _fetchDashboardData();
   }
 
-  // 🔹 Fetch student / faculty college
-  Future<void> _fetchStudentCollege() async {
+  // 🔹 Fetch student data and managed clubs
+  Future<void> _fetchDashboardData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
+        // Fetch College
         DocumentSnapshot doc = await FirebaseFirestore.instance
             .collection('student')
             .doc(user.uid)
@@ -49,22 +52,84 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               .get();
         }
 
-        if (mounted && doc.exists) {
+        // Fetch ALL clubs managed by this student
+        final coordQuery = await FirebaseFirestore.instance
+            .collection('clubs')
+            .where('coordinatorEmails', arrayContains: user.email)
+            .get();
+
+        if (mounted) {
           final data = doc.data() as Map<String, dynamic>?;
           setState(() {
             studentCollege = data?['college']?.toString().trim();
+            managedClubs = coordQuery.docs;
             _isLoadingCollege = false;
           });
           return;
         }
       } catch (e) {
-        debugPrint("Error fetching college: $e");
+        debugPrint("Error fetching dashboard data: $e");
       }
     }
     if (mounted) setState(() => _isLoadingCollege = false);
   }
 
-  // 🔹 Date picker (from file 2)
+  // 🔹 Switch to coordinator view
+  void _handleCoordinatorSwitch() {
+    if (managedClubs.isEmpty) return;
+
+    if (managedClubs.length == 1) {
+      final clubData = managedClubs.first.data() as Map<String, dynamic>;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ClubCoordinatorDashboard(
+            initialClubId: managedClubs.first.id,
+            initialClubName: clubData['clubName'] ?? clubData['name'],
+          ),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("Select Club to Manage"),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: managedClubs.length,
+              itemBuilder: (context, index) {
+                final clubDoc = managedClubs[index];
+                final clubData = clubDoc.data() as Map<String, dynamic>;
+                return ListTile(
+                  leading: const Icon(Icons.stars, color: Colors.orange),
+                  title: Text(clubData['clubName'] ?? clubData['name'] ?? 'Unnamed Club'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ClubCoordinatorDashboard(
+                          initialClubId: clubDoc.id,
+                          initialClubName: clubData['clubName'] ?? clubData['name'],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ],
+        ),
+      );
+    }
+  }
+
+  // 🔹 Date picker
   Future<void> _selectDate(BuildContext context) async {
     final picked = await showDatePicker(
       context: context,
@@ -85,6 +150,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         title:
         Text(_selectedIndex == 0 ? "Campus Events" : "My College Events"),
         actions: [
+          if (managedClubs.isNotEmpty)
+            IconButton(
+              tooltip: "Switch to Coordinator View",
+              icon: const Icon(Icons.admin_panel_settings_outlined),
+              onPressed: _handleCoordinatorSwitch,
+            ),
           IconButton(
             icon: const Icon(Icons.brightness_6),
             onPressed: _toggleTheme,
@@ -95,7 +166,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
         children: [
-          // 🔹 College banner (from file 1)
           if (_selectedIndex == 1 && studentCollege != null)
             Container(
               width: double.infinity,
@@ -186,7 +256,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     return false;
                   }
 
-                  // 🔹 Date filter (from file 2)
+                  // 🔹 Date filter
                   if (_selectedDate != null) {
                     final selected =
                     DateFormat('yyyy-MM-dd')
@@ -254,7 +324,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  // 🔹 Search bar + calendar (merged)
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.all(16),
