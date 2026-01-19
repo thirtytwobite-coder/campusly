@@ -62,14 +62,12 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
             title: const Text('Club-Faculty Mapping'),
           ),
           body: StreamBuilder<QuerySnapshot>(
-            // We fetch all clubs and filter them on the client side
             stream: FirebaseFirestore.instance.collection('clubs').snapshots(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              // Logic: Show club if it belongs to THIS college OR has no college (Admin/Global)
               final docs = snapshot.data!.docs.where((doc) {
                 final data = doc.data() as Map<String, dynamic>;
                 final clubCollege = data['college'];
@@ -84,55 +82,70 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
               }
 
               return ListView.separated(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 itemCount: docs.length,
-                separatorBuilder: (context, index) => const Divider(),
+                separatorBuilder: (context, index) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final clubData = docs[index].data() as Map<String, dynamic>;
                   final clubId = docs[index].id;
                   final bool isGlobal =
                       clubData['college'] == null || clubData['college'] == '';
 
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: isGlobal
-                          ? Theme.of(context).colorScheme.secondary.withOpacity(0.1)
-                          : Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                      child: Icon(isGlobal ? Icons.public_outlined : Icons.school_outlined,
-                          color: isGlobal
-                              ? Theme.of(context).colorScheme.secondary
-                              : Theme.of(context).colorScheme.primary),
-                    ),
-                    title: Text(clubData['clubName'],
-                        style: Theme.of(context).textTheme.titleLarge),
-                    subtitle: StreamBuilder<DocumentSnapshot>(
-                      // Look up the mapping in the junction collection
-                      stream: FirebaseFirestore.instance
-                          .collection('club_mappings')
-                          .doc("${widget.collegeName}_$clubId")
-                          .snapshots(),
-                      builder: (context, mapSnap) {
-                        String assigned = "Not Assigned";
-                        Color statusColor =
-                            Theme.of(context).colorScheme.error;
-                        if (mapSnap.hasData && mapSnap.data!.exists) {
-                          final mappingData = mapSnap.data!.data() as Map<String, dynamic>;
-                          // Display faculty name if available, otherwise fall back to email
-                          assigned =
-                              mappingData['facultyName'] ??
-                              mappingData['facultyEmail'] ??
-                              "Not Assigned";
-                          statusColor = Colors.green;
-                        }
-                        return Text("Faculty: $assigned",
-                            style: TextStyle(color: statusColor));
-                      },
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.rule_folder_outlined),
-                      onPressed: () =>
-                          _assignFacultyToClub(clubId, clubData['clubName']),
-                    ),
+                  return StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('club_mappings')
+                        .doc("${widget.collegeName}_$clubId")
+                        .snapshots(),
+                    builder: (context, mapSnap) {
+                      String assigned = "Not Assigned";
+                      Color statusColor = Theme.of(context).colorScheme.error;
+                      bool hasMapping = false;
+
+                      if (mapSnap.hasData && mapSnap.data!.exists) {
+                        final mappingData = mapSnap.data!.data() as Map<String, dynamic>;
+                        assigned = mappingData['facultyName'] ??
+                            mappingData['facultyEmail'] ??
+                            "Not Assigned";
+                        statusColor = Colors.green;
+                        hasMapping = true;
+                      }
+
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        leading: CircleAvatar(
+                          backgroundColor: isGlobal
+                              ? Theme.of(context).colorScheme.secondary.withOpacity(0.1)
+                              : Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          child: Icon(isGlobal ? Icons.public_outlined : Icons.school_outlined,
+                              color: isGlobal
+                                  ? Theme.of(context).colorScheme.secondary
+                                  : Theme.of(context).colorScheme.primary),
+                        ),
+                        title: Text(clubData['clubName'],
+                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text("Faculty: $assigned",
+                              style: TextStyle(color: statusColor, fontSize: 13)),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (hasMapping)
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                tooltip: 'Remove Mapping',
+                                onPressed: () => _confirmDeleteMapping(clubId, clubData['clubName']),
+                              ),
+                            IconButton(
+                              icon: const Icon(Icons.rule_folder_outlined),
+                              tooltip: 'Assign Faculty',
+                              onPressed: () => _assignFacultyToClub(clubId, clubData['clubName']),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ).animate().fadeIn(duration: 500.ms).slideX();
                 },
               );
@@ -143,11 +156,40 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
     );
   }
 
+  Future<void> _confirmDeleteMapping(String clubId, String clubName) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Mapping?'),
+        content: Text('Are you sure you want to remove the faculty assigned to $clubName?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await FirebaseFirestore.instance
+          .collection('club_mappings')
+          .doc("${widget.collegeName}_$clubId")
+          .delete();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Mapping removed for $clubName')),
+        );
+      }
+    }
+  }
+
   Future<void> _assignFacultyToClub(String clubId, String clubName) async {
     String? selectedEmail;
     String? selectedName;
 
-    // Fetch local faculty from the server to ensure the list is up-to-date
     final facultySnap = await FirebaseFirestore.instance
         .collection('faculty')
         .where('college', isEqualTo: widget.collegeName)
@@ -175,7 +217,6 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
               .toList(),
           onChanged: (v) {
             selectedEmail = v;
-            // Get the faculty name for the selected email
             final selectedDoc = facultySnap.docs.firstWhere(
               (doc) => doc['email'] == v,
               orElse: () => throw Exception('Faculty not found'),
@@ -190,7 +231,6 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
             onPressed: () async {
               if (selectedEmail == null || selectedName == null) return;
 
-              // This mapping document belongs ONLY to this college
               await FirebaseFirestore.instance
                   .collection('club_mappings')
                   .doc("${widget.collegeName}_$clubId")
@@ -212,6 +252,82 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
     );
   }
 
+  // --- Manage Local Clubs Logic ---
+
+  void _openManageClubs() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (c) => Scaffold(
+          appBar: AppBar(title: const Text('Manage Local Clubs')),
+          body: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('clubs')
+                .where('college', isEqualTo: widget.collegeName)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+              final docs = snapshot.data!.docs;
+              if (docs.isEmpty) return const Center(child: Text("No local clubs added yet."));
+
+              return ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: docs.length,
+                separatorBuilder: (context, index) => const Divider(),
+                itemBuilder: (context, index) {
+                  final data = docs[index].data() as Map<String, dynamic>;
+                  final clubId = docs[index].id;
+                  return ListTile(
+                    title: Text(data['clubName'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: const Text("Local Club"),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      onPressed: () => _deleteClub(clubId, data['clubName']),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteClub(String clubId, String clubName) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Club?'),
+        content: Text('This will permanently delete "$clubName" and all its mappings. This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        // 1. Delete the club document
+        await FirebaseFirestore.instance.collection('clubs').doc(clubId).delete();
+        // 2. Delete the mapping if it exists
+        await FirebaseFirestore.instance.collection('club_mappings').doc("${widget.collegeName}_$clubId").delete();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Club "$clubName" deleted.')));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting club: $e')));
+        }
+      }
+    }
+  }
+
   // --- Add Club Logic (Local) ---
 
   Future<void> _addClubDialog() async {
@@ -231,7 +347,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                 if (nameController.text.isEmpty) return;
                 await FirebaseFirestore.instance.collection('clubs').add({
                   'clubName': nameController.text.trim(),
-                  'college': widget.collegeName, // Marked as local
+                  'college': widget.collegeName,
                   'createdAt': FieldValue.serverTimestamp(),
                 });
                 if (mounted) Navigator.pop(c);
@@ -249,9 +365,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
     return PopScope(
         canPop: false,
         onPopInvoked: (bool didPop) async {
-          if (didPop) {
-            return;
-          }
+          if (didPop) return;
           final bool? shouldPop = await showDialog<bool>(
             context: context,
             builder: (_) => AlertDialog(
@@ -287,7 +401,10 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                       'isDarkMode', themeNotifier.value == ThemeMode.dark);
                 },
               ),
-
+              IconButton(
+                icon: const Icon(Icons.logout),
+                onPressed: _handleLogout,
+              ),
             ],
           ),
           body: GridView.count(
@@ -299,6 +416,8 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
               _buildCard(
                   "Mapping Dashboard", Icons.rule_folder_outlined, _openMappingDashboard),
               _buildCard(
+                  "Manage Clubs", Icons.business_center_outlined, _openManageClubs),
+              _buildCard(
                   "Add Local Club", Icons.add_business_outlined, _addClubDialog),
               _buildCard("Register Faculty", Icons.person_add_alt_1_outlined, () {
                 Navigator.push(
@@ -307,19 +426,12 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                         builder: (c) =>
                             AddFacultyScreen(collegeName: widget.collegeName)));
               }),
-
             ].animate(interval: 200.ms).fadeIn(duration: 300.ms).slideY(),
           ),
           bottomNavigationBar: BottomNavigationBar(
             items: const <BottomNavigationBarItem>[
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person),
-                label: 'Profile',
-              ),
+              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+              BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
             ],
             currentIndex: _selectedIndex,
             selectedItemColor: Theme.of(context).colorScheme.primary,
@@ -360,8 +472,6 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
   }
 }
 
-// --- Faculty Registration Screen ---
-
 class AddFacultyScreen extends StatefulWidget {
   final String collegeName;
   const AddFacultyScreen({super.key, required this.collegeName});
@@ -376,10 +486,7 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
   final _pass = TextEditingController();
   final _phone = TextEditingController();
 
-  // Generic registration function, throws error on failure
   Future<void> _register(String name, String email, String password) async {
-    // NOTE: In a production app, use a Cloud Function to create users
-    // so the admin isn't logged out. This method is for demonstration.
     UserCredential cred =
         await FirebaseAuth.instance.createUserWithEmailAndPassword(
       email: email.trim(),
@@ -395,37 +502,11 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
     });
   }
 
-  // Handler for the manual "Create" button
   Future<void> _handleManualRegister() async {
-    if (_name.text.trim().isEmpty) {
-      _showError("Full Name is required");
-      return;
-    }
-
-    if (_email.text.trim().isEmpty) {
-      _showError("Email is required");
-      return;
-    }
-
-    if (!_isValidEmail(_email.text.trim())) {
-      _showError("Please enter a valid email address");
-      return;
-    }
-
-    if (_pass.text.isEmpty) {
-      _showError("Password is required");
-      return;
-    }
-
-    if (_pass.text.length < 6) {
-      _showError("Password must be at least 6 characters");
-      return;
-    }
-
-    if (_phone.text.isNotEmpty && !_isValidPhoneNumber(_phone.text)) {
-      _showError("Please enter a valid 10-digit phone number");
-      return;
-    }
+    if (_name.text.trim().isEmpty) { _showError("Full Name is required"); return; }
+    if (_email.text.trim().isEmpty) { _showError("Email is required"); return; }
+    if (!_isValidEmail(_email.text.trim())) { _showError("Please enter a valid email"); return; }
+    if (_pass.text.length < 6) { _showError("Password must be at least 6 chars"); return; }
 
     try {
       await _register(_name.text, _email.text, _pass.text);
@@ -435,22 +516,11 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
         Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to register: ${e.toString()}')));
-      }
+      _showError('Failed to register: ${e.toString()}');
     }
   }
 
-  bool _isValidPhoneNumber(String phone) {
-    final digitsOnly = phone.replaceAll(RegExp(r'\D'), '');
-    return digitsOnly.length == 10;
-  }
-
-  bool _isValidEmail(String email) {
-    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-    return emailRegex.hasMatch(email);
-  }
+  bool _isValidEmail(String email) => RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -458,7 +528,6 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
     );
   }
 
-  // CSV Upload Logic
   Future<void> _uploadCsv() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -468,75 +537,42 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
     if (result != null) {
       final file = File(result.files.single.path!);
       final lines = await file.readAsLines(encoding: utf8);
-      print("File upload successfull");
       int successCount = 0;
       int failCount = 0;
 
       for (var i = 1; i < lines.length; i++) {
-        // Skip header row
         final line = lines[i];
         if (line.trim().isEmpty) continue;
-
         final parts = line.split(',');
         if (parts.length >= 4) {
-          // Format: s_no,name,email,password
           final name = parts[1].trim();
           final email = parts[2].trim();
           final password = parts[3].trim();
-
           if (name.isNotEmpty && email.isNotEmpty && password.isNotEmpty) {
             try {
               await _register(name, email, password);
               successCount++;
-              ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Registered $name successfully.')));
-            } catch (e) {
-              failCount++;
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('Failed to register $name: ${e.toString()}')));
-            }
-          } else {
-            failCount++;
-          }
-        } else {
-          failCount++;
-        }
+            } catch (e) { failCount++; }
+          } else { failCount++; }
+        } else { failCount++; }
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(
-                'CSV processing finished. Success: $successCount, Failed: $failCount')));
+            content: Text('Finished. Success: $successCount, Failed: $failCount')));
         Navigator.pop(context);
       }
-    } else {
-      print("File upload failed...");
-      // User canceled the picker
     }
   }
 
   Future<void> _openTemplate() async {
     try {
-      final String templateString =
-          await rootBundle.loadString('assets/faculty_template.csv');
+      final String templateString = await rootBundle.loadString('assets/faculty_template.csv');
       final Directory directory = await getApplicationDocumentsDirectory();
       final File file = File('${directory.path}/faculty_template.csv');
       await file.writeAsString(templateString);
-
-      final result = await OpenFile.open(file.path);
-
-      if (result.type != ResultType.done) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not open the file: ${result.message}')),
-          );
-        }
-      }
+      await OpenFile.open(file.path);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error opening template: $e")),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
@@ -545,46 +581,25 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text("Register Faculty")),
       body: SingleChildScrollView(
-        // Added to prevent overflow
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-                controller: _name,
-                decoration: const InputDecoration(labelText: "Full Name")),
+            TextField(controller: _name, decoration: const InputDecoration(labelText: "Full Name")),
             const SizedBox(height: 16),
-            TextField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: "Email")),
+            TextField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: "Email")),
             const SizedBox(height: 16),
-            TextField(
-                controller: _pass,
-                decoration: const InputDecoration(labelText: "Password"),
-                obscureText: true),
+            TextField(controller: _pass, decoration: const InputDecoration(labelText: "Password"), obscureText: true),
             const SizedBox(height: 16),
-            TextField(
-                controller: _phone,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: "Phone Number")),
+            TextField(controller: _phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: "Phone Number")),
             const SizedBox(height: 32),
-            ElevatedButton(
-                onPressed: _handleManualRegister,
-                child: const Text("Create Faculty Account")),
+            ElevatedButton(onPressed: _handleManualRegister, child: const Text("Create Faculty Account")),
             const SizedBox(height: 20),
             const Divider(),
             const SizedBox(height: 20),
-            OutlinedButton.icon(
-              onPressed: _uploadCsv,
-              icon: const Icon(Icons.upload_file_outlined),
-              label: const Text("Upload CSV File"),
-            ),
+            OutlinedButton.icon(onPressed: _uploadCsv, icon: const Icon(Icons.upload_file_outlined), label: const Text("Upload CSV File")),
             const SizedBox(height: 10),
-            TextButton(
-              onPressed: _openTemplate,
-              child: const Text("Open CSV Template"),
-            ),
+            TextButton(onPressed: _openTemplate, child: const Text("Open CSV Template")),
           ],
         ),
       ),
