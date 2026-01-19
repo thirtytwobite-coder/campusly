@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'dart:math' as math;
 
 class ManageProgramsScreen extends StatefulWidget {
   final String clubId;
@@ -106,6 +105,8 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     final posterLinkController = TextEditingController();
     bool hasPrizePool = false;
     String visibility = 'college'; // 'college' or 'public'
+    String? category;
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -143,6 +144,26 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                     border: OutlineInputBorder(),
                   ),
                   maxLines: 3,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: category,
+                  hint: const Text('Select Category'),
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: ['Technical', 'Cultural', 'Sports', 'Academic', 'Social', 'Other']
+                      .map((label) => DropdownMenuItem(
+                            value: label,
+                            child: Text(label),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      category = value;
+                    });
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -272,6 +293,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                 final validationError = _validateProgramForm(
                   nameController.text,
                   dateController.text,
+                  category,
                 );
 
                 if (validationError != null) {
@@ -282,6 +304,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                 }
 
                 _addProgram(
+                  ctx,
                   nameController.text,
                   descriptionController.text,
                   dateController.text,
@@ -291,8 +314,8 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                   prizeAmountController.text,
                   _convertGoogleDriveLink(posterLinkController.text),
                   visibility,
+                  category!,
                 );
-                Navigator.pop(ctx);
               },
               child: const Text('Create'),
             ),
@@ -318,6 +341,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     final prizeAmountController = TextEditingController(text: programData['prizeAmount'] ?? '');
     String visibility = programData['visibility'] ?? 'college';
     bool hasPrizePool = programData['hasPrizePool'] ?? false;
+    String? category = programData['category'];
 
     showDialog(
       context: context,
@@ -351,6 +375,26 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: category,
+                hint: const Text('Select Category'),
+                decoration: const InputDecoration(
+                  labelText: 'Category',
+                  border: OutlineInputBorder(),
+                ),
+                items: ['Technical', 'Cultural', 'Sports', 'Academic', 'Social', 'Other']
+                    .map((label) => DropdownMenuItem(
+                          value: label,
+                          child: Text(label),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    category = value;
+                  });
+                },
               ),
               const SizedBox(height: 12),
               TextField(
@@ -485,6 +529,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
               final validationError = _validateProgramForm(
                 nameController.text,
                 dateController.text,
+                category,
               );
 
               if (validationError != null) {
@@ -495,6 +540,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
               }
 
               _updateProgram(
+                ctx,
                 programId,
                 nameController.text,
                 descriptionController.text,
@@ -505,8 +551,8 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                 visibility,
                 hasPrizePool,
                 prizeAmountController.text,
+                category!,
               );
-              Navigator.pop(ctx);
             },
             child: const Text('Update'),
           ),
@@ -515,15 +561,17 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     );
   }
 
-  String? _validateProgramForm(String name, String date) {
+  String? _validateProgramForm(String name, String date, String? category) {
     if (name.trim().isEmpty) {
       return 'Program name cannot be empty';
     }
     if (date.trim().isEmpty) {
       return 'Date cannot be empty';
     }
+    if (category == null) {
+      return 'Please select a category';
+    }
 
-    // Validate date format
     try {
       DateFormat('yyyy-MM-dd').parseStrict(date);
     } catch (e) {
@@ -535,27 +583,28 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
 
   String _convertGoogleDriveLink(String link) {
     if (link.isEmpty) return '';
-    
+
     if (link.contains('.jpg') || link.contains('.jpeg') || link.contains('.png') || link.contains('.gif') || link.contains('.webp')) {
       return link;
     }
-    
+
     if (link.contains('drive.google.com/uc?export=view')) {
       return link;
     }
-    
+
     final regex = RegExp(r'(?:drive\.google\.com/file/d/|id=)([a-zA-Z0-9-_]+)');
     final match = regex.firstMatch(link);
-    
+
     if (match != null) {
       final fileId = match.group(1);
       return 'https://drive.google.com/uc?export=view&id=$fileId';
     }
-    
+
     return link;
   }
 
   Future<void> _addProgram(
+    BuildContext context,
     String name,
     String description,
     String date,
@@ -565,11 +614,13 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     String prizeAmount,
     String posterLink,
     String visibility,
+    String category,
   ) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final user = FirebaseAuth.instance.currentUser;
-      
-      // Fetch current student details for coordinator info
+
       final studentDoc = await FirebaseFirestore.instance.collection('student').doc(user?.uid).get();
       final coordinatorName = studentDoc.data()?['name'] ?? 'Unknown';
 
@@ -587,6 +638,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
         'hasPrizePool': hasPrizePool,
         'prizeAmount': hasPrizePool && prizeAmount.isNotEmpty ? prizeAmount : null,
         'visibility': visibility,
+        'category': category,
         'status': 'pending',
         'clubId': widget.clubId,
         'clubName': widget.clubName,
@@ -597,21 +649,19 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Program sent for approval!')),
-        );
-      }
+      navigator.pop();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Program sent for approval!')),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
 
   Future<void> _updateProgram(
+    BuildContext context,
     String programId,
     String name,
     String description,
@@ -622,7 +672,10 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     String visibility,
     bool hasPrizePool,
     String prizeAmount,
+    String category,
   ) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       await FirebaseFirestore.instance
           .collection('clubs')
@@ -639,25 +692,23 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
         'visibility': visibility,
         'hasPrizePool': hasPrizePool,
         'prizeAmount': hasPrizePool && prizeAmount.isNotEmpty ? prizeAmount.trim() : null,
+        'category': category,
         'status': 'pending', // Reset status on edit
         'updatedAt': FieldValue.serverTimestamp(),
       });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Program updated and sent for re-approval!')),
-        );
-      }
+      navigator.pop();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Program updated and sent for re-approval!')),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
 
   Future<void> _updateProgramStatus(String programId, String newStatus) async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
       await FirebaseFirestore.instance
           .collection('clubs')
@@ -669,17 +720,13 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Status updated to $newStatus')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Status updated to $newStatus')),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
 
@@ -696,16 +743,23 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
           ),
           TextButton(
             onPressed: () async {
-              await FirebaseFirestore.instance
-                  .collection('clubs')
-                  .doc(widget.clubId)
-                  .collection('programs')
-                  .doc(programId)
-                  .delete();
-              if (mounted) {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
+              final navigator = Navigator.of(ctx);
+              final messenger = ScaffoldMessenger.of(ctx);
+              try {
+                await FirebaseFirestore.instance
+                    .collection('clubs')
+                    .doc(widget.clubId)
+                    .collection('programs')
+                    .doc(programId)
+                    .delete();
+
+                navigator.pop();
+                messenger.showSnackBar(
                   const SnackBar(content: Text('Program deleted')),
+                );
+              } catch (e) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Error: $e')),
                 );
               }
             },
@@ -743,7 +797,6 @@ class ProgramCard extends StatelessWidget {
     final posterLink = programData['posterLink'] as String?;
     final rejectionReason = programData['rejectionReason'] as String?;
 
-    // Fix for DropdownButton error: Ensure 'approved' is in the list of items if the current status is 'approved'
     final List<String> availableStatuses = ['ongoing', 'completed', 'cancelled'];
     if (status == 'approved') {
       availableStatuses.insert(0, 'approved');
@@ -914,7 +967,7 @@ class StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withAlpha(50),
         border: Border.all(color: color),
         borderRadius: BorderRadius.circular(20),
       ),

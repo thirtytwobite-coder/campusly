@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'main.dart';
+import 'main.dart'; // Access themeNotifier
 import 'add_faculty.dart' as add_fac;
 import 'college_list.dart';
 import 'faculty_home.dart';
@@ -52,7 +52,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
         return;
       }
 
-      // --- FACULTY / STUDENT NAVIGATION ---
+      // --- CHECK FACULTY COLLECTION FIRST ---
       var facultyDoc = await FirebaseFirestore.instance.collection('faculty').doc(u.user!.uid).get();
 
       if (facultyDoc.exists) {
@@ -76,14 +76,12 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
                 MaterialPageRoute(builder: (_) => const FacultyHomeScreen()),
               );
               break;
-            case 'Student':
-              await _handleStudentLogin(facultyDoc);
-              break;
             default:
               _showErrorDialog("Invalid role assigned");
           }
         }
       } else {
+        // --- CHECK STUDENT COLLECTION ---
         var studentDoc = await FirebaseFirestore.instance.collection('student').doc(u.user!.uid).get();
         if (studentDoc.exists) {
           await _handleStudentLogin(studentDoc);
@@ -106,6 +104,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
       return;
     }
 
+    // Check if this student is a coordinator for any club
     final coordinatorQuery = await FirebaseFirestore.instance
         .collection('clubs')
         .where('coordinators', arrayContains: {
@@ -118,6 +117,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
 
     if (mounted) {
       if (coordinatorQuery.docs.isNotEmpty) {
+        // FIXED: Removed 'const' because RoleSelectionScreen might not have a const constructor
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => RoleSelectionScreen()),
@@ -144,12 +144,11 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
     }
   }
 
-
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Login Failed'),
+        title: const Text('Notification'),
         content: Text(message),
         actions: [
           TextButton(
@@ -161,89 +160,76 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
     );
   }
 
-  Widget _buildTextField(BuildContext context, TextEditingController controller, String label, IconData icon, TextInputType type,
-      {bool obscure = false, Widget? suffixIcon}) {
-    return TextField(
-      controller: controller,
-      obscureText: obscure,
-      keyboardType: type,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
-        suffixIcon: suffixIcon,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Icon(Icons.rocket_launch_sharp, size: 60, color: Theme.of(context).primaryColor),
-                  const SizedBox(height: 15),
-                  Text("CAMPUSLY",
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2,
-                          )),
-                  const SizedBox(height: 40),
-                  _buildTextField(context, _loginEmail, "Email", Icons.email, TextInputType.emailAddress),
-                   const SizedBox(height: 15),
-                  _buildTextField(
-                    context,
-                    _loginPass,
-                    "Password",
-                    Icons.lock,
-                    TextInputType.text,
-                    obscure: _isPasswordObscured,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Icon(Icons.rocket_launch_sharp, size: 80, color: Theme.of(context).primaryColor),
+                const SizedBox(height: 15),
+                Text("CAMPUSLY",
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    )),
+                const SizedBox(height: 40),
+                TextField(
+                  controller: _loginEmail,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(labelText: "Email", prefixIcon: Icon(Icons.email)),
+                ),
+                const SizedBox(height: 15),
+                TextField(
+                  controller: _loginPass,
+                  obscureText: _isPasswordObscured,
+                  decoration: InputDecoration(
+                    labelText: "Password",
+                    prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
                       icon: Icon(_isPasswordObscured ? Icons.visibility_off : Icons.visibility),
                       onPressed: () => setState(() => _isPasswordObscured = !_isPasswordObscured),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: _handleForgotPassword,
-                      child: Text("Forgot Password?"),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(onPressed: _handleForgotPassword, child: const Text("Forgot Password?")),
+                ),
+                const SizedBox(height: 20),
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ElevatedButton(
+                  onPressed: _login,
+                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 15)),
+                  child: const Text("LOGIN", style: TextStyle(fontSize: 16)),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("New student? "),
+                    GestureDetector(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentSignUpScreen())),
+                      child: Text("Register here",
+                          style: TextStyle(
+                              color: Theme.of(context).primaryColor,
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline)),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : ElevatedButton(
-                          onPressed: _login,
-                          child: const Text("LOGIN"),
-                        ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text("New student? ", style: Theme.of(context).textTheme.bodyMedium),
-                      GestureDetector(
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentSignUpScreen())),
-                        child: Text("Register here",
-                            style: TextStyle(
-                                color: Theme.of(context).primaryColor,
-                                fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline)),
-                      ),
-                    ],
-                  ),
-                ],
-              ).animate().slideY(duration: 300.ms, delay: 200.ms).fadeIn(),
-            ),
+                  ],
+                ),
+              ],
+            ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.2, end: 0),
           ),
         ),
+      ),
     );
   }
 }
@@ -254,66 +240,43 @@ class AdminDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (bool didPop) {
-        if (didPop) {
-          return;
-        }
-        showDialog<bool>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Exit'),
-            content: const Text('Are you sure you want to exit?'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
-              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes')),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Admin Dashboard"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.brightness_6),
+            onPressed: () async {
+              themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+              SharedPreferences prefs = await SharedPreferences.getInstance();
+              prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
+            },
           ),
-        ).then((value) {
-          if (value ?? false) {
-            Navigator.of(context).pop();
-          }
-        });
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text("Admin Dashboard"),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.brightness_6),
+          IconButton(
+              icon: const Icon(Icons.logout),
               onPressed: () async {
-                themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-                SharedPreferences prefs = await SharedPreferences.getInstance();
-                prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
-              },
-            ),
-            IconButton(
-                icon: const Icon(Icons.logout),
-                onPressed: () async {
-                  await FirebaseAuth.instance.signOut();
-                  if (context.mounted) {
-                    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const UnifiedLoginScreen()));
-                  }
-                })
-          ],
-        ),
-        body: GridView.count(
-          padding: const EdgeInsets.all(16),
-          crossAxisCount: 2,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          children: [
-            _card(context, "Add Main Faculty", Icons.person_add,
-                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const add_fac.AddFacultyScreen(role: 'Main Faculty')))),
-            _card(context, "Manage Clubs", Icons.group_work,
-                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminClubsScreen()))),
-            _card(context, "Colleges & Status", Icons.list_alt,
-                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CollegeListView()))),
-            _card(context, "Change Password", Icons.lock_reset,
-                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePasswordScreen()))),
-          ].animate().slideY(duration: 300.ms, delay: 200.ms).fadeIn(),
-        ),
+                await FirebaseAuth.instance.signOut();
+                if (context.mounted) {
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const UnifiedLoginScreen()));
+                }
+              })
+        ],
+      ),
+      body: GridView.count(
+        padding: const EdgeInsets.all(16),
+        crossAxisCount: 2,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        children: [
+          _card(context, "Add Main Faculty", Icons.person_add,
+                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const add_fac.AddFacultyScreen(role: 'Main Faculty')))),
+          _card(context, "Manage Clubs", Icons.group_work,
+                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminClubsScreen()))),
+          _card(context, "Colleges & Status", Icons.list_alt,
+                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CollegeListView()))),
+          _card(context, "Change Password", Icons.lock_reset,
+                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChangePasswordScreen()))),
+        ],
       ),
     );
   }
@@ -322,12 +285,13 @@ class AdminDashboard extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Card(
+        elevation: 4,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 35),
+            Icon(icon, size: 40, color: Theme.of(context).primaryColor),
             const SizedBox(height: 10),
-            Text(title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.labelLarge),
+            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -363,17 +327,14 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
-              final name = clubName.text.trim();
-              if (name.isEmpty) return;
-
-              Navigator.pop(context);
-
+              if (clubName.text.isEmpty) return;
               await FirebaseFirestore.instance.collection('clubs').add({
-                'clubName': name,
+                'clubName': clubName.text.trim(),
                 'description': clubDesc.text.trim(),
                 'createdBy': FirebaseAuth.instance.currentUser?.email ?? 'admin',
                 'createdAt': FieldValue.serverTimestamp(),
               });
+              if (mounted) Navigator.pop(context);
             },
             child: const Text('Add'),
           ),
@@ -382,77 +343,31 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
     );
   }
 
-  Future<void> _deleteClub(String docId) async {
-    await FirebaseFirestore.instance.collection('clubs').doc(docId).delete();
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Club removed')));
-  }
-
-  void _confirmDelete(String id) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Delete Club"),
-        content: const Text("Are you sure?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("No")),
-          TextButton(onPressed: () {
-            Navigator.pop(context);
-            _deleteClub(id);
-          }, child: const Text("Yes")),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manage Clubs'),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddClubDialog,
-        child: const Icon(Icons.add),
-      ).animate().scale(),
+      appBar: AppBar(title: const Text('Manage Clubs')),
+      floatingActionButton: FloatingActionButton(onPressed: _showAddClubDialog, child: const Icon(Icons.add)),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('clubs')
-            .snapshots(),
+        stream: FirebaseFirestore.instance.collection('clubs').snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-
-          final adminEmail = FirebaseAuth.instance.currentUser?.email ?? '';
-          final docs = (snapshot.data?.docs ?? [])
-              .where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            return data['createdBy'] == adminEmail;
-          })
-              .toList()
-            ..sort((a, b) {
-              final aTime = a['createdAt'] as Timestamp?;
-              final bTime = b['createdAt'] as Timestamp?;
-              return (bTime?.compareTo(aTime ?? Timestamp.now()) ?? 0);
-            });
-
-          if (docs.isEmpty) return const Center(child: Text("No clubs found."));
-
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final docs = snapshot.data!.docs;
           return ListView.builder(
-            padding: const EdgeInsets.all(10),
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final data = docs[index].data() as Map<String, dynamic>;
-              final id = docs[index].id;
-
               return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 child: ListTile(
-                  title: Text(data['clubName'] ?? 'Unnamed', style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
-                  subtitle: Text(data['description'] ?? ""),
+                  title: Text(data['clubName'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(data['description'] ?? ''),
                   trailing: IconButton(
-                    icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
-                    onPressed: () => _confirmDelete(id),
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => FirebaseFirestore.instance.collection('clubs').doc(docs[index].id).delete(),
                   ),
                 ),
-              ).animate().fadeIn(duration: 500.ms).slideX();
+              );
             },
           );
         },

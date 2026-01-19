@@ -598,7 +598,7 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
         'clubName': clubName,
         'clubId': clubId,
         'programId': programId,
-        'category': 'Technical',
+        'category': data['category'] ?? 'Technical',
         'maxSeats': 100,
         'filledSeats': 0,
         'posterLink': data['posterLink'],
