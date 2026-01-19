@@ -81,7 +81,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                 onEdit: () => _showEditProgramDialog(context, programDoc.id, programData),
                 onDelete: () => _confirmDelete(context, programDoc.id),
                 onStatusChange: (newStatus) =>
-                    _updateProgramStatus(programDoc.id, newStatus),
+                    _requestStatusChange(programDoc.id, newStatus),
               );
             },
           );
@@ -714,7 +714,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     }
   }
 
-  Future<void> _updateProgramStatus(String programId, String newStatus) async {
+  Future<void> _requestStatusChange(String programId, String newStatus) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await FirebaseFirestore.instance
@@ -723,12 +723,13 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
           .collection('programs')
           .doc(programId)
           .update({
-        'status': newStatus,
+        'status': 'pending',
+        'requestedStatus': newStatus,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
       messenger.showSnackBar(
-        SnackBar(content: Text('Status updated to $newStatus')),
+        SnackBar(content: Text('Request to change status to $newStatus sent for approval')),
       );
     } catch (e) {
       messenger.showSnackBar(
@@ -915,7 +916,7 @@ class ProgramCard extends StatelessWidget {
                       );
                     }).toList(),
                     onChanged: (String? newValue) {
-                      if (newValue != null) onStatusChange(newValue);
+                      if (newValue != null && newValue != status) onStatusChange(newValue);
                     },
                   )
                 else
