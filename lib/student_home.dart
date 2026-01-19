@@ -32,43 +32,39 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     _fetchStudentCollege();
   }
 
-  // 🔹 Fetch student/faculty college
+  // 🔹 Fetch student / faculty college
   Future<void> _fetchStudentCollege() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      setState(() => _isLoadingCollege = false);
-      return;
-    }
-
-    try {
-      DocumentSnapshot doc = await FirebaseFirestore.instance
-          .collection('student')
-          .doc(user.uid)
-          .get();
-
-      if (!doc.exists) {
-        doc = await FirebaseFirestore.instance
-            .collection('faculty')
+    if (user != null) {
+      try {
+        DocumentSnapshot doc = await FirebaseFirestore.instance
+            .collection('student')
             .doc(user.uid)
             .get();
-      }
 
-      if (mounted && doc.exists) {
-        final data = doc.data() as Map<String, dynamic>?;
-        setState(() {
-          studentCollege = data?['college']?.toString().trim();
-          _isLoadingCollege = false;
-        });
-        return;
+        if (!doc.exists) {
+          doc = await FirebaseFirestore.instance
+              .collection('faculty')
+              .doc(user.uid)
+              .get();
+        }
+
+        if (mounted && doc.exists) {
+          final data = doc.data() as Map<String, dynamic>?;
+          setState(() {
+            studentCollege = data?['college']?.toString().trim();
+            _isLoadingCollege = false;
+          });
+          return;
+        }
+      } catch (e) {
+        debugPrint("Error fetching college: $e");
       }
-    } catch (e) {
-      debugPrint("Error fetching college: $e");
     }
-
     if (mounted) setState(() => _isLoadingCollege = false);
   }
 
-  // 🔹 Date picker
+  // 🔹 Date picker (from file 2)
   Future<void> _selectDate(BuildContext context) async {
     final picked = await showDatePicker(
       context: context,
@@ -99,7 +95,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
         children: [
-          // 🔹 College banner
+          // 🔹 College banner (from file 1)
           if (_selectedIndex == 1 && studentCollege != null)
             Container(
               width: double.infinity,
@@ -161,28 +157,28 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       .toLowerCase()
                       .trim();
 
-                  final bool isFromMyCollege =
+                  final isFromMyCollege =
                       studentCollege != null &&
-                          eventCollege
-                              .toLowerCase() ==
+                          eventCollege.isNotEmpty &&
+                          eventCollege.toLowerCase() ==
                               studentCollege!
                                   .toLowerCase();
 
-                  // 🔹 Tab logic
+                  // 🔹 Tab filtering
                   if (_selectedIndex == 0) {
                     if (visibility != 'public') return false;
                   } else {
                     if (!isFromMyCollege) return false;
                   }
 
-                  // 🔹 Category filter
+                  // 🔹 Category
                   if (selectedCategory != "All" &&
                       data['category'] !=
                           selectedCategory) {
                     return false;
                   }
 
-                  // 🔹 Search filter
+                  // 🔹 Search
                   if (!(data['title'] ?? "")
                       .toString()
                       .toLowerCase()
@@ -190,7 +186,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     return false;
                   }
 
-                  // 🔹 Date filter
+                  // 🔹 Date filter (from file 2)
                   if (_selectedDate != null) {
                     final selected =
                     DateFormat('yyyy-MM-dd')
@@ -210,7 +206,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       const EdgeInsets.all(20),
                       child: Text(
                         _selectedIndex == 1
-                            ? "No events found for $studentCollege."
+                            ? "No events found for $studentCollege.\nEnsure your events have the correct 'college' field."
                             : "No public events available.",
                         textAlign: TextAlign.center,
                         style: const TextStyle(
@@ -221,9 +217,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 }
 
                 return ListView.builder(
+                  itemCount: filteredDocs.length,
                   padding:
                   const EdgeInsets.only(bottom: 20),
-                  itemCount: filteredDocs.length,
                   itemBuilder: (context, index) =>
                       _buildEventCard(
                           filteredDocs[index]),
@@ -258,7 +254,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  // 🔹 Search + Date filter bar
+  // 🔹 Search bar + calendar (merged)
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -296,7 +292,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  // 🔹 Category chips
   Widget _buildCategoryChips() {
     final categories = [
       "All",
@@ -326,13 +321,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  // 🔹 Event card
   Widget _buildEventCard(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     final visibility =
     (data['visibility'] ?? "public").toString().toLowerCase();
     final isCollegeOnly = visibility == 'college';
     final prize = (data['prizeAmount'] ?? "").toString();
+    final eventDate = data['date'] ?? "TBD";
 
     return Card(
       margin:
@@ -362,7 +357,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           children: [
             const SizedBox(height: 4),
             Text(
-              "${data['college'] ?? "General Event"} • ${data['date'] ?? "TBD"}",
+              "${data['college'] ?? "General Event"} • $eventDate",
               style:
               TextStyle(color: Colors.grey[600], fontSize: 13),
             ),
@@ -416,7 +411,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1);
   }
 
-  // 🔹 Theme toggle
   void _toggleTheme() async {
     themeNotifier.value =
     themeNotifier.value == ThemeMode.light

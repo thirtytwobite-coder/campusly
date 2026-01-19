@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'analytics_screen.dart';
+import 'change_password.dart';
 import 'login_screen.dart';
 import 'main.dart';
 import 'manage_programs.dart';
@@ -45,9 +46,10 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     }
   }
 
-  // 🔹 Fetch club managed by coordinator
+  // 🔹 Fetch coordinator club
   Future<void> _fetchClubInfo() async {
     final user = FirebaseAuth.instance.currentUser;
+
     if (user?.email == null) {
       setState(() => _loading = false);
       return;
@@ -62,6 +64,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     if (mounted && query.docs.isNotEmpty) {
       final doc = query.docs.first;
       final data = doc.data();
+
       setState(() {
         clubId = doc.id;
         clubName = data['name'] ?? data['clubName'];
@@ -72,7 +75,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     }
   }
 
-  // 🔹 Bottom navigation handler
+  // 🔹 Bottom navigation
   void _onItemTapped(int index) async {
     if (index == _selectedIndex) return;
 
@@ -96,12 +99,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     setState(() => _selectedIndex = 0);
   }
 
-  void _toggleTheme() async {
-    themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
-  }
-
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -115,11 +112,24 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         appBar: AppBar(
           title: Text(clubName ?? 'Coordinator Dashboard'),
           actions: [
+            // 🔹 DIRECT student switch icon (from old file)
+            IconButton(
+              tooltip: "Switch to Student View",
+              icon: const Icon(Icons.person_pin_circle),
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const StudentHomeScreen(),
+                  ),
+                );
+              },
+            ),
+
             IconButton(
               icon: const Icon(Icons.brightness_6),
               onPressed: _toggleTheme,
             ),
-            _buildSettingsMenu(),
           ],
         ),
         body: _loading
@@ -144,7 +154,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     );
   }
 
-  // 🔹 Loading state
   Widget _buildLoadingState() {
     return const Center(
       child: Column(
@@ -158,7 +167,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     );
   }
 
-  // 🔹 Main dashboard body
   Widget _buildDashboardBody() {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
@@ -229,8 +237,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                           builder: (_) => AnalyticsScreen(
                             clubId: clubId!,
                             clubName: clubName ?? 'Club',
-                            coordinatorId: FirebaseAuth
-                                .instance.currentUser?.uid,
+                            coordinatorId:
+                            FirebaseAuth.instance.currentUser?.uid,
                           ),
                         ),
                       );
@@ -245,11 +253,11 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     );
   }
 
-  // 🔹 Club description card
   Widget _clubDescriptionCard(String description) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      shape:
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -259,22 +267,37 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text("Club Description",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    style:
+                    TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 IconButton(
-                  icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
-                  onPressed: () => _showEditDescriptionDialog(description),
+                  icon: const Icon(Icons.edit,
+                      size: 20, color: Colors.blue),
+                  onPressed: () =>
+                      _showEditDescriptionDialog(description),
                 ),
               ],
             ),
             const Divider(),
-            Text(description, style: const TextStyle(height: 1.5, color: Colors.black87)),
+            Text(
+              description,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(height: 1.5),
+            ),
           ],
         ),
       ),
     ).animate().fadeIn().slideY(begin: 0.1);
   }
 
-  Widget _buildQuickActionCard(String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildQuickActionCard(
+      String title,
+      String subtitle,
+      IconData icon,
+      Color color,
+      VoidCallback onTap,
+      ) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -289,36 +312,42 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
           children: [
             Icon(icon, size: 40, color: color),
             const SizedBox(height: 12),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey), textAlign: TextAlign.center),
+            Text(title,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(subtitle,
+                style:
+                const TextStyle(fontSize: 12, color: Colors.grey),
+                textAlign: TextAlign.center),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSettingsMenu() {
-    return PopupMenuButton<String>(
-      onSelected: (value) async {
-        if (value == 'switch') {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const StudentHomeScreen()));
-        }
-      },
-      itemBuilder: (context) => [
-        const PopupMenuItem(value: 'switch', child: Text("Switch to Student View")),
-      ],
-    );
+  Future<void> _toggleTheme() async {
+    themeNotifier.value =
+    themeNotifier.value == ThemeMode.light
+        ? ThemeMode.dark
+        : ThemeMode.light;
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool(
+        'isDarkMode', themeNotifier.value == ThemeMode.dark);
   }
 
   Future<bool?> _showExitDialog() {
     return showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (_) => AlertDialog(
         title: const Text("Exit Dashboard?"),
         content: const Text("Do you want to exit the application?"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text("Exit")),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Cancel")),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Exit")),
         ],
       ),
     );
@@ -328,16 +357,28 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     final controller = TextEditingController(text: current);
     return showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (_) => AlertDialog(
         title: const Text("Edit Club Description"),
-        content: TextField(controller: controller, maxLines: 4, decoration: const InputDecoration(border: OutlineInputBorder())),
+        content: TextField(
+          controller: controller,
+          maxLines: 4,
+          decoration:
+          const InputDecoration(border: OutlineInputBorder()),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () async {
-              if (clubId != null) {
-                await FirebaseFirestore.instance.collection('clubs').doc(clubId!).update({'description': controller.text});
-                if (mounted) Navigator.pop(context);
+              if (clubId != null &&
+                  controller.text.trim().isNotEmpty) {
+                await FirebaseFirestore.instance
+                    .collection('clubs')
+                    .doc(clubId!)
+                    .update(
+                    {'description': controller.text.trim()});
+                Navigator.pop(context);
               }
             },
             child: const Text("Save"),
