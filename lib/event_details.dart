@@ -29,7 +29,8 @@ class EventDetailsScreen extends StatelessWidget {
     final String date = data['date'] ?? 'TBD';
     final String venue = data['location'] ?? data['venue'] ?? 'TBD';
     final String time = data['time'] ?? 'TBD';
-    final String clubName = data['clubName'] ?? 'Club';
+    final String initialClubName = data['clubName'] ?? 'Club';
+    final String clubId = data['clubId'] ?? '';
     final String coordinatorName = data['coordinatorName'] ?? 'TBD';
     final String? imageUrl = data['posterLink'] ?? data['imageUrl'];
 
@@ -69,7 +70,23 @@ class EventDetailsScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   _buildInfoRow(Icons.location_on_outlined, venue),
                   const SizedBox(height: 16),
-                  _buildInfoRow(Icons.groups_outlined, "Club: $clubName"),
+                  
+                  // --- CLUB NAME WITH FETCH LOGIC ---
+                  if (clubId.isNotEmpty && (initialClubName == 'Club' || initialClubName.isEmpty))
+                    FutureBuilder<DocumentSnapshot>(
+                      future: FirebaseFirestore.instance.collection('clubs').doc(clubId).get(),
+                      builder: (context, snapshot) {
+                        String nameToShow = initialClubName;
+                        if (snapshot.hasData && snapshot.data!.exists) {
+                          final clubData = snapshot.data!.data() as Map<String, dynamic>;
+                          nameToShow = clubData['clubName'] ?? clubData['name'] ?? initialClubName;
+                        }
+                        return _buildInfoRow(Icons.groups_outlined, "Club: $nameToShow");
+                      },
+                    )
+                  else
+                    _buildInfoRow(Icons.groups_outlined, "Club: $initialClubName"),
+
                   const SizedBox(height: 16),
                   _buildInfoRow(Icons.person_outline, "Coordinator: $coordinatorName"),
                   const SizedBox(height: 16),
