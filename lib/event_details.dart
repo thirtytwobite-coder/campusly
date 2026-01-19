@@ -123,12 +123,16 @@ class EventDetailsScreen extends StatelessWidget {
             color: isCollegeOnly ? Colors.indigo : Colors.green,
           ),
           const SizedBox(width: 8),
-          Text(
-            isCollegeOnly ? "COLLEGE ONLY: $college" : "PUBLIC EVENT (OPEN TO ALL)",
-            style: TextStyle(
-              color: isCollegeOnly ? Colors.indigo[900] : Colors.green[900],
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
+          Flexible(
+            child: Text(
+              isCollegeOnly ? "COLLEGE ONLY: $college" : "PUBLIC EVENT (OPEN TO ALL)",
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              style: TextStyle(
+                color: isCollegeOnly ? Colors.indigo[900] : Colors.green[900],
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
             ),
           ),
         ],
@@ -166,15 +170,21 @@ class EventDetailsScreen extends StatelessWidget {
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 22, color: Colors.blueGrey[600]),
         const SizedBox(width: 15),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-            Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+              Text(
+                value, 
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
         ),
       ],
     );

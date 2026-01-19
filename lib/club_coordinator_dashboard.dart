@@ -249,14 +249,11 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       onSelected: (value) async {
         if (value == 'switch') {
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const StudentHomeScreen()));
-        } else if (value == 'logout') {
-          await FirebaseAuth.instance.signOut();
-          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (c) => const UnifiedLoginScreen()), (r) => false);
         }
       },
       itemBuilder: (context) => [
         const PopupMenuItem(value: 'switch', child: Text("Switch to Student View")),
-        const PopupMenuItem(value: 'logout', child: Text("Logout", style: TextStyle(color: Colors.red))),
+
       ],
     );
   }
