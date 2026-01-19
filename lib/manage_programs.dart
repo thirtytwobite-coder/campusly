@@ -623,6 +623,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
 
       final studentDoc = await FirebaseFirestore.instance.collection('student').doc(user?.uid).get();
       final coordinatorName = studentDoc.data()?['name'] ?? 'Unknown';
+      final college = studentDoc.data()?['college'] ?? 'Unknown College';
 
       await FirebaseFirestore.instance
           .collection('clubs')
@@ -638,6 +639,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
         'hasPrizePool': hasPrizePool,
         'prizeAmount': hasPrizePool && prizeAmount.isNotEmpty ? prizeAmount : null,
         'visibility': visibility,
+        'college': college,
         'category': category,
         'status': 'pending',
         'clubId': widget.clubId,

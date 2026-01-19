@@ -100,11 +100,12 @@ class _ApprovalCard extends StatelessWidget {
         'clubName': data['clubName'],
         'clubId': clubId,
         'programId': programId,
-        'category': 'Technical', // Default, could be made dynamic
+        'category': data['category'] ?? 'Technical',
         'maxSeats': 100, // Default
         'filledSeats': 0,
         'posterLink': data['posterLink'],
-        'visibility': data['visibility'],
+        'visibility': data['visibility'] ?? 'college',
+        'college': data['college'],
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -185,9 +186,32 @@ class _ApprovalCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              data['name'] ?? 'Unnamed Program',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    data['name'] ?? 'Unnamed Program',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: (data['visibility'] ?? 'college') == 'public' ? Colors.green[50] : Colors.blue[50],
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: (data['visibility'] ?? 'college') == 'public' ? Colors.green : Colors.blue),
+                  ),
+                  child: Text(
+                    (data['visibility'] ?? 'college').toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: (data['visibility'] ?? 'college') == 'public' ? Colors.green[900] : Colors.blue[900],
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             Text(data['description'] ?? '', style: const TextStyle(color: Colors.grey)),
@@ -195,8 +219,8 @@ class _ApprovalCard extends StatelessWidget {
             _detailRow(Icons.calendar_today, 'Date', data['date']),
             _detailRow(Icons.schedule, 'Time', data['time']),
             _detailRow(Icons.location_on, 'Venue', data['location']),
+            _detailRow(Icons.school, 'College', data['college']),
             _detailRow(Icons.person, 'Coordinator', data['coordinatorName']),
-            _detailRow(Icons.email, 'Email', data['coordinatorEmail']),
             const SizedBox(height: 16),
             Row(
               children: [

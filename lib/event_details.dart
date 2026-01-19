@@ -14,11 +14,12 @@ class EventDetailsScreen extends StatelessWidget {
     final data = event.data() as Map<String, dynamic>;
 
     // 2. Handling the "College Only" vs "Public" logic
-    final bool isCollegeOnly = data['isCollegeOnly'] ?? false;
+    final String visibility = data['visibility'] ?? "public";
+    final bool isCollegeOnly = visibility == "college";
     final String collegeName = data['college'] ?? "Unknown College";
 
     // 3. Smart Prize detection
-    final dynamic rawPrize = data['prizePool'] ?? data['pricePool'] ?? data['prize'];
+    final dynamic rawPrize = data['prizeAmount'] ?? data['prizePool'] ?? data['pricePool'] ?? data['prize'];
     final String prizeText = rawPrize?.toString() ?? "";
     final bool hasPrize = prizeText.trim().isNotEmpty;
 
@@ -27,7 +28,7 @@ class EventDetailsScreen extends StatelessWidget {
     final String description = data['description'] ?? 'No description provided by the coordinator.';
     final String date = data['date'] ?? 'TBD';
     final String venue = data['venue'] ?? 'TBD';
-    final String? imageUrl = data['imageUrl'];
+    final String? imageUrl = data['posterLink'] ?? data['imageUrl'];
 
     return Scaffold(
       appBar: AppBar(
@@ -100,7 +101,7 @@ class EventDetailsScreen extends StatelessWidget {
       width: double.infinity,
       color: Colors.grey[200],
       child: url != null && url.isNotEmpty
-          ? Image.network(url, fit: BoxFit.cover)
+          ? Image.network(url, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 80, color: Colors.grey))
           : const Icon(Icons.image_outlined, size: 80, color: Colors.grey),
     );
   }
@@ -153,7 +154,7 @@ class EventDetailsScreen extends StatelessWidget {
             children: [
               const Text("PRIZE POOL", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber)),
               Text(
-                amount,
+                "₹ $amount",
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.black),
               ),
             ],
