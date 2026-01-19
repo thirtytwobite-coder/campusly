@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'event_registration_screen.dart';
 
 class EventDetailsScreen extends StatelessWidget {
   final DocumentSnapshot event;
@@ -89,7 +90,7 @@ class EventDetailsScreen extends StatelessWidget {
         ),
       ),
       // --- REGISTRATION BUTTON ---
-      bottomSheet: _buildBottomAction(context, title),
+      bottomSheet: _buildBottomAction(context),
     );
   }
 
@@ -178,7 +179,7 @@ class EventDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomAction(BuildContext context, String eventTitle) {
+  Widget _buildBottomAction(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       color: Colors.white,
@@ -190,8 +191,11 @@ class EventDetailsScreen extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Registration for $eventTitle successful!")),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EventRegistrationScreen(event: event),
+            ),
           );
         },
         child: const Text("Register Now", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
