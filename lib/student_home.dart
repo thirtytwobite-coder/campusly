@@ -29,6 +29,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     _fetchStudentCollege();
   }
 
+  // Fetch the student's college from their user profile
   Future<void> _fetchStudentCollege() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -37,11 +38,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         if (!doc.exists) {
           doc = await FirebaseFirestore.instance.collection('faculty').doc(user.uid).get();
         }
-        
         if (mounted && doc.exists) {
-          final data = doc.data() as Map<String, dynamic>?;
           setState(() {
-            studentCollege = data?['college']?.toString().trim();
+            studentCollege = (doc.data() as Map<String, dynamic>?)?['college'];
             _isLoadingCollege = false;
           });
           return;
@@ -69,26 +68,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                if (_selectedIndex == 1 && studentCollege != null)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                    color: Colors.indigo.withAlpha(30),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.school, size: 16, color: Colors.indigo),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            "Showing events for: $studentCollege",
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.indigo),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                // 1. SEARCH BAR
                 _buildSearchBar(),
+
+                // 2. CATEGORY CHIPS
                 _buildCategoryChips(),
+
+                // 3. EVENT LIST WITH VISIBILITY LOGIC
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
@@ -104,23 +90,27 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         return const Center(child: Text("No events found."));
                       }
 
+                      // --- AUTOMATIC FILTERING LOGIC ---
                       var filteredDocs = snapshot.data!.docs.where((doc) {
                         final data = doc.data() as Map<String, dynamic>;
-                        final String eventCollege = (data['college'] ?? "").toString().trim();
-                        final String visibility = (data['visibility'] ?? "public").toString().toLowerCase().trim();
+                        final String eventCollege = data['college'] ?? "";
+                        
+                        // Requirement: Default visibility to Public if the field is missing
+                        final String visibility = (data['visibility'] ?? "public").toString().toLowerCase();
 
-                        bool isFromMyCollege = (studentCollege != null && 
-                                               eventCollege.isNotEmpty &&
-                                               eventCollege.toLowerCase() == studentCollege!.toLowerCase());
+                        // Identify whether the event belongs to the current student's college
+                        bool isFromMyCollege = (studentCollege != null && eventCollege == studentCollege);
 
+                        // Tab Filtering:
                         if (_selectedIndex == 0) {
                           // PUBLIC TAB: Only show events marked as "public"
                           if (visibility != 'public') return false;
                         } else {
-                          // MY COLLEGE TAB: Show ALL events from my college (Public AND Private)
+                          // MY COLLEGE TAB: Show all events from the student's college (Public or College-Only)
                           if (!isFromMyCollege) return false;
                         }
 
+                        // Category & Search Filters
                         bool matchesCategory = (selectedCategory == "All" || data['category'] == selectedCategory);
                         bool matchesSearch = (data['title'] ?? "").toString().toLowerCase().contains(_searchQuery);
 
@@ -133,10 +123,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             padding: const EdgeInsets.all(20.0),
                             child: Text(
                               _selectedIndex == 1
-                                  ? "No events found for $studentCollege.\nEnsure your events have the correct 'college' field."
+                                  ? "No events found for ${studentCollege ?? 'your college'}"
                                   : "No public events available.",
                               textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.grey),
                             ),
                           ),
                         );
@@ -169,6 +158,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       ),
     );
   }
+
+  // --- SUB-WIDGETS ---
 
   Widget _buildSearchBar() {
     return Padding(
@@ -210,7 +201,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   Widget _buildEventCard(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    
+    // 1. Read the event’s visibility field, defaulting to "public" if missing
     final String visibility = (data['visibility'] ?? "public").toString().toLowerCase();
+    
+    // 2. Identify whether the event is college-only
     final bool isCollegeOnly = visibility == 'college';
     final String prize = (data['prizeAmount'] ?? "").toString();
 
@@ -243,6 +238,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             const SizedBox(height: 6),
             Row(
               children: [
+                // 3. Display appropriate labels such as “Public Event” or “College-Only Event”
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
