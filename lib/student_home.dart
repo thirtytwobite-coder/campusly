@@ -456,84 +456,106 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final isCollegeOnly = visibility == 'college';
     final prize = (data['prizeAmount'] ?? "").toString();
     final eventDate = data['date'] ?? "TBD";
+    final posterLink = data['posterLink'] as String?;
 
     return Card(
       margin:
       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      clipBehavior: Clip.antiAlias, // Ensure image stays within card corners
       shape:
       RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 2,
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(12),
-        leading: CircleAvatar(
-          backgroundColor:
-          isCollegeOnly ? Colors.indigo[50] : Colors.green[50],
-          child: Icon(
-            isCollegeOnly ? Icons.school : Icons.public,
-            color:
-            isCollegeOnly ? Colors.indigo : Colors.green,
-            size: 20,
-          ),
-        ),
-        title: Text(
-          data['title'] ?? "Untitled Event",
-          style: const TextStyle(
-              fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              "${data['college'] ?? "General Event"} • $eventDate",
-              style:
-              TextStyle(color: Colors.grey[600], fontSize: 13),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isCollegeOnly
-                        ? Colors.indigo[100]
-                        : Colors.green[100],
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    isCollegeOnly
-                        ? "College-Only Event"
-                        : "Public Event",
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      color: isCollegeOnly
-                          ? Colors.indigo[900]
-                          : Colors.green[900],
-                    ),
-                  ),
-                ),
-                if (prize.isNotEmpty && prize != "0") ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    "🏆 ₹$prize",
-                    style: const TextStyle(
-                        color: Colors.orange,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios,
-            size: 14, color: Colors.grey),
+      child: InkWell(
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
               builder: (_) => EventDetailsScreen(event: doc)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (posterLink != null && posterLink.isNotEmpty)
+              Image.network(
+                posterLink,
+                width: double.infinity,
+                height: 180,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 180,
+                  width: double.infinity,
+                  color: Colors.grey[200],
+                  child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                ),
+              ),
+            ListTile(
+              contentPadding: const EdgeInsets.all(12),
+              leading: CircleAvatar(
+                backgroundColor:
+                isCollegeOnly ? Colors.indigo[50] : Colors.green[50],
+                child: Icon(
+                  isCollegeOnly ? Icons.school : Icons.public,
+                  color:
+                  isCollegeOnly ? Colors.indigo : Colors.green,
+                  size: 20,
+                ),
+              ),
+              title: Text(
+                data['title'] ?? "Untitled Event",
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 4),
+                  Text(
+                    "${data['college'] ?? "General Event"} • $eventDate",
+                    style:
+                    TextStyle(color: Colors.grey[600], fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isCollegeOnly
+                              ? Colors.indigo[100]
+                              : Colors.green[100],
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          isCollegeOnly
+                              ? "College-Only"
+                              : "Public",
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: isCollegeOnly
+                                ? Colors.indigo[900]
+                                : Colors.green[900],
+                          ),
+                        ),
+                      ),
+                      if (prize.isNotEmpty && prize != "0") ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          "🏆 ₹$prize",
+                          style: const TextStyle(
+                              color: Colors.orange,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios,
+                  size: 14, color: Colors.grey),
+            ),
+          ],
         ),
       ),
     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1);
