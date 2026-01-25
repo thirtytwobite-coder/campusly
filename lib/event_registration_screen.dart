@@ -47,11 +47,21 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
         _yearController = TextEditingController(text: studentData?['year']?.toString() ?? '');
         _semController = TextEditingController(text: studentData?['semester']?.toString() ?? '');
         _ktuIdController = TextEditingController(text: studentData?['ktuId'] ?? '');
+      } else {
+        // Fallback for empty controllers if student doc doesn't exist
+        _nameController = TextEditingController();
+        _phoneController = TextEditingController();
+        _deptController = TextEditingController();
+        _yearController = TextEditingController();
+        _semController = TextEditingController();
+        _ktuIdController = TextEditingController();
       }
     }
-    setState(() {
-      isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   @override
@@ -76,6 +86,35 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
+      // 🔹 Check if already registered
+      final existingReg = await FirebaseFirestore.instance
+          .collection('registrations')
+          .where('userId', isEqualTo: user.uid)
+          .where('eventId', isEqualTo: widget.event.id)
+          .get();
+
+      if (existingReg.docs.isNotEmpty) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text("Already Registered"),
+              content: const Text("You have already registered for this event."),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx); // Close dialog
+                    Navigator.pop(context); // Go back to event details
+                  },
+                  child: const Text("OK"),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+
       final updatedData = {
         'name': _nameController.text.trim(),
         'phone': _phoneController.text.trim(),
@@ -89,13 +128,13 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
       await FirebaseFirestore.instance
           .collection('student')
           .doc(user.uid)
-          .update(updatedData);
+          .set(updatedData, SetOptions(merge: true));
 
       // 2. Register for Event
       await FirebaseFirestore.instance.collection('registrations').add({
         'userId': user.uid,
         'eventId': widget.event.id,
-        'eventTitle': widget.event['title'],
+        'eventTitle': widget.event['title'] ?? widget.event['name'] ?? 'Untitled Event',
         'studentName': updatedData['name'],
         'studentEmail': user.email,
         'studentPhone': updatedData['phone'],
@@ -133,7 +172,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "You have successfully registered for\n${widget.event['title']}",
+                  "You have successfully registered for\n${widget.event['title'] ?? widget.event['name'] ?? 'Untitled Event'}",
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.grey),
                 ),
