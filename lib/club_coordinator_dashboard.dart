@@ -553,7 +553,51 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     } catch (e) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'))); }
   }
 
-  void _confirmDelete(BuildContext context, String pId) {
+  void _confirmDelete(BuildContext context, String pId) async {
+    // 🔹 1. Check registrations for the PROGRAM ID (local club programs)
+    final progRegs = await FirebaseFirestore.instance
+        .collection('registrations')
+        .where('eventId', isEqualTo: pId)
+        .limit(1)
+        .get();
+
+    // 🔹 2. Check registrations for the GLOBAL EVENT ID (linked via programId)
+    final globalEventQuery = await FirebaseFirestore.instance
+        .collection('events')
+        .where('programId', isEqualTo: pId)
+        .limit(1)
+        .get();
+    
+    bool hasGlobalRegs = false;
+    if (globalEventQuery.docs.isNotEmpty) {
+      final eventId = globalEventQuery.docs.first.id;
+      final eventRegs = await FirebaseFirestore.instance
+          .collection('registrations')
+          .where('eventId', isEqualTo: eventId)
+          .limit(1)
+          .get();
+      hasGlobalRegs = eventRegs.docs.isNotEmpty;
+    }
+
+    if (!mounted) return;
+
+    if (progRegs.docs.isNotEmpty || hasGlobalRegs) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Cannot Delete Program'),
+          content: const Text('This program has registered participants and cannot be deleted.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(

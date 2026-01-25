@@ -738,7 +738,36 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     }
   }
 
-  void _confirmDelete(BuildContext context, String programId) {
+  void _confirmDelete(BuildContext context, String programId) async {
+    // 🔹 Check for registered participants before deleting
+    final registrations = await FirebaseFirestore.instance
+        .collection('registrations')
+        .where('eventId', isEqualTo: programId)
+        .limit(1)
+        .get();
+
+    if (!mounted) return;
+
+    if (registrations.docs.isNotEmpty) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Cannot Delete Program'),
+          content: const Text(
+            'This program already has registered participants. '
+            'You cannot delete an event once someone has registered.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
