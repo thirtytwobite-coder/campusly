@@ -662,6 +662,25 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Event Approved and Published!')),
         );
+      }
+
+      // Send Notification to Club Coordinator
+      await FirebaseFirestore.instance
+          .collection('clubs')
+          .doc(clubId)
+          .collection('notifications')
+          .add({
+        'title': 'Event Approved',
+        'message': 'Your event "${data['name']}" has been approved and published.',
+        'timestamp': FieldValue.serverTimestamp(),
+        'type': 'approval',
+        'read': false,
+      });
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Event Approved, Published, and Notification Sent!')),
+        );
         Navigator.pop(context);
       }
     } catch (e) {
@@ -716,7 +735,27 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Event Rejected')),
                 );
-                Navigator.pop(context);
+              }
+
+              // Send Notification to Club Coordinator
+              await FirebaseFirestore.instance
+                  .collection('clubs')
+                  .doc(clubId)
+                  .collection('notifications')
+                  .add({
+                'title': 'Event Rejected',
+                'message': 'Your event "${data['name']}" was rejected. Reason: ${reasonController.text.trim()}',
+                'timestamp': FieldValue.serverTimestamp(),
+                'type': 'rejection',
+                'read': false,
+              });
+
+              if (context.mounted) {
+                Navigator.pop(context); // Close dialog
+                Navigator.pop(context); // Go back
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Event Rejected and Notification Sent!')),
+                );
               }
             },
             child: const Text('Reject'),

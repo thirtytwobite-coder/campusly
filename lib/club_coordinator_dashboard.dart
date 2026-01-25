@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'analytics_screen.dart';
@@ -126,6 +127,11 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
               },
             ),
 
+            IconButton(
+              tooltip: "Notifications",
+              icon: const Icon(Icons.notifications),
+              onPressed: _showNotifications,
+            ),
             IconButton(
               icon: const Icon(Icons.brightness_6),
               onPressed: _toggleTheme,
@@ -382,6 +388,113 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
               }
             },
             child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNotifications() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Notifications"),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400, // Fixed height for the list
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('clubs')
+                .doc(clubId)
+                .collection('notifications')
+                // .orderBy('timestamp', descending: true) // Temporarily removed to debug index issues
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text("Error: ${snapshot.error}"));
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.notifications_off,
+                          size: 40, color: Colors.grey),
+                      SizedBox(height: 10),
+                      Text("No notifications yet"),
+                    ],
+                  ),
+                );
+              }
+
+              // Manually sort since we removed orderBy
+              final docs = snapshot.data!.docs;
+              docs.sort((a, b) {
+                final tA = (a.data() as Map<String, dynamic>)['timestamp'] as Timestamp?;
+                final tB = (b.data() as Map<String, dynamic>)['timestamp'] as Timestamp?;
+                if (tA == null) return 1;
+                if (tB == null) return -1;
+                return tB.compareTo(tA);
+              });
+
+              return ListView.separated(
+                itemCount: docs.length,
+                separatorBuilder: (ctx, i) => const Divider(),
+                itemBuilder: (context, index) {
+                  final data = docs[index].data() as Map<String, dynamic>;
+                  final timestamp = data['timestamp'] as Timestamp?;
+                  final dateStr = timestamp != null
+                      ? DateFormat('MMM d, h:mm a').format(timestamp.toDate())
+                      : 'Just now';
+                  final type = data['type'] as String?;
+                  final isRejection = type == 'rejection';
+
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor:
+                      isRejection ? Colors.red[100] : Colors.green[100],
+                      child: Icon(
+                        isRejection ? Icons.error : Icons.check_circle,
+                        color: isRejection ? Colors.red : Colors.green,
+                      ),
+                    ),
+                    title: Text(data['title'] ?? 'Notification',
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(data['message'] ?? ''),
+                        const SizedBox(height: 4),
+                        Text(dateStr,
+                            style: const TextStyle(
+                                fontSize: 11, color: Colors.grey)),
+                      ],
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, size: 20),
+                      onPressed: () {
+                        FirebaseFirestore.instance
+                            .collection('clubs')
+                            .doc(clubId)
+                            .collection('notifications')
+                            .doc(docs[index].id)
+                            .delete();
+                      },
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Close"),
           ),
         ],
       ),

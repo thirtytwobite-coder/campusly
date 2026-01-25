@@ -115,6 +115,19 @@ class _ApprovalCard extends StatelessWidget {
             SnackBar(content: Text('Status update to $requestedStatus approved!')),
           );
         }
+
+        // 3. Send Notification to Club Coordinator
+        await FirebaseFirestore.instance
+            .collection('clubs')
+            .doc(clubId)
+            .collection('notifications')
+            .add({
+          'title': 'Status Update Approved',
+          'message': 'Your request to change status of "${data['name']}" to "$requestedStatus" has been approved.',
+          'timestamp': FieldValue.serverTimestamp(),
+          'type': 'approval',
+          'read': false,
+        });
       } else {
         // --- CASE 2: NEW PROGRAM APPROVAL ---
         
@@ -154,6 +167,19 @@ class _ApprovalCard extends StatelessWidget {
             const SnackBar(content: Text('Event Approved and Published!')),
           );
         }
+
+        // 3. Send Notification to Club Coordinator
+        await FirebaseFirestore.instance
+            .collection('clubs')
+            .doc(clubId)
+            .collection('notifications')
+            .add({
+          'title': 'Event Approved',
+          'message': 'Your event "${data['name']}" has been approved and published.',
+          'timestamp': FieldValue.serverTimestamp(),
+          'type': 'approval',
+          'read': false,
+        });
       }
       onProcessed();
     } catch (e) {
@@ -232,6 +258,19 @@ class _ApprovalCard extends StatelessWidget {
                 );
                 onProcessed();
               }
+
+              // Send Notification to Club Coordinator
+              await FirebaseFirestore.instance
+                  .collection('clubs')
+                  .doc(clubId)
+                  .collection('notifications')
+                  .add({
+                'title': 'Request Rejected',
+                'message': 'Your request for "${data['name']}" was rejected. Reason: ${reasonController.text.trim()}',
+                'timestamp': FieldValue.serverTimestamp(),
+                'type': 'rejection',
+                'read': false,
+              });
             },
             child: const Text('Reject'),
           ),
