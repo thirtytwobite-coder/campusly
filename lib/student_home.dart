@@ -18,7 +18,7 @@ class StudentHomeScreen extends StatefulWidget {
 }
 
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
-  int _selectedIndex = 0; // 0: Public, 1: My College
+  int _selectedIndex = 0; // 0: Public, 1: My College, 2: Registered
   String selectedCategory = "All";
   String _searchQuery = "";
   String? studentCollege;
@@ -148,7 +148,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title:
-        Text(_selectedIndex == 0 ? "Campus Events" : "My College Events"),
+        Text(_selectedIndex == 0 ? "Campus Events" : _selectedIndex == 1 ? "My College Events" : "Registered Events"),
         actions: [
           if (managedClubs.isNotEmpty)
             IconButton(
@@ -190,119 +190,20 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               ),
             ),
 
-          _buildSearchBar(),
-          _buildCategoryChips(),
+          if (_selectedIndex != 2) ...[
+            _buildSearchBar(),
+            _buildCategoryChips(),
+          ],
 
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('events')
-                  .orderBy('createdAt', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState ==
-                    ConnectionState.waiting) {
-                  return const Center(
-                      child: CircularProgressIndicator());
-                }
-
-                if (!snapshot.hasData ||
-                    snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                      child: Text("No events found."));
-                }
-
-                final filteredDocs =
-                snapshot.data!.docs.where((doc) {
-                  final data =
-                  doc.data() as Map<String, dynamic>;
-
-                  final eventCollege =
-                  (data['college'] ?? "")
-                      .toString()
-                      .trim();
-                  final visibility =
-                  (data['visibility'] ?? "public")
-                      .toString()
-                      .toLowerCase()
-                      .trim();
-
-                  final isFromMyCollege =
-                      studentCollege != null &&
-                          eventCollege.isNotEmpty &&
-                          eventCollege.toLowerCase() ==
-                              studentCollege!
-                                  .toLowerCase();
-
-                  // 🔹 Tab filtering
-                  if (_selectedIndex == 0) {
-                    if (visibility != 'public') return false;
-                  } else {
-                    if (!isFromMyCollege) return false;
-                  }
-
-                  // 🔹 Category
-                  if (selectedCategory != "All" &&
-                      data['category'] !=
-                          selectedCategory) {
-                    return false;
-                  }
-
-                  // 🔹 Search
-                  if (!(data['title'] ?? "")
-                      .toString()
-                      .toLowerCase()
-                      .contains(_searchQuery)) {
-                    return false;
-                  }
-
-                  // 🔹 Date filter
-                  if (_selectedDate != null) {
-                    final selected =
-                    DateFormat('yyyy-MM-dd')
-                        .format(_selectedDate!);
-                    if (data['date'] != selected) {
-                      return false;
-                    }
-                  }
-
-                  return true;
-                }).toList();
-
-                if (filteredDocs.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding:
-                      const EdgeInsets.all(20),
-                      child: Text(
-                        _selectedIndex == 1
-                            ? "No events found for $studentCollege.\nEnsure your events have the correct 'college' field."
-                            : "No public events available.",
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            color: Colors.grey),
-                      ),
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: filteredDocs.length,
-                  padding:
-                  const EdgeInsets.only(bottom: 20),
-                  itemBuilder: (context, index) =>
-                      _buildEventCard(
-                          filteredDocs[index]),
-                );
-              },
-            ),
+            child: _selectedIndex == 2 ? _buildRegisteredEventsList() : _buildEventsList(),
           ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex == 2 ? 0 : _selectedIndex,
+        currentIndex: _selectedIndex == 3 ? 0 : _selectedIndex,
         onTap: (i) {
-          if (i == 2) {
+          if (i == 3) {
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -312,15 +213,173 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             setState(() => _selectedIndex = i);
           }
         },
+        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
               icon: Icon(Icons.language), label: 'Public'),
           BottomNavigationBarItem(
               icon: Icon(Icons.school), label: 'My College'),
           BottomNavigationBarItem(
+              icon: Icon(Icons.assignment_turned_in), label: 'Registered'),
+          BottomNavigationBarItem(
               icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
+    );
+  }
+
+  Widget _buildEventsList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('events')
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState ==
+            ConnectionState.waiting) {
+          return const Center(
+              child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData ||
+            snapshot.data!.docs.isEmpty) {
+          return const Center(
+              child: Text("No events found."));
+        }
+
+        final filteredDocs =
+        snapshot.data!.docs.where((doc) {
+          final data =
+          doc.data() as Map<String, dynamic>;
+
+          final eventCollege =
+          (data['college'] ?? "")
+              .toString()
+              .trim();
+          final visibility =
+          (data['visibility'] ?? "public")
+              .toString()
+              .toLowerCase()
+              .trim();
+
+          final isFromMyCollege =
+              studentCollege != null &&
+                  eventCollege.isNotEmpty &&
+                  eventCollege.toLowerCase() ==
+                      studentCollege!
+                          .toLowerCase();
+
+          // 🔹 Tab filtering
+          if (_selectedIndex == 0) {
+            if (visibility != 'public') return false;
+          } else {
+            if (!isFromMyCollege) return false;
+          }
+
+          // 🔹 Category
+          if (selectedCategory != "All" &&
+              data['category'] !=
+                  selectedCategory) {
+            return false;
+          }
+
+          // 🔹 Search
+          if (!(data['title'] ?? "")
+              .toString()
+              .toLowerCase()
+              .contains(_searchQuery)) {
+            return false;
+          }
+
+          // 🔹 Date filter
+          if (_selectedDate != null) {
+            final selected =
+            DateFormat('yyyy-MM-dd')
+                .format(_selectedDate!);
+            if (data['date'] != selected) {
+              return false;
+            }
+          }
+
+          return true;
+        }).toList();
+
+        if (filteredDocs.isEmpty) {
+          return Center(
+            child: Padding(
+              padding:
+              const EdgeInsets.all(20),
+              child: Text(
+                _selectedIndex == 1
+                    ? "No events found for $studentCollege.\nEnsure your events have the correct 'college' field."
+                    : "No public events available.",
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Colors.grey),
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          itemCount: filteredDocs.length,
+          padding:
+          const EdgeInsets.only(bottom: 20),
+          itemBuilder: (context, index) =>
+              _buildEventCard(
+                  filteredDocs[index]),
+        );
+      },
+    );
+  }
+
+  Widget _buildRegisteredEventsList() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const Center(child: Text("Please login to see registered events"));
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('registrations')
+          .where('userId', isEqualTo: user.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.assignment_late_outlined, size: 60, color: Colors.grey),
+                SizedBox(height: 16),
+                Text("No registered events found.", style: TextStyle(color: Colors.grey)),
+              ],
+            ),
+          );
+        }
+
+        final registrations = snapshot.data!.docs;
+        
+        return ListView.builder(
+          itemCount: registrations.length,
+          padding: const EdgeInsets.all(16),
+          itemBuilder: (context, index) {
+            final regData = registrations[index].data() as Map<String, dynamic>;
+            final eventId = regData['eventId'];
+            
+            return FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance.collection('events').doc(eventId).get(),
+              builder: (context, eventSnap) {
+                if (!eventSnap.hasData) return const SizedBox.shrink();
+                if (!eventSnap.data!.exists) return const SizedBox.shrink();
+                
+                return _buildEventCard(eventSnap.data!);
+              },
+            );
+          },
+        );
+      },
     );
   }
 
