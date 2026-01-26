@@ -458,6 +458,34 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final eventDate = data['date'] ?? "TBD";
     final posterLink = data['posterLink'] as String?;
 
+    final status = (data['status'] ?? 'approved').toString().toLowerCase();
+
+    Color statusInfoColor;
+    Color statusInfoText;
+    String statusLabel;
+
+    switch (status) {
+      case 'ongoing':
+        statusInfoColor = Colors.orange.shade100;
+        statusInfoText = Colors.orange.shade900;
+        statusLabel = "ONGOING";
+        break;
+      case 'completed':
+        statusInfoColor = Colors.grey.shade300;
+        statusInfoText = Colors.grey.shade800;
+        statusLabel = "COMPLETED";
+        break;
+      case 'cancelled':
+        statusInfoColor = Colors.red.shade100;
+        statusInfoText = Colors.red.shade900;
+        statusLabel = "CANCELLED";
+        break;
+      default:
+        statusInfoColor = Colors.blue.shade50;
+        statusInfoText = Colors.blue.shade900;
+        statusLabel = "UPCOMING";
+    }
+
     return Card(
       margin:
       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -535,6 +563,23 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             color: isCollegeOnly
                                 ? Colors.indigo[900]
                                 : Colors.green[900],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: statusInfoColor,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          statusLabel,
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: statusInfoText,
                           ),
                         ),
                       ),

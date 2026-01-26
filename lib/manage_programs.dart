@@ -717,20 +717,50 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
   Future<void> _requestStatusChange(String programId, String newStatus) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await FirebaseFirestore.instance
-          .collection('clubs')
-          .doc(widget.clubId)
-          .collection('programs')
-          .doc(programId)
-          .update({
-        'status': 'pending',
-        'requestedStatus': newStatus,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      if (['ongoing', 'completed', 'cancelled'].contains(newStatus)) {
+        // Direct update for lifecycle statuses
+        await FirebaseFirestore.instance
+            .collection('clubs')
+            .doc(widget.clubId)
+            .collection('programs')
+            .doc(programId)
+            .update({
+          'status': newStatus,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'requestedStatus': FieldValue.delete(),
+        });
 
-      messenger.showSnackBar(
-        SnackBar(content: Text('Request to change status to $newStatus sent for approval')),
-      );
+        final eventQuery = await FirebaseFirestore.instance
+            .collection('events')
+            .where('programId', isEqualTo: programId)
+            .get();
+
+        for (var doc in eventQuery.docs) {
+          await doc.reference.update({
+            'status': newStatus,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        messenger.showSnackBar(
+          SnackBar(content: Text('Event marked as $newStatus')),
+        );
+      } else {
+        await FirebaseFirestore.instance
+            .collection('clubs')
+            .doc(widget.clubId)
+            .collection('programs')
+            .doc(programId)
+            .update({
+          'status': 'pending',
+          'requestedStatus': newStatus,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        messenger.showSnackBar(
+          SnackBar(content: Text('Request to change status to $newStatus sent for approval')),
+        );
+      }
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(content: Text('Error: $e')),
@@ -772,7 +802,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Program?'),
-        content: const Text('This action cannot be undone.'),
+        content: const Text('This action cannot be undone and will remove the event from the student dashboard.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -783,6 +813,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
               final navigator = Navigator.of(ctx);
               final messenger = ScaffoldMessenger.of(ctx);
               try {
+                // 1. Delete local program
                 await FirebaseFirestore.instance
                     .collection('clubs')
                     .doc(widget.clubId)
@@ -790,9 +821,19 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                     .doc(programId)
                     .delete();
 
+                // 2. Delete global event(s)
+                final globalEvents = await FirebaseFirestore.instance
+                    .collection('events')
+                    .where('programId', isEqualTo: programId)
+                    .get();
+
+                for (var doc in globalEvents.docs) {
+                  await doc.reference.delete();
+                }
+
                 navigator.pop();
                 messenger.showSnackBar(
-                  const SnackBar(content: Text('Program deleted')),
+                  const SnackBar(content: Text('Program and global event deleted')),
                 );
               } catch (e) {
                 messenger.showSnackBar(

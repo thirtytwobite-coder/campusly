@@ -571,9 +571,50 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
 
   void _requestStatusChange(String pId, String s) async {
     try {
-      await FirebaseFirestore.instance.collection('clubs').doc(clubId!).collection('programs').doc(pId).update({'status': 'pending', 'requestedStatus': s, 'updatedAt': FieldValue.serverTimestamp()});
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status change to $s requested.')));
-    } catch (e) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'))); }
+      if (['ongoing', 'completed', 'cancelled'].contains(s)) {
+        // 1. Update local Club Program directly
+        await FirebaseFirestore.instance
+            .collection('clubs')
+            .doc(clubId!)
+            .collection('programs')
+            .doc(pId)
+            .update({
+          'status': s,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'requestedStatus': FieldValue.delete(),
+        });
+
+        // 2. Update Global Event
+        final eventQuery = await FirebaseFirestore.instance
+            .collection('events')
+            .where('programId', isEqualTo: pId)
+            .get();
+
+        for (var doc in eventQuery.docs) {
+          await doc.reference.update({
+            'status': s,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Event marked as $s')));
+      } else {
+        // Fallback for other statuses (request approval)
+        await FirebaseFirestore.instance
+            .collection('clubs')
+            .doc(clubId!)
+            .collection('programs')
+            .doc(pId)
+            .update({
+          'status': 'pending',
+          'requestedStatus': s,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status change to $s requested.')));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
   }
 
   void _confirmDelete(BuildContext context, String pId) async {
@@ -624,10 +665,33 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Program?'), content: const Text('This action cannot be undone.'),
+        title: const Text('Delete Program?'), content: const Text('This action cannot be undone and will remove the event from the student dashboard.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(onPressed: () async { await FirebaseFirestore.instance.collection('clubs').doc(clubId!).collection('programs').doc(pId).delete(); Navigator.pop(ctx); }, child: const Text('Delete', style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () async { 
+              try {
+                // 1. Delete local program
+                await FirebaseFirestore.instance.collection('clubs').doc(clubId!).collection('programs').doc(pId).delete();
+                
+                // 2. Delete global event(s)
+                final globalEvents = await FirebaseFirestore.instance
+                    .collection('events')
+                    .where('programId', isEqualTo: pId)
+                    .get();
+
+                for (var doc in globalEvents.docs) {
+                  await doc.reference.delete();
+                }
+
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Program and Event deleted successfully')));
+              } catch (e) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting: $e')));
+              }
+            }, 
+            child: const Text('Delete', style: TextStyle(color: Colors.red))
+          ),
         ],
       ),
     );
