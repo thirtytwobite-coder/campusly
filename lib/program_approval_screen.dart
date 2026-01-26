@@ -298,6 +298,33 @@ class _ApprovalCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (data['posterLink'] != null && data['posterLink'].toString().isNotEmpty)
+              Container(
+                width: double.infinity,
+                height: 180,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.grey[200],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    _convertGoogleDriveLink(data['posterLink']),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(
+                        child: Icon(Icons.broken_image, color: Colors.grey, size: 40),
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const Center(child: CircularProgressIndicator());
+                    },
+                  ),
+                ),
+              ),
             if (isStatusChange)
               Container(
                 width: double.infinity,
@@ -401,5 +428,27 @@ class _ApprovalCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _convertGoogleDriveLink(String? link) {
+    if (link == null || link.isEmpty) return '';
+
+    if (link.contains('.jpg') || link.contains('.jpeg') || link.contains('.png') || link.contains('.gif') || link.contains('.webp')) {
+      return link;
+    }
+
+    if (link.contains('drive.google.com/uc?export=view')) {
+      return link;
+    }
+
+    final regex = RegExp(r'(?:drive\.google\.com/file/d/|id=)([a-zA-Z0-9-_]+)');
+    final match = regex.firstMatch(link);
+
+    if (match != null) {
+      final fileId = match.group(1);
+      return 'https://drive.google.com/uc?export=view&id=$fileId';
+    }
+
+    return link;
   }
 }
