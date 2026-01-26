@@ -445,6 +445,8 @@ class RejectedEventsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Rejected Events')),
       body: ListView.builder(
@@ -476,12 +478,27 @@ class RejectedEventsScreen extends StatelessWidget {
                           final data = doc.data() as Map<String, dynamic>;
                           return Card(
                             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            color: Colors.red[50],
+                            color: isDark ? Colors.red.withOpacity(0.15) : Colors.red[50],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: isDark ? Colors.red.withOpacity(0.5) : Colors.red, width: 1),
+                            ),
                             child: ListTile(
                               leading: const Icon(Icons.cancel, color: Colors.red),
-                              title: Text(data['name'] ?? 'Unnamed'),
-                              subtitle: Text('Reason: ${data['rejectionReason'] ?? 'No reason'}'),
-                              trailing: const Icon(Icons.chevron_right),
+                              title: Text(
+                                data['name'] ?? 'Unnamed',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.red[200] : Colors.red[900],
+                                ),
+                              ),
+                              subtitle: Text(
+                                'Reason: ${data['rejectionReason'] ?? 'No reason'}',
+                                style: TextStyle(
+                                  color: isDark ? Colors.red[100]?.withOpacity(0.7) : Colors.red[800],
+                                ),
+                              ),
+                              trailing: Icon(Icons.chevron_right, color: isDark ? Colors.red[200] : Colors.red),
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -517,11 +534,18 @@ class MultiClubApprovalScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pending Approvals'),
-        backgroundColor: const Color(0xFF1A237E),
+        backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: Theme.of(context).textTheme.headlineSmall?.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
       ),
       body: ListView.builder(
         itemCount: clubIds.length,
@@ -553,7 +577,11 @@ class MultiClubApprovalScreen extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                         child: Text(
                           clubName,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1A237E)),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: isDark ? Theme.of(context).primaryColorLight : Theme.of(context).primaryColor,
+                          ),
                         ),
                       ),
                       ...programSnap.data!.docs.map((doc) {
