@@ -325,21 +325,34 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
         final count = snapshot.data ?? 0;
         if (count == 0) return const SizedBox.shrink();
 
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+
         return Card(
           elevation: 4,
-          color: Colors.orange[50],
+          color: isDark ? Colors.orange.withOpacity(0.15) : Colors.orange[50],
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.orange, width: 1),
+            side: BorderSide(color: isDark ? Colors.orange.withOpacity(0.5) : Colors.orange, width: 1),
           ),
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: Colors.orange,
               child: Text('$count', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
-            title: const Text('Pending Event Approvals', style: TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('You have $count events waiting for your review'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.orange),
+            title: Text(
+              'Pending Event Approvals',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.orange[200] : Colors.orange[900],
+              ),
+            ),
+            subtitle: Text(
+              'You have $count events waiting for your review',
+              style: TextStyle(
+                color: isDark ? Colors.orange[100]?.withOpacity(0.7) : Colors.orange[800],
+              ),
+            ),
+            trailing: Icon(Icons.arrow_forward_ios, size: 16, color: isDark ? Colors.orange[200] : Colors.orange),
             onTap: () {
               Navigator.push(
                 context,
