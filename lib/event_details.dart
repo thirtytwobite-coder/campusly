@@ -33,6 +33,7 @@ class EventDetailsScreen extends StatelessWidget {
     final String clubId = data['clubId'] ?? '';
     final String coordinatorName = data['coordinatorName'] ?? 'TBD';
     final String? imageUrl = data['posterLink'] ?? data['imageUrl'];
+    final String eventMode = data['eventMode'] ?? 'TBD';
 
     return Scaffold(
       appBar: AppBar(
@@ -68,7 +69,12 @@ class EventDetailsScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   _buildInfoRow(Icons.access_time, "Time: $time"),
                   const SizedBox(height: 16),
-                  _buildInfoRow(Icons.location_on_outlined, venue),
+                  _buildInfoRow(
+                    eventMode == 'Online' ? Icons.videocam_outlined : Icons.location_on_outlined,
+                    "Mode: $eventMode",
+                  ),
+                  const SizedBox(height: 16),
+                  _buildInfoRow(Icons.place_outlined, venue),
                   const SizedBox(height: 16),
                   
                   // --- CLUB NAME WITH FETCH LOGIC ---

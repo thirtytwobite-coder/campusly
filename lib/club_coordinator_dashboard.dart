@@ -424,6 +424,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     bool hasPrizePool = false;
     String visibility = 'college';
     String? category;
+    String? eventMode;
 
     showDialog(
       context: context,
@@ -444,6 +445,14 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   value: category, hint: const Text('Select Category'), decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
                   items: ['Technical', 'Cultural', 'Sports', 'Academic', 'Social', 'Other'].map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
                   onChanged: (v) => setDialogState(() => category = v),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: eventMode,
+                  hint: const Text('Select Event Mode'),
+                  decoration: const InputDecoration(labelText: 'Event Mode', border: OutlineInputBorder()),
+                  items: ['Online', 'Offline'].map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                  onChanged: (v) => setDialogState(() => eventMode = v),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -481,16 +490,16 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(onPressed: () => _handlePropose(ctx, nameController.text, descriptionController.text, dateController.text, timeController.text, locationController.text, hasPrizePool, prizeAmountController.text, posterLinkController.text, visibility, category), child: const Text('Submit Proposal')),
+            ElevatedButton(onPressed: () => _handlePropose(ctx, nameController.text, descriptionController.text, dateController.text, timeController.text, locationController.text, hasPrizePool, prizeAmountController.text, posterLinkController.text, visibility, category, eventMode), child: const Text('Submit Proposal')),
           ],
         ),
       ),
     );
   }
 
-  void _handlePropose(BuildContext ctx, String name, String desc, String date, String time, String loc, bool hasPrize, String prize, String poster, String vis, String? cat) async {
-    if (name.trim().isEmpty || date.trim().isEmpty || cat == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill required fields (Name, Date, Category)')));
+  void _handlePropose(BuildContext ctx, String name, String desc, String date, String time, String loc, bool hasPrize, String prize, String poster, String vis, String? cat, String? mode) async {
+    if (name.trim().isEmpty || date.trim().isEmpty || cat == null || mode == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill required fields (Name, Date, Category, Event Mode)')));
       return;
     }
     try {
@@ -502,7 +511,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
 
       await FirebaseFirestore.instance.collection('clubs').doc(clubId!).collection('programs').add({
         'name': name.trim(), 'description': desc.trim(), 'date': date, 'time': time, 'location': loc.trim(), 'posterLink': _convertGoogleDriveLink(poster.trim()),
-        'hasPrizePool': hasPrize, 'prizeAmount': prize, 'visibility': vis, 'college': coll, 'category': cat, 'status': 'pending',
+        'hasPrizePool': hasPrize, 'prizeAmount': prize, 'visibility': vis, 'college': coll, 'category': cat, 'eventMode': mode, 'status': 'pending',
         'clubId': clubId, 'clubName': clubName, 'coordinatorId': user?.uid, 'coordinatorName': nameStr, 'coordinatorEmail': user?.email,
         'createdAt': FieldValue.serverTimestamp(), 'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -708,6 +717,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     String visibility = data['visibility'] ?? 'college';
     bool hasPrizePool = data['hasPrizePool'] ?? false;
     String? category = data['category'];
+    String? eventMode = data['eventMode'];
 
     showDialog(
       context: context,
@@ -760,6 +770,26 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   onChanged: (value) {
                     setDialogState(() {
                       category = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: eventMode,
+                  hint: const Text('Select Event Mode'),
+                  decoration: const InputDecoration(
+                    labelText: 'Event Mode',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: ['Online', 'Offline']
+                      .map((label) => DropdownMenuItem(
+                            value: label,
+                            child: Text(label),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      eventMode = value;
                     });
                   },
                 ),
@@ -893,6 +923,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   nameController.text,
                   dateController.text,
                   category,
+                  eventMode,
                 );
 
                 if (validationError != null) {
@@ -915,6 +946,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   hasPrizePool,
                   prizeAmountController.text,
                   category!,
+                  eventMode!,
                 );
               },
               child: const Text('Update'),
@@ -925,7 +957,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     );
   }
 
-  String? _validateProgramForm(String name, String date, String? category) {
+  String? _validateProgramForm(String name, String date, String? category, String? mode) {
     if (name.trim().isEmpty) {
       return 'Program name cannot be empty';
     }
@@ -934,6 +966,9 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     }
     if (category == null) {
       return 'Please select a category';
+    }
+    if (mode == null) {
+      return 'Please select an event mode';
     }
     try {
       DateFormat('yyyy-MM-dd').parseStrict(date);
@@ -956,6 +991,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     bool hasPrizePool,
     String prizeAmount,
     String category,
+    String eventMode,
   ) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -976,6 +1012,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         'hasPrizePool': hasPrizePool,
         'prizeAmount': hasPrizePool && prizeAmount.isNotEmpty ? prizeAmount.trim() : null,
         'category': category,
+        'eventMode': eventMode,
         'status': 'pending', // Reset status on edit
         'updatedAt': FieldValue.serverTimestamp(),
       });
