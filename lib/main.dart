@@ -1,10 +1,16 @@
 import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'welcome_screen.dart';
+import 'student_home.dart';
+import 'faculty_home.dart';
+import 'main_faculty_dashboard.dart' as main_fac;
+import 'role_selection_screen.dart';
 
 // Global ValueNotifier for theme changes
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
@@ -231,8 +237,80 @@ class CampuslyApp extends StatelessWidget {
           theme: lightTheme,
           darkTheme: darkTheme,
           themeMode: mode,
-          home: const WelcomeScreen(),
+          home: const AuthWrapper(),
         );
+      },
+    );
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        
+        if (snapshot.hasData) {
+          final user = snapshot.data!;
+          return FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance.collection('faculty').doc(user.uid).get(),
+            builder: (context, facultySnap) {
+              if (facultySnap.connectionState == ConnectionState.waiting) {
+                return const Scaffold(body: Center(child: CircularProgressIndicator()));
+              }
+
+              if (facultySnap.hasData && facultySnap.data!.exists) {
+                final data = facultySnap.data!.data() as Map<String, dynamic>;
+                if (data['role'] == 'Main Faculty') {
+                  return main_fac.MainFacultyDashboard(collegeName: data['college']);
+                }
+                return const FacultyHomeScreen();
+              }
+
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance.collection('student').doc(user.uid).get(),
+                builder: (context, studentSnap) {
+                  if (studentSnap.connectionState == ConnectionState.waiting) {
+                    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                  }
+
+                  if (studentSnap.hasData && studentSnap.data!.exists) {
+                    final studentData = studentSnap.data!.data() as Map<String, dynamic>;
+                    
+                    return FutureBuilder<QuerySnapshot>(
+                      future: FirebaseFirestore.instance
+                          .collection('clubs')
+                          .where('coordinatorEmails', arrayContains: user.email)
+                          .limit(1)
+                          .get(),
+                      builder: (context, coordSnap) {
+                        if (coordSnap.connectionState == ConnectionState.waiting) {
+                          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                        }
+                        
+                        if (coordSnap.hasData && coordSnap.data!.docs.isNotEmpty) {
+                          return const RoleSelectionScreen();
+                        }
+                        return const StudentHomeScreen();
+                      },
+                    );
+                  }
+                  
+                  // If user exists in Auth but not in Firestore collections yet (shouldn't happen normally)
+                  return const WelcomeScreen();
+                },
+              );
+            },
+          );
+        }
+        
+        return const WelcomeScreen();
       },
     );
   }
