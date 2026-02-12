@@ -281,18 +281,18 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
   }
 
   Widget _buildTextField(TextEditingController controller, String label, IconData icon,
-      {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
+      {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters, bool isRequired = true}) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       decoration: InputDecoration(
-        labelText: label,
+        labelText: isRequired ? '$label *' : label,
         prefixIcon: Icon(icon),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
       validator: (value) {
-        if (value == null || value.trim().isEmpty) {
+        if (isRequired && (value == null || value.trim().isEmpty)) {
           return '$label is required';
         }
         return null;

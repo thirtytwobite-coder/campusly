@@ -139,7 +139,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                 TextField(
                   controller: descriptionController,
                   decoration: const InputDecoration(
-                    labelText: 'Description',
+                    labelText: 'Description *',
                     hintText: 'Event details and objectives',
                     border: OutlineInputBorder(),
                   ),
@@ -191,7 +191,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                 TextField(
                   controller: timeController,
                   decoration: const InputDecoration(
-                    labelText: 'Time (HH:MM)',
+                    labelText: 'Time (HH:MM) *',
                     hintText: '14:30',
                     border: OutlineInputBorder(),
                   ),
@@ -211,7 +211,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                 TextField(
                   controller: locationController,
                   decoration: const InputDecoration(
-                    labelText: 'Location',
+                    labelText: 'Venue *',
                     hintText: 'Event venue',
                     border: OutlineInputBorder(),
                   ),
@@ -292,7 +292,10 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
               onPressed: () {
                 final validationError = _validateProgramForm(
                   nameController.text,
+                  descriptionController.text,
                   dateController.text,
+                  timeController.text,
+                  locationController.text,
                   category,
                 );
 
@@ -371,7 +374,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
               TextField(
                 controller: descriptionController,
                 decoration: const InputDecoration(
-                  labelText: 'Description',
+                  labelText: 'Description *',
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
@@ -421,7 +424,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
               TextField(
                 controller: timeController,
                 decoration: const InputDecoration(
-                  labelText: 'Time (HH:MM)',
+                  labelText: 'Time (HH:MM) *',
                   border: OutlineInputBorder(),
                 ),
                 onTap: () async {
@@ -440,7 +443,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
               TextField(
                 controller: locationController,
                 decoration: const InputDecoration(
-                  labelText: 'Location',
+                  labelText: 'Venue *',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -528,7 +531,10 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
             onPressed: () {
               final validationError = _validateProgramForm(
                 nameController.text,
+                descriptionController.text,
                 dateController.text,
+                timeController.text,
+                locationController.text,
                 category,
               );
 
@@ -561,16 +567,14 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     );
   }
 
-  String? _validateProgramForm(String name, String date, String? category) {
-    if (name.trim().isEmpty) {
-      return 'Program name cannot be empty';
-    }
-    if (date.trim().isEmpty) {
-      return 'Date cannot be empty';
-    }
-    if (category == null) {
-      return 'Please select a category';
-    }
+  String? _validateProgramForm(
+      String name, String desc, String date, String time, String loc, String? category) {
+    if (name.trim().isEmpty) return 'Program name cannot be empty';
+    if (desc.trim().isEmpty) return 'Description cannot be empty';
+    if (date.trim().isEmpty) return 'Date cannot be empty';
+    if (time.trim().isEmpty) return 'Time cannot be empty';
+    if (loc.trim().isEmpty) return 'Venue cannot be empty';
+    if (category == null) return 'Please select a category';
 
     try {
       DateFormat('yyyy-MM-dd').parseStrict(date);

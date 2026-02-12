@@ -437,12 +437,12 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
               children: [
                 TextField(controller: posterLinkController, decoration: const InputDecoration(labelText: 'Poster Link', border: OutlineInputBorder(), prefixIcon: Icon(Icons.image))),
                 const SizedBox(height: 12),
-                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Program Name', border: OutlineInputBorder())),
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Program Name *', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
-                TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()), maxLines: 3),
+                TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Description *', border: OutlineInputBorder()), maxLines: 3),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: category, hint: const Text('Select Category'), decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+                  value: category, hint: const Text('Select Category'), decoration: const InputDecoration(labelText: 'Category *', border: OutlineInputBorder()),
                   items: ['Technical', 'Cultural', 'Sports', 'Academic', 'Social', 'Other'].map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
                   onChanged: (v) => setDialogState(() => category = v),
                 ),
@@ -450,13 +450,13 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 DropdownButtonFormField<String>(
                   value: eventMode,
                   hint: const Text('Select Event Mode'),
-                  decoration: const InputDecoration(labelText: 'Event Mode', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(labelText: 'Event Mode *', border: OutlineInputBorder()),
                   items: ['Online', 'Offline'].map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
                   onChanged: (v) => setDialogState(() => eventMode = v),
                 ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: dateController, decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)', border: OutlineInputBorder()),
+                  controller: dateController, decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD) *', border: OutlineInputBorder()),
                   onTap: () async {
                     final d = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2100));
                     if (d != null) dateController.text = DateFormat('yyyy-MM-dd').format(d);
@@ -465,7 +465,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: timeController, decoration: const InputDecoration(labelText: 'Time (HH:MM)', border: OutlineInputBorder()),
+                  controller: timeController, decoration: const InputDecoration(labelText: 'Time (HH:MM) *', border: OutlineInputBorder()),
                   onTap: () async {
                     final t = await showTimePicker(context: context, initialTime: TimeOfDay.now());
                     if (t != null) timeController.text = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
@@ -473,7 +473,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   readOnly: true,
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Location', border: OutlineInputBorder())),
+                TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Venue *', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
                 CheckboxListTile(
                   value: hasPrizePool, title: const Text('Prize Pool'), contentPadding: EdgeInsets.zero,
@@ -498,8 +498,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   void _handlePropose(BuildContext ctx, String name, String desc, String date, String time, String loc, bool hasPrize, String prize, String poster, String vis, String? cat, String? mode) async {
-    if (name.trim().isEmpty || date.trim().isEmpty || cat == null || mode == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill required fields (Name, Date, Category, Event Mode)')));
+    if (name.trim().isEmpty || desc.trim().isEmpty || date.trim().isEmpty || time.trim().isEmpty || loc.trim().isEmpty || cat == null || mode == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill required fields (Name, Description, Date, Time, Venue, Category, Event Mode)')));
       return;
     }
     try {
@@ -740,7 +740,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 TextField(
                   controller: nameController,
                   decoration: const InputDecoration(
-                    labelText: 'Program Name',
+                    labelText: 'Program Name *',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -748,7 +748,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 TextField(
                   controller: descriptionController,
                   decoration: const InputDecoration(
-                    labelText: 'Description',
+                    labelText: 'Description *',
                     border: OutlineInputBorder(),
                   ),
                   maxLines: 3,
@@ -758,7 +758,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   value: category,
                   hint: const Text('Select Category'),
                   decoration: const InputDecoration(
-                    labelText: 'Category',
+                    labelText: 'Category *',
                     border: OutlineInputBorder(),
                   ),
                   items: ['Technical', 'Cultural', 'Sports', 'Academic', 'Social', 'Other']
@@ -778,7 +778,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   value: eventMode,
                   hint: const Text('Select Event Mode'),
                   decoration: const InputDecoration(
-                    labelText: 'Event Mode',
+                    labelText: 'Event Mode *',
                     border: OutlineInputBorder(),
                   ),
                   items: ['Online', 'Offline']
@@ -797,7 +797,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 TextField(
                   controller: dateController,
                   decoration: const InputDecoration(
-                    labelText: 'Date (YYYY-MM-DD)',
+                    labelText: 'Date (YYYY-MM-DD) *',
                     border: OutlineInputBorder(),
                   ),
                   onTap: () async {
@@ -818,7 +818,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 TextField(
                   controller: timeController,
                   decoration: const InputDecoration(
-                    labelText: 'Time (HH:MM)',
+                    labelText: 'Time (HH:MM) *',
                     border: OutlineInputBorder(),
                   ),
                   onTap: () async {
@@ -837,7 +837,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 TextField(
                   controller: locationController,
                   decoration: const InputDecoration(
-                    labelText: 'Location',
+                    labelText: 'Venue *',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -921,7 +921,10 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
               onPressed: () {
                 final validationError = _validateProgramForm(
                   nameController.text,
+                  descriptionController.text,
                   dateController.text,
+                  timeController.text,
+                  locationController.text,
                   category,
                   eventMode,
                 );
@@ -957,19 +960,14 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     );
   }
 
-  String? _validateProgramForm(String name, String date, String? category, String? mode) {
-    if (name.trim().isEmpty) {
-      return 'Program name cannot be empty';
-    }
-    if (date.trim().isEmpty) {
-      return 'Date cannot be empty';
-    }
-    if (category == null) {
-      return 'Please select a category';
-    }
-    if (mode == null) {
-      return 'Please select an event mode';
-    }
+  String? _validateProgramForm(String name, String desc, String date, String time, String loc, String? category, String? mode) {
+    if (name.trim().isEmpty) return 'Program name cannot be empty';
+    if (desc.trim().isEmpty) return 'Description cannot be empty';
+    if (date.trim().isEmpty) return 'Date cannot be empty';
+    if (time.trim().isEmpty) return 'Time cannot be empty';
+    if (loc.trim().isEmpty) return 'Venue cannot be empty';
+    if (category == null) return 'Please select a category';
+    if (mode == null) return 'Please select an event mode';
     try {
       DateFormat('yyyy-MM-dd').parseStrict(date);
     } catch (e) {
