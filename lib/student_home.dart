@@ -9,6 +9,8 @@ import 'main.dart';
 import 'event_details.dart';
 import 'profile_screen.dart';
 import 'club_coordinator_dashboard.dart';
+import 'login_screen.dart';
+import 'vibrant_background.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -162,41 +164,46 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           ),
         ],
       ),
-      body: _isLoadingCollege
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
+      body: Stack(
         children: [
-          if (_selectedIndex == 1 && studentCollege != null)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                  vertical: 8, horizontal: 16),
-              color: Colors.indigo.withAlpha(30),
-              child: Row(
-                children: [
-                  const Icon(Icons.school,
-                      size: 16, color: Colors.indigo),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      "Showing events for: $studentCollege",
-                      style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.indigo),
-                    ),
+          const VibrantBackground(),
+          _isLoadingCollege
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+            children: [
+              if (_selectedIndex == 1 && studentCollege != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 8, horizontal: 16),
+                  color: Colors.indigo.withAlpha(30),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.school,
+                          size: 16, color: Colors.indigo),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "Showing events for: $studentCollege",
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.indigo),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
+
+              if (_selectedIndex != 2) ...[
+                _buildSearchBar(),
+                _buildCategoryChips(),
+              ],
+
+              Expanded(
+                child: _selectedIndex == 2 ? _buildRegisteredEventsList() : _buildEventsList(),
               ),
-            ),
-
-          if (_selectedIndex != 2) ...[
-            _buildSearchBar(),
-            _buildCategoryChips(),
-          ],
-
-          Expanded(
-            child: _selectedIndex == 2 ? _buildRegisteredEventsList() : _buildEventsList(),
+            ],
           ),
         ],
       ),
@@ -326,8 +333,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           padding:
           const EdgeInsets.only(bottom: 20),
           itemBuilder: (context, index) =>
-              _buildEventCard(
-                  filteredDocs[index]),
+              _buildEventCard(filteredDocs[index]),
         );
       },
     );

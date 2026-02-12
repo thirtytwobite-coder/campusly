@@ -12,6 +12,7 @@ import 'main.dart';
 import 'manage_programs.dart';
 import 'profile_screen.dart';
 import 'student_home.dart';
+import 'vibrant_background.dart';
 
 class ClubCoordinatorDashboard extends StatefulWidget {
   final String? initialClubId;
@@ -142,11 +143,16 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             ),
           ],
         ),
-        body: _loading
-            ? _buildLoadingState()
-            : clubId == null
-            ? const Center(child: Text("No club assigned"))
-            : _buildDashboardBody(),
+        body: Stack(
+          children: [
+            const VibrantBackground(),
+            _loading
+                ? _buildLoadingState()
+                : clubId == null
+                ? const Center(child: Text("No club assigned"))
+                : _buildDashboardBody(),
+          ],
+        ),
         bottomNavigationBar: BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           currentIndex: _selectedIndex == 1 ? 0 : _selectedIndex,
@@ -214,27 +220,40 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
 
               const SizedBox(height: 30),
 
-              SizedBox(
-                width: double.infinity,
-                child: _buildQuickActionCard(
-                  "Analytics",
-                  "View Stats",
-                  Icons.bar_chart,
-                  Colors.green,
-                  () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AnalyticsScreen(
-                          clubId: clubId!,
-                          clubName: clubName ?? 'Club',
-                          coordinatorId:
-                              FirebaseAuth.instance.currentUser?.uid,
-                        ),
-                      ),
-                    );
-                  },
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildQuickActionCard(
+                      "Analytics",
+                      "View Stats",
+                      Icons.bar_chart,
+                      Colors.green,
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AnalyticsScreen(
+                              clubId: clubId!,
+                              clubName: clubName ?? 'Club',
+                              coordinatorId:
+                                  FirebaseAuth.instance.currentUser?.uid,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildQuickActionCard(
+                      "Club Branding",
+                      "Logo & Signatures",
+                      Icons.brush_outlined,
+                      Colors.purple,
+                      () => _showBrandingDialog(clubData),
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 30),
@@ -354,6 +373,59 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             Text(subtitle, style: const TextStyle(fontSize: 10, color: Colors.grey)),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showBrandingDialog(Map<String, dynamic> clubData) {
+    final logoController = TextEditingController(text: clubData['profilePic'] ?? '');
+    final signatureController = TextEditingController(text: clubData['signatureUrl'] ?? '');
+    final facultySignatureController = TextEditingController(text: clubData['facultySignatureUrl'] ?? '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Club Branding Settings"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("These settings will be applied to all your club certificates.", style: TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: logoController,
+                decoration: const InputDecoration(labelText: "Club Logo URL", hintText: "Paste image or Drive link", border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: signatureController,
+                decoration: const InputDecoration(labelText: "Coordinator Signature URL", hintText: "Paste signature image link", border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: facultySignatureController,
+                decoration: const InputDecoration(labelText: "Faculty Signature URL", hintText: "Paste faculty signature link", border: OutlineInputBorder()),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () async {
+              await FirebaseFirestore.instance.collection('clubs').doc(clubId).update({
+                'profilePic': logoController.text.trim(),
+                'signatureUrl': signatureController.text.trim(),
+                'facultySignatureUrl': facultySignatureController.text.trim(),
+              });
+              if (mounted) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Branding updated successfully!")));
+              }
+            },
+            child: const Text("Save Settings"),
+          ),
+        ],
       ),
     );
   }

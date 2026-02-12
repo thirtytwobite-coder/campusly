@@ -14,6 +14,7 @@ import 'student_signup_screen.dart';
 import 'main_faculty_dashboard.dart' as main_fac;
 import 'club_coordinator_dashboard.dart';
 import 'role_selection_screen.dart';
+import 'vibrant_background.dart';
 
 // ==================== UNIFIED LOGIN SCREEN ====================
 class UnifiedLoginScreen extends StatefulWidget {
@@ -96,7 +97,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
       } else if (e.code == 'wrong-password') {
         errorMessage = "Incorrect password.";
       } else if (e.code == 'invalid-credential') {
-        errorMessage = "Incorrect password."; // Also show for invalid credentials to satisfy the requirement
+        errorMessage = "Incorrect password."; 
       } else if (e.code == 'invalid-email') {
         errorMessage = "The email address is badly formatted.";
       } else if (e.code == 'user-disabled') {
@@ -129,10 +130,9 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
 
     if (mounted) {
       if (coordinatorQuery.docs.isNotEmpty) {
-        // FIXED: Removed 'const' because RoleSelectionScreen might not have a const constructor
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => RoleSelectionScreen()),
+          MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
         );
       } else {
         Navigator.pushReplacement(
@@ -174,73 +174,188 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Icon(Icons.rocket_launch_sharp, size: 80, color: Theme.of(context).primaryColor),
-                const SizedBox(height: 15),
-                Text("CAMPUSLY",
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    )),
-                const SizedBox(height: 40),
-                TextField(
-                  controller: _loginEmail,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: "Email", prefixIcon: Icon(Icons.email)),
-                ),
-                const SizedBox(height: 15),
-                TextField(
-                  controller: _loginPass,
-                  obscureText: _isPasswordObscured,
-                  decoration: InputDecoration(
-                    labelText: "Password",
-                    prefixIcon: const Icon(Icons.lock),
-                    suffixIcon: IconButton(
-                      icon: Icon(_isPasswordObscured ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () => setState(() => _isPasswordObscured = !_isPasswordObscured),
-                    ),
-                  ),
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(onPressed: _handleForgotPassword, child: const Text("Forgot Password?")),
-                ),
-                const SizedBox(height: 20),
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : ElevatedButton(
-                  onPressed: _login,
-                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 15)),
-                  child: const Text("LOGIN", style: TextStyle(fontSize: 16)),
-                ),
-                const SizedBox(height: 20),
-                Row(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: Stack(
+        children: [
+          // Vibrant Animated Background
+          const VibrantBackground(),
+          
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text("New student? "),
-                    GestureDetector(
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentSignUpScreen())),
-                      child: Text("Register here",
-                          style: TextStyle(
-                              color: Theme.of(context).primaryColor,
-                              fontWeight: FontWeight.bold,
-                              decoration: TextDecoration.underline)),
+                    // Logo and Header
+                    Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: theme.primaryColor.withOpacity(0.2),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              )
+                            ],
+                          ),
+                          child: Icon(Icons.rocket_launch_rounded, size: 60, color: theme.primaryColor),
+                        ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
+                        const SizedBox(height: 24),
+                        Text(
+                          "CAMPUSLY",
+                          style: theme.textTheme.displaySmall?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 4,
+                            color: theme.primaryColor,
+                          ),
+                        ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2, end: 0),
+                        Text(
+                          "Connect • Collaborate • Celebrate",
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                            letterSpacing: 1.2,
+                          ),
+                        ).animate().fadeIn(delay: 400.ms),
+                      ],
                     ),
+                    
+                    const SizedBox(height: 60),
+                    
+                    // Input Fields
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        children: [
+                          TextField(
+                            controller: _loginEmail,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: InputDecoration(
+                              labelText: "Email Address",
+                              hintText: "example@college.edu",
+                              prefixIcon: const Icon(Icons.email_outlined),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(color: theme.primaryColor, width: 2),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _loginPass,
+                            obscureText: _isPasswordObscured,
+                            decoration: InputDecoration(
+                              labelText: "Password",
+                              hintText: "••••••••",
+                              prefixIcon: const Icon(Icons.lock_outline_rounded),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _isPasswordObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                  size: 20,
+                                ),
+                                onPressed: () => setState(() => _isPasswordObscured = !_isPasswordObscured),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide(color: theme.primaryColor, width: 2),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.1, end: 0),
+                    
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _handleForgotPassword,
+                        style: TextButton.styleFrom(foregroundColor: theme.primaryColor),
+                        child: const Text("Forgot Password?", style: TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                    ).animate().fadeIn(delay: 700.ms),
+                    
+                    const SizedBox(height: 32),
+                    
+                    // Login Button
+                    _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : ElevatedButton(
+                            onPressed: _login,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: theme.primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              elevation: 8,
+                              shadowColor: theme.primaryColor.withOpacity(0.4),
+                            ),
+                            child: const Text(
+                              "LOGIN",
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                            ),
+                          ).animate().fadeIn(delay: 800.ms).scale(duration: 400.ms, curve: Curves.easeOut),
+                    
+                    const SizedBox(height: 40),
+                    
+                    // Register Link
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Don't have an account? ",
+                          style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7)),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentSignUpScreen())),
+                          child: Text(
+                            "Register Now",
+                            style: TextStyle(
+                              color: theme.primaryColor,
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ).animate().fadeIn(delay: 1000.ms),
                   ],
                 ),
-              ],
-            ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.2, end: 0),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -274,20 +389,25 @@ class AdminDashboard extends StatelessWidget {
               })
         ],
       ),
-      body: GridView.count(
-        padding: const EdgeInsets.all(16),
-        crossAxisCount: 2,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+      body: Stack(
         children: [
-          _card(context, "Add Main Faculty", Icons.person_add,
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const add_fac.AddFacultyScreen(role: 'Main Faculty')))),
-          _card(context, "Manage Clubs", Icons.group_work,
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminClubsScreen()))),
-          _card(context, "Colleges & Status", Icons.list_alt,
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CollegeListView()))),
-          _card(context, "Change Password", Icons.lock_reset,
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChangePasswordScreen()))),
+          const VibrantBackground(),
+          GridView.count(
+            padding: const EdgeInsets.all(16),
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            children: [
+              _card(context, "Add Main Faculty", Icons.person_add,
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const add_fac.AddFacultyScreen(role: 'Main Faculty')))),
+              _card(context, "Manage Clubs", Icons.group_work,
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminClubsScreen()))),
+              _card(context, "Colleges & Status", Icons.list_alt,
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CollegeListView()))),
+              _card(context, "Change Password", Icons.lock_reset,
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChangePasswordScreen()))),
+            ],
+          ),
         ],
       ),
     );
