@@ -145,6 +145,12 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
         'registeredAt': FieldValue.serverTimestamp(),
       });
 
+      // Increment filledSeats count
+      await FirebaseFirestore.instance
+          .collection('events')
+          .doc(widget.event.id)
+          .update({'filledSeats': FieldValue.increment(1)});
+
       if (mounted) {
         // Show Confirmation Dialog
         await showDialog(

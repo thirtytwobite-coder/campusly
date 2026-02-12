@@ -123,6 +123,26 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               final title = data['title'] ?? 'Untitled Event';
               final date = data['date'] ?? 'N/A';
               final time = data['time'] ?? 'N/A';
+              
+              final filledSeats = (data['filledSeats'] ?? 0) as int;
+              final maxSeats = (data['maxSeats'] ?? 100) as int;
+
+              bool showLowParticipationAlert = false;
+              try {
+                final eventDate = DateTime.parse(date);
+                final now = DateTime.now();
+                // Compare only dates by stripping time component
+                final today = DateTime(now.year, now.month, now.day);
+                final eDate = DateTime(eventDate.year, eventDate.month, eventDate.day);
+                final diff = eDate.difference(today).inDays;
+
+                // Alert if event is within 3 days (inclusive) and participation is below 25%
+                if (diff >= 0 && diff <= 3 && filledSeats < (maxSeats * 0.25)) {
+                  showLowParticipationAlert = true;
+                }
+              } catch (e) {
+                // Date parsing failed, ignore alert logic
+              }
 
               return Card(
                 elevation: 3,
@@ -189,7 +209,33 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                    const SizedBox(width: 4),
                                    Icon(Icons.arrow_forward, size: 12, color: Theme.of(context).primaryColor),
                                  ],
-                               )
+                               ),
+                               if (showLowParticipationAlert)
+                                 Padding(
+                                   padding: const EdgeInsets.only(top: 8.0),
+                                   child: Container(
+                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                     decoration: BoxDecoration(
+                                       color: Colors.red.shade50,
+                                       borderRadius: BorderRadius.circular(4),
+                                       border: Border.all(color: Colors.red.shade200),
+                                     ),
+                                     child: Row(
+                                       mainAxisSize: MainAxisSize.min,
+                                       children: [
+                                         Icon(Icons.warning_amber_rounded, size: 16, color: Colors.red.shade700),
+                                         const SizedBox(width: 6),
+                                         Expanded(
+                                            child: Text(
+                                              "Low Participation Alert ($filledSeats/$maxSeats)",
+                                              style: TextStyle(color: Colors.red.shade900, fontSize: 12, fontWeight: FontWeight.bold),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                         ),
+                                       ],
+                                     ),
+                                   ),
+                                 ),
                             ],
                           ),
                         ),
