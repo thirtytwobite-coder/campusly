@@ -30,18 +30,32 @@ class ClubCoordinatorDashboard extends StatefulWidget {
 class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   String? clubId;
   String? clubName;
+  String? userName;
   int _selectedIndex = 0;
   bool _loading = true;
+
   @override
   void initState() {
     super.initState();
     clubId = widget.initialClubId;
     clubName = widget.initialClubName;
-
+    _fetchUserInfo();
     if (clubId == null) {
       _fetchClubInfo();
     } else {
       _loading = false;
+    }
+  }
+
+  Future<void> _fetchUserInfo() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final studentDoc = await FirebaseFirestore.instance.collection('student').doc(user.uid).get();
+      if (studentDoc.exists) {
+        setState(() {
+          userName = studentDoc.data()?['name'];
+        });
+      }
     }
   }
 
@@ -185,14 +199,15 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
-                      ?.copyWith(color: Colors.grey)),
+                      ?.copyWith(color: Colors.green),
+              ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.4),
               Text(
-                clubName ?? "Coordinator",
+                userName ?? "Coordinator",
                 style: Theme.of(context)
                     .textTheme
                     .headlineMedium
                     ?.copyWith(fontWeight: FontWeight.bold),
-              ),
+              ).animate().fadeIn(duration: 600.ms, delay: 200.ms).slideX(begin: -0.2),
               const SizedBox(height: 25),
 
               _clubDescriptionCard(description),
