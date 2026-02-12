@@ -47,8 +47,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
 
       if (mounted && userDoc.exists) {
+        Map<String, dynamic> data =
+            Map<String, dynamic>.from(userDoc.data() as Map<String, dynamic>);
+
+        // Check if user is a club coordinator
+        if (user.email != null) {
+          final coordinatorQuery = await FirebaseFirestore.instance
+              .collection('clubs')
+              .where('coordinatorEmails', arrayContains: user.email)
+              .limit(1)
+              .get();
+
+          if (coordinatorQuery.docs.isNotEmpty) {
+            String currentRole = data['role'] ?? '';
+            if (currentRole.isNotEmpty && !currentRole.contains('Club Coordinator')) {
+              data['displayRole'] = '$currentRole / Club Coordinator';
+            } else if (currentRole.isEmpty) {
+              data['displayRole'] = 'Club Coordinator';
+            }
+          }
+        }
+
         setState(() {
-          userData = userDoc.data() as Map<String, dynamic>;
+          userData = data;
           _initializeControllers();
           isLoading = false;
         });
@@ -240,7 +261,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               _buildProfileInfoRow(
                                   Icons.badge_outlined,
                                   'Role',
-                                  userData?['role'] ?? 'N/A'),
+                                  userData?['displayRole'] ?? userData?['role'] ?? 'N/A'),
                               const SizedBox(height: 16),
                               if (isEditing)
                                 _buildEditableField(
