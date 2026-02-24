@@ -98,6 +98,14 @@ class EventDetailsScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   _buildVisibilityBadge(isCollegeOnly, collegeName),
 
+                  // --- VOLUNTEER INFO ---
+                  if ((data['requiresVolunteers'] ?? false) == true) ...[
+                    const SizedBox(height: 16),
+                    _buildInfoRow(Icons.volunteer_activism_outlined, "Volunteers Needed: ${data['volunteerCount'] ?? 'N/A'}"),
+                    const SizedBox(height: 8),
+                    if ((data['volunteerRole'] ?? '').toString().isNotEmpty) _buildInfoRow(Icons.list_alt_outlined, "Role: ${data['volunteerRole']}")
+                  ],
+
                   // --- PRIZE BANNER ---
                   if (hasPrize) ...[
                     const SizedBox(height: 24),

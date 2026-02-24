@@ -159,6 +159,10 @@ class _ApprovalCard extends StatelessWidget {
           'posterLink': data['posterLink'],
           'visibility': data['visibility'] ?? 'college',
           'college': data['college'],
+          // volunteer info (if coordinator requested volunteers)
+          'requiresVolunteers': data['requiresVolunteers'] ?? false,
+          'volunteerCount': data['volunteerCount'] ?? null,
+          'volunteerRole': data['volunteerRole'] ?? null,
           'createdAt': FieldValue.serverTimestamp(),
         });
 

@@ -512,6 +512,10 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     String visibility = 'college';
     String? category;
     String? eventMode;
+    // volunteer fields
+    bool requiresVolunteers = false;
+    final volunteerCountController = TextEditingController();
+    final volunteerRoleController = TextEditingController();
 
     showDialog(
       context: context,
@@ -552,7 +556,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: timeController, decoration: const InputDecoration(labelText: 'Time (HH:MM) *', border: OutlineInputBorder()),
+                  controller: timeController,
+                  decoration: const InputDecoration(labelText: 'Time (HH:MM) *', border: OutlineInputBorder()),
                   onTap: () async {
                     final t = await showTimePicker(context: context, initialTime: TimeOfDay.now());
                     if (t != null) timeController.text = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
@@ -567,6 +572,26 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   onChanged: (v) => setDialogState(() { hasPrizePool = v ?? false; if (!hasPrizePool) prizeAmountController.clear(); }),
                 ),
                 if (hasPrizePool) TextField(controller: prizeAmountController, decoration: const InputDecoration(labelText: 'Prize Amount', prefixText: '₹ ', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                const SizedBox(height: 12),
+                // Volunteer option for programs
+                StatefulBuilder(
+                  builder: (context, setDialogStateInner) => Column(
+                    children: [
+                      CheckboxListTile(
+                        value: requiresVolunteers,
+                        title: const Text('Require Volunteers'),
+                        contentPadding: EdgeInsets.zero,
+                        onChanged: (v) => setDialogStateInner(() => requiresVolunteers = v ?? false),
+                      ),
+                      if (requiresVolunteers) ...[
+                        const SizedBox(height: 8),
+                        TextField(controller: volunteerCountController, decoration: const InputDecoration(labelText: 'Number of Volunteers', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                        const SizedBox(height: 8),
+                        TextField(controller: volunteerRoleController, decoration: const InputDecoration(labelText: 'Volunteer Role / Instructions', border: OutlineInputBorder()), maxLines: 2),
+                      ]
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 16),
                 const Divider(),
                 const Text('Visibility', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -577,14 +602,30 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(onPressed: () => _handlePropose(ctx, nameController.text, descriptionController.text, dateController.text, timeController.text, locationController.text, hasPrizePool, prizeAmountController.text, posterLinkController.text, visibility, category, eventMode), child: const Text('Submit Proposal')),
+                ElevatedButton(onPressed: () => _handlePropose(
+                      ctx,
+                      nameController.text,
+                      descriptionController.text,
+                      dateController.text,
+                      timeController.text,
+                      locationController.text,
+                      hasPrizePool,
+                      prizeAmountController.text,
+                      posterLinkController.text,
+                      visibility,
+                      category,
+                      eventMode,
+                      requiresVolunteers,
+                      volunteerCountController.text,
+                      volunteerRoleController.text,
+                    ), child: const Text('Submit Proposal')),
           ],
         ),
       ),
     );
   }
 
-  void _handlePropose(BuildContext ctx, String name, String desc, String date, String time, String loc, bool hasPrize, String prize, String poster, String vis, String? cat, String? mode) async {
+  void _handlePropose(BuildContext ctx, String name, String desc, String date, String time, String loc, bool hasPrize, String prize, String poster, String vis, String? cat, String? mode, bool requiresVolunteers, String volunteerCount, String volunteerRole) async {
     if (name.trim().isEmpty || desc.trim().isEmpty || date.trim().isEmpty || time.trim().isEmpty || loc.trim().isEmpty || cat == null || mode == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill required fields (Name, Description, Date, Time, Venue, Category, Event Mode)')));
       return;
@@ -600,6 +641,10 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         'name': name.trim(), 'description': desc.trim(), 'date': date, 'time': time, 'location': loc.trim(), 'posterLink': _convertGoogleDriveLink(poster.trim()),
         'hasPrizePool': hasPrize, 'prizeAmount': prize, 'visibility': vis, 'college': coll, 'category': cat, 'eventMode': mode, 'status': 'pending',
         'clubId': clubId, 'clubName': clubName, 'coordinatorId': user?.uid, 'coordinatorName': nameStr, 'coordinatorEmail': user?.email,
+        // volunteer details
+        'requiresVolunteers': requiresVolunteers,
+        'volunteerCount': volunteerCount.isNotEmpty ? int.tryParse(volunteerCount) ?? 0 : null,
+        'volunteerRole': volunteerRole.isNotEmpty ? volunteerRole.trim() : null,
         'createdAt': FieldValue.serverTimestamp(), 'updatedAt': FieldValue.serverTimestamp(),
       });
       Navigator.pop(ctx);
@@ -805,6 +850,10 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     bool hasPrizePool = data['hasPrizePool'] ?? false;
     String? category = data['category'];
     String? eventMode = data['eventMode'];
+    // volunteer fields (pre-fill from program data)
+    bool requiresVolunteers = data['requiresVolunteers'] ?? false;
+    final volunteerCountController = TextEditingController(text: (data['volunteerCount'] ?? '').toString());
+    final volunteerRoleController = TextEditingController(text: data['volunteerRole'] ?? '');
 
     showDialog(
       context: context,
@@ -957,6 +1006,25 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   ),
                 ],
                 const SizedBox(height: 16),
+                // Volunteer settings (editable)
+                StatefulBuilder(
+                  builder: (context, setInner) => Column(
+                    children: [
+                      CheckboxListTile(
+                        value: requiresVolunteers,
+                        title: const Text('Require Volunteers'),
+                        contentPadding: EdgeInsets.zero,
+                        onChanged: (v) => setInner(() => requiresVolunteers = v ?? false),
+                      ),
+                      if (requiresVolunteers) ...[
+                        const SizedBox(height: 8),
+                        TextField(controller: volunteerCountController, decoration: const InputDecoration(labelText: 'Number of Volunteers', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                        const SizedBox(height: 8),
+                        TextField(controller: volunteerRoleController, decoration: const InputDecoration(labelText: 'Volunteer Role / Instructions', border: OutlineInputBorder()), maxLines: 2),
+                      ]
+                    ],
+                  ),
+                ),
                 const Divider(),
                 const SizedBox(height: 8),
                 const Text(
@@ -1037,6 +1105,9 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   prizeAmountController.text,
                   category!,
                   eventMode!,
+                  requiresVolunteers,
+                  volunteerCountController.text,
+                  volunteerRoleController.text,
                 );
               },
               child: const Text('Update'),
@@ -1077,6 +1148,9 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     String prizeAmount,
     String category,
     String eventMode,
+    bool requiresVolunteers,
+    String volunteerCount,
+    String volunteerRole,
   ) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -1098,6 +1172,10 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         'prizeAmount': hasPrizePool && prizeAmount.isNotEmpty ? prizeAmount.trim() : null,
         'category': category,
         'eventMode': eventMode,
+        // volunteer fields
+        'requiresVolunteers': requiresVolunteers,
+        'volunteerCount': volunteerCount.isNotEmpty ? int.tryParse(volunteerCount) ?? 0 : null,
+        'volunteerRole': volunteerRole.isNotEmpty ? volunteerRole.trim() : null,
         'status': 'pending', // Reset status on edit
         'updatedAt': FieldValue.serverTimestamp(),
       });

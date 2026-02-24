@@ -11,6 +11,7 @@ import 'profile_screen.dart';
 import 'club_coordinator_dashboard.dart';
 import 'login_screen.dart';
 import 'vibrant_background.dart';
+import 'participation_history.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -150,13 +151,26 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title:
-        Text(_selectedIndex == 0 ? "Campus Events" : _selectedIndex == 1 ? "My College Events" : "Registered Events"),
+        Text(_selectedIndex == 0 ? "Campus Events" : _selectedIndex == 1 ? "My College Events" : "Participation History"),
         actions: [
           if (managedClubs.isNotEmpty)
             IconButton(
               tooltip: "Switch to Coordinator View",
               icon: const Icon(Icons.admin_panel_settings_outlined),
               onPressed: _handleCoordinatorSwitch,
+            ),
+          // when viewing registered events allow quick access to history screen
+          if (_selectedIndex == 2)
+            IconButton(
+              tooltip: "Participation History",
+              icon: const Icon(Icons.history),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const ParticipationHistoryScreen()),
+                );
+              },
             ),
           IconButton(
             icon: const Icon(Icons.brightness_6),
@@ -227,7 +241,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           BottomNavigationBarItem(
               icon: Icon(Icons.school), label: 'My College'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.assignment_turned_in), label: 'Registered'),
+              icon: Icon(Icons.history), label: 'History'),
           BottomNavigationBarItem(
               icon: Icon(Icons.person), label: 'Profile'),
         ],
