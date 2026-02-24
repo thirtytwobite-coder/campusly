@@ -150,6 +150,7 @@ class _ApprovalCard extends StatelessWidget {
           'date': data['date'],
           'time': data['time'],
           'clubName': data['clubName'],
+          'coordinatorName': data['coordinatorName'] ?? '',
           'clubId': clubId,
           'programId': programId,
           'category': data['category'] ?? 'Technical',
@@ -390,6 +391,17 @@ class _ApprovalCard extends StatelessWidget {
             _detailRow(Icons.location_on, 'Venue', data['location']),
             _detailRow(Icons.school, 'College', data['college']),
             _detailRow(Icons.person, 'Coordinator', data['coordinatorName']),
+            _detailRow(Icons.category, 'Category', data['category'] ?? ''),
+            _detailRow(Icons.event, 'Mode', data['eventMode'] ?? ''),
+            // Prize details
+            if ((data['hasPrizePool'] ?? false) == true) ...[
+              _detailRow(Icons.emoji_events, 'Prize', data['prizeAmount']?.toString() ?? 'N/A'),
+            ],
+            // Volunteer details
+            if ((data['requiresVolunteers'] ?? false) == true) ...[
+              _detailRow(Icons.volunteer_activism, 'Volunteers Needed', (data['volunteerCount'] ?? '').toString()),
+              if ((data['volunteerRole'] ?? '').toString().isNotEmpty) _detailRow(Icons.list, 'Volunteer Role', data['volunteerRole']?.toString()),
+            ],
             const SizedBox(height: 16),
             Row(
               children: [

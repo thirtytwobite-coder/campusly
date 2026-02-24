@@ -688,9 +688,15 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
         'date': data['date'],
         'time': data['time'],
         'clubName': clubName,
+        'coordinatorName': data['coordinatorName'] ?? '',
         'clubId': clubId,
         'programId': programId,
         'category': data['category'] ?? 'Technical',
+        'eventMode': data['eventMode'] ?? '',
+        // volunteer info
+        'requiresVolunteers': data['requiresVolunteers'] ?? false,
+        'volunteerCount': data['volunteerCount'] ?? null,
+        'volunteerRole': data['volunteerRole'] ?? null,
         'college': data['college'] ?? 'Unknown',
         'maxSeats': 100,
         'filledSeats': 0,
@@ -843,8 +849,15 @@ class ProgramApprovalDetailScreen extends StatelessWidget {
             _infoRow(Icons.location_on, 'Venue', data['location']),
             _infoRow(Icons.group, 'Club', clubName),
             _infoRow(Icons.person, 'Coordinator', data['coordinatorName']),
+            _infoRow(Icons.category, 'Category', data['category'] ?? ''),
+            _infoRow(Icons.event, 'Mode', data['eventMode'] ?? ''),
             if (data['hasPrizePool'] == true)
               _infoRow(Icons.monetization_on, 'Prize Amount', '₹ ${data['prizeAmount'] ?? 'TBD'}', color: Colors.green),
+            // Volunteer details
+            if ((data['requiresVolunteers'] ?? false) == true) ...[
+              _infoRow(Icons.volunteer_activism, 'Volunteers Needed', (data['volunteerCount'] ?? '').toString()),
+              if ((data['volunteerRole'] ?? '').toString().isNotEmpty) _infoRow(Icons.list, 'Volunteer Role', data['volunteerRole']?.toString()),
+            ],
             _infoRow(
               (data['visibility'] ?? 'college') == 'public' ? Icons.public : Icons.lock,
               'Visibility',
