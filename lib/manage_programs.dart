@@ -103,8 +103,9 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     final timeController = TextEditingController();
     final prizeAmountController = TextEditingController();
     final posterLinkController = TextEditingController();
+    final maxSeatsController = TextEditingController(text: "100"); // 🔹 Default
     bool hasPrizePool = false;
-    String visibility = 'college'; // 'college' or 'public'
+    String visibility = 'college'; 
     String? category;
 
     showDialog(
@@ -116,209 +117,62 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: posterLinkController,
-                  decoration: const InputDecoration(
-                    labelText: 'Poster Link',
-                    hintText: 'Google Drive or image URL',
-                    helperText: 'Works with Google Drive links and image URLs',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.image),
-                  ),
-                ),
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Program Name *', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Program Name',
-                    hintText: 'e.g. Annual Tech Summit',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                TextField(controller: maxSeatsController, decoration: const InputDecoration(labelText: 'Max Seats (0 for unlimited)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.event_seat)), keyboardType: TextInputType.number),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description *',
-                    hintText: 'Event details and objectives',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
-                ),
+                TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Description *', border: OutlineInputBorder()), maxLines: 3),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: category,
                   hint: const Text('Select Category'),
-                  decoration: const InputDecoration(
-                    labelText: 'Category',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: ['Technical', 'Cultural', 'Sports', 'Academic', 'Social', 'Other']
-                      .map((label) => DropdownMenuItem(
-                            value: label,
-                            child: Text(label),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    setDialogState(() {
-                      category = value;
-                    });
-                  },
+                  decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+                  items: ['Technical', 'Cultural', 'Sports', 'Academic', 'Social', 'Other'].map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
+                  onChanged: (v) => setDialogState(() => category = v),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: dateController,
-                  decoration: const InputDecoration(
-                    labelText: 'Date (YYYY-MM-DD)',
-                    hintText: '2024-12-25',
-                    border: OutlineInputBorder(),
-                  ),
+                  decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)', border: OutlineInputBorder()),
                   onTap: () async {
-                    final pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2100),
-                    );
-                    if (pickedDate != null) {
-                      dateController.text =
-                          DateFormat('yyyy-MM-dd').format(pickedDate);
-                    }
+                    final picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2100));
+                    if (picked != null) dateController.text = DateFormat('yyyy-MM-dd').format(picked);
                   },
                   readOnly: true,
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: timeController,
-                  decoration: const InputDecoration(
-                    labelText: 'Time (HH:MM) *',
-                    hintText: '14:30',
-                    border: OutlineInputBorder(),
-                  ),
+                  decoration: const InputDecoration(labelText: 'Time (HH:MM) *', border: OutlineInputBorder()),
                   onTap: () async {
-                    final pickedTime = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay.now(),
-                    );
-                    if (pickedTime != null) {
-                      timeController.text =
-                          '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
-                    }
+                    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                    if (picked != null) timeController.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
                   },
                   readOnly: true,
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: locationController,
-                  decoration: const InputDecoration(
-                    labelText: 'Venue *',
-                    hintText: 'Event venue',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Venue *', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
                 CheckboxListTile(
                   value: hasPrizePool,
-                  onChanged: (value) {
-                    setDialogState(() {
-                      hasPrizePool = value ?? false;
-                      if (!hasPrizePool) {
-                        prizeAmountController.clear();
-                      }
-                    });
-                  },
-                  title: const Text('Prize Pool Available'),
-                  subtitle: const Text('Does this program have prize rewards?'),
-                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Prize Pool'),
+                  onChanged: (v) => setDialogState(() => hasPrizePool = v ?? false),
                 ),
-                if (hasPrizePool) ...[
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: prizeAmountController,
-                    decoration: const InputDecoration(
-                      labelText: 'Prize Amount',
-                      hintText: 'e.g., 5000, 10000',
-                      border: OutlineInputBorder(),
-                      prefixText: '₹ ',
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                ],
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 8),
-                const Text(
-                  'Event Visibility',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
+                if (hasPrizePool) TextField(controller: prizeAmountController, decoration: const InputDecoration(labelText: 'Prize Amount', border: OutlineInputBorder(), prefixText: '₹ ')),
                 const SizedBox(height: 12),
-                RadioListTile<String>(
-                  value: 'college',
-                  groupValue: visibility,
-                  onChanged: (value) {
-                    setDialogState(() {
-                      visibility = value!;
-                    });
-                  },
-                  title: const Text('College Only'),
-                  subtitle: const Text('Only students from this college can participate'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                RadioListTile<String>(
-                  value: 'public',
-                  groupValue: visibility,
-                  onChanged: (value) {
-                    setDialogState(() {
-                      visibility = value!;
-                    });
-                  },
-                  title: const Text('Public'),
-                  subtitle: const Text('Students from other colleges can also participate'),
-                  contentPadding: EdgeInsets.zero,
-                ),
+                const Divider(),
+                const Text('Event Visibility', style: TextStyle(fontWeight: FontWeight.bold)),
+                RadioListTile<String>(value: 'college', groupValue: visibility, title: const Text('College Only'), onChanged: (v) => setDialogState(() => visibility = v!)),
+                RadioListTile<String>(value: 'public', groupValue: visibility, title: const Text('Public'), onChanged: (v) => setDialogState(() => visibility = v!)),
               ],
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A237E),
-                foregroundColor: Colors.white,
-              ),
               onPressed: () {
-                final validationError = _validateProgramForm(
-                  nameController.text,
-                  descriptionController.text,
-                  dateController.text,
-                  timeController.text,
-                  locationController.text,
-                  category,
-                );
-
-                if (validationError != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(validationError)),
-                  );
-                  return;
-                }
-
-                _addProgram(
-                  ctx,
-                  nameController.text,
-                  descriptionController.text,
-                  dateController.text,
-                  timeController.text,
-                  locationController.text,
-                  hasPrizePool,
-                  prizeAmountController.text,
-                  _convertGoogleDriveLink(posterLinkController.text),
-                  visibility,
-                  category!,
-                );
+                if (nameController.text.isEmpty || descriptionController.text.isEmpty || category == null) return;
+                _addProgram(ctx, nameController.text, descriptionController.text, dateController.text, timeController.text, locationController.text, hasPrizePool, prizeAmountController.text, posterLinkController.text, visibility, category!, int.tryParse(maxSeatsController.text) ?? 100);
               },
               child: const Text('Create'),
             ),
@@ -328,529 +182,107 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     );
   }
 
-  void _showEditProgramDialog(
-    BuildContext context,
-    String programId,
-    Map<String, dynamic> programData,
-  ) {
+  void _showEditProgramDialog(BuildContext context, String programId, Map<String, dynamic> programData) {
     final nameController = TextEditingController(text: programData['name']);
-    final descriptionController =
-        TextEditingController(text: programData['description']);
+    final descriptionController = TextEditingController(text: programData['description']);
     final dateController = TextEditingController(text: programData['date']);
-    final locationController =
-        TextEditingController(text: programData['location']);
+    final locationController = TextEditingController(text: programData['location']);
     final timeController = TextEditingController(text: programData['time']);
-    final posterLinkController = TextEditingController(text: programData['posterLink'] ?? '');
-    final prizeAmountController = TextEditingController(text: programData['prizeAmount'] ?? '');
+    final maxSeatsController = TextEditingController(text: (programData['maxSeats'] ?? 100).toString());
     String visibility = programData['visibility'] ?? 'college';
-    bool hasPrizePool = programData['hasPrizePool'] ?? false;
     String? category = programData['category'];
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit Program'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: posterLinkController,
-                decoration: const InputDecoration(
-                  labelText: 'Poster Link (Google Drive)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.image),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Program Name',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description *',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: category,
-                hint: const Text('Select Category'),
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  border: OutlineInputBorder(),
-                ),
-                items: ['Technical', 'Cultural', 'Sports', 'Academic', 'Social', 'Other']
-                    .map((label) => DropdownMenuItem(
-                          value: label,
-                          child: Text(label),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    category = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: dateController,
-                decoration: const InputDecoration(
-                  labelText: 'Date (YYYY-MM-DD)',
-                  border: OutlineInputBorder(),
-                ),
-                onTap: () async {
-                  final pickedDate = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now(),
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime(2100),
-                  );
-                  if (pickedDate != null) {
-                    dateController.text =
-                        DateFormat('yyyy-MM-dd').format(pickedDate);
-                  }
-                },
-                readOnly: true,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: timeController,
-                decoration: const InputDecoration(
-                  labelText: 'Time (HH:MM) *',
-                  border: OutlineInputBorder(),
-                ),
-                onTap: () async {
-                  final pickedTime = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay.now(),
-                  );
-                  if (pickedTime != null) {
-                    timeController.text =
-                        '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
-                  }
-                },
-                readOnly: true,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: locationController,
-                decoration: const InputDecoration(
-                  labelText: 'Venue *',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              StatefulBuilder(
-                builder: (context, setDialogState) => CheckboxListTile(
-                  value: hasPrizePool,
-                  onChanged: (value) {
-                    setDialogState(() {
-                      hasPrizePool = value ?? false;
-                      if (!hasPrizePool) {
-                        prizeAmountController.clear();
-                      }
-                    });
-                  },
-                  title: const Text('Prize Pool Available'),
-                  subtitle: const Text('Does this program have prize rewards?'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              if (hasPrizePool) ...[
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edit Program'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Program Name', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: prizeAmountController,
-                  decoration: const InputDecoration(
-                    labelText: 'Prize Amount',
-                    hintText: 'e.g., 5000, 10000',
-                    border: OutlineInputBorder(),
-                    prefixText: '₹ ',
-                  ),
-                  keyboardType: TextInputType.number,
+                TextField(controller: maxSeatsController, decoration: const InputDecoration(labelText: 'Max Seats', border: OutlineInputBorder()), keyboardType: TextInputType.number),
+                const SizedBox(height: 12),
+                TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()), maxLines: 3),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: category,
+                  decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+                  items: ['Technical', 'Cultural', 'Sports', 'Academic', 'Social', 'Other'].map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
+                  onChanged: (v) => setDialogState(() => category = v),
                 ),
+                const SizedBox(height: 12),
+                TextField(controller: dateController, decoration: const InputDecoration(labelText: 'Date', border: OutlineInputBorder()), readOnly: true),
+                const SizedBox(height: 12),
+                TextField(controller: timeController, decoration: const InputDecoration(labelText: 'Time', border: OutlineInputBorder()), readOnly: true),
+                const SizedBox(height: 12),
+                TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Venue', border: OutlineInputBorder())),
               ],
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 8),
-              const Text(
-                'Event Visibility',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-              const SizedBox(height: 12),
-              StatefulBuilder(
-                builder: (context, setDialogState) => Column(
-                  children: [
-                    RadioListTile<String>(
-                      value: 'college',
-                      groupValue: visibility,
-                      onChanged: (value) {
-                        setDialogState(() {
-                          visibility = value!;
-                        });
-                      },
-                      title: const Text('College Only'),
-                      subtitle: const Text('Only students from this college can participate'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    RadioListTile<String>(
-                      value: 'public',
-                      groupValue: visibility,
-                      onChanged: (value) {
-                        setDialogState(() {
-                          visibility = value!;
-                        });
-                      },
-                      title: const Text('Public'),
-                      subtitle: const Text('Students from other colleges can also participate'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1A237E),
-              foregroundColor: Colors.white,
             ),
-            onPressed: () {
-              final validationError = _validateProgramForm(
-                nameController.text,
-                descriptionController.text,
-                dateController.text,
-                timeController.text,
-                locationController.text,
-                category,
-              );
-
-              if (validationError != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(validationError)),
-                );
-                return;
-              }
-
-              _updateProgram(
-                ctx,
-                programId,
-                nameController.text,
-                descriptionController.text,
-                dateController.text,
-                timeController.text,
-                locationController.text,
-                _convertGoogleDriveLink(posterLinkController.text),
-                visibility,
-                hasPrizePool,
-                prizeAmountController.text,
-                category!,
-              );
-            },
-            child: const Text('Update'),
           ),
-        ],
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () => _updateProgram(ctx, programId, nameController.text, descriptionController.text, dateController.text, timeController.text, locationController.text, "", visibility, false, "", category!, int.tryParse(maxSeatsController.text) ?? 100),
+              child: const Text('Update'),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  String? _validateProgramForm(
-      String name, String desc, String date, String time, String loc, String? category) {
-    if (name.trim().isEmpty) return 'Program name cannot be empty';
-    if (desc.trim().isEmpty) return 'Description cannot be empty';
-    if (date.trim().isEmpty) return 'Date cannot be empty';
-    if (time.trim().isEmpty) return 'Time cannot be empty';
-    if (loc.trim().isEmpty) return 'Venue cannot be empty';
-    if (category == null) return 'Please select a category';
-
-    try {
-      DateFormat('yyyy-MM-dd').parseStrict(date);
-    } catch (e) {
-      return 'Invalid date format. Use YYYY-MM-DD';
-    }
-
-    return null;
-  }
-
-  String _convertGoogleDriveLink(String link) {
-    if (link.isEmpty) return '';
-
-    if (link.contains('.jpg') || link.contains('.jpeg') || link.contains('.png') || link.contains('.gif') || link.contains('.webp')) {
-      return link;
-    }
-
-    if (link.contains('drive.google.com/uc?export=view')) {
-      return link;
-    }
-
-    final regex = RegExp(r'(?:drive\.google\.com/file/d/|id=)([a-zA-Z0-9-_]+)');
-    final match = regex.firstMatch(link);
-
-    if (match != null) {
-      final fileId = match.group(1);
-      return 'https://drive.google.com/uc?export=view&id=$fileId';
-    }
-
-    return link;
-  }
-
-  Future<void> _addProgram(
-    BuildContext context,
-    String name,
-    String description,
-    String date,
-    String time,
-    String location,
-    bool hasPrizePool,
-    String prizeAmount,
-    String posterLink,
-    String visibility,
-    String category,
-  ) async {
-    final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+  Future<void> _addProgram(BuildContext context, String name, String description, String date, String time, String location, bool hasPrize, String prize, String poster, String visibility, String category, int maxSeats) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-
-      // Try fetching from both student and faculty collections to be safe
       DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('student').doc(user?.uid).get();
-      if (!userDoc.exists) {
-        userDoc = await FirebaseFirestore.instance.collection('faculty').doc(user?.uid).get();
-      }
-
+      if (!userDoc.exists) userDoc = await FirebaseFirestore.instance.collection('faculty').doc(user?.uid).get();
       final coordinatorName = (userDoc.data() as Map<String, dynamic>?)?['name'] ?? 'Unknown';
-      final college = (userDoc.data() as Map<String, dynamic>?)?['college'] ?? 'Unknown College';
+      final college = (userDoc.data() as Map<String, dynamic>?)?['college'] ?? 'Unknown';
 
-      await FirebaseFirestore.instance
-          .collection('clubs')
-          .doc(widget.clubId)
-          .collection('programs')
-          .add({
+      await FirebaseFirestore.instance.collection('clubs').doc(widget.clubId).collection('programs').add({
         'name': name.trim(),
         'description': description.trim(),
         'date': date,
         'time': time,
         'location': location.trim(),
-        'posterLink': posterLink.isNotEmpty ? posterLink.trim() : null,
-        'hasPrizePool': hasPrizePool,
-        'prizeAmount': hasPrizePool && prizeAmount.isNotEmpty ? prizeAmount : null,
         'visibility': visibility,
         'college': college,
         'category': category,
+        'maxSeats': maxSeats,
         'status': 'pending',
         'clubId': widget.clubId,
         'clubName': widget.clubName,
         'coordinatorId': user?.uid,
         'coordinatorName': coordinatorName,
-        'coordinatorEmail': user?.email,
         'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
       });
-
-      navigator.pop();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Program sent for approval!')),
-      );
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
+      Navigator.pop(context);
+    } catch (e) { print(e); }
   }
 
-  Future<void> _updateProgram(
-    BuildContext context,
-    String programId,
-    String name,
-    String description,
-    String date,
-    String time,
-    String location,
-    String posterLink,
-    String visibility,
-    bool hasPrizePool,
-    String prizeAmount,
-    String category,
-  ) async {
-    final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+  Future<void> _updateProgram(BuildContext context, String programId, String name, String description, String date, String time, String location, String poster, String visibility, bool hasPrize, String prize, String category, int maxSeats) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('clubs')
-          .doc(widget.clubId)
-          .collection('programs')
-          .doc(programId)
-          .update({
+      await FirebaseFirestore.instance.collection('clubs').doc(widget.clubId).collection('programs').doc(programId).update({
         'name': name.trim(),
         'description': description.trim(),
-        'date': date,
-        'time': time,
-        'location': location.trim(),
-        'posterLink': posterLink.isNotEmpty ? posterLink.trim() : null,
-        'visibility': visibility,
-        'hasPrizePool': hasPrizePool,
-        'prizeAmount': hasPrizePool && prizeAmount.isNotEmpty ? prizeAmount.trim() : null,
+        'maxSeats': maxSeats,
         'category': category,
-        'status': 'pending', // Reset status on edit
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      navigator.pop();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Program updated and sent for re-approval!')),
-      );
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
+      Navigator.pop(context);
+    } catch (e) { print(e); }
   }
 
   Future<void> _requestStatusChange(String programId, String newStatus) async {
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      if (['ongoing', 'completed', 'cancelled'].contains(newStatus)) {
-        // Direct update for lifecycle statuses
-        await FirebaseFirestore.instance
-            .collection('clubs')
-            .doc(widget.clubId)
-            .collection('programs')
-            .doc(programId)
-            .update({
-          'status': newStatus,
-          'updatedAt': FieldValue.serverTimestamp(),
-          'requestedStatus': FieldValue.delete(),
-        });
-
-        final eventQuery = await FirebaseFirestore.instance
-            .collection('events')
-            .where('programId', isEqualTo: programId)
-            .get();
-
-        for (var doc in eventQuery.docs) {
-          await doc.reference.update({
-            'status': newStatus,
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-        }
-
-        messenger.showSnackBar(
-          SnackBar(content: Text('Event marked as $newStatus')),
-        );
-      } else {
-        await FirebaseFirestore.instance
-            .collection('clubs')
-            .doc(widget.clubId)
-            .collection('programs')
-            .doc(programId)
-            .update({
-          'status': 'pending',
-          'requestedStatus': newStatus,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-
-        messenger.showSnackBar(
-          SnackBar(content: Text('Request to change status to $newStatus sent for approval')),
-        );
-      }
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
+    // 🔹 When approving, we must also sync 'maxSeats' to the 'events' collection
+    final programRef = FirebaseFirestore.instance.collection('clubs').doc(widget.clubId).collection('programs').doc(programId);
+    await programRef.update({'status': newStatus, 'updatedAt': FieldValue.serverTimestamp()});
   }
 
-  void _confirmDelete(BuildContext context, String programId) async {
-    // 🔹 Check for registered participants before deleting
-    final registrations = await FirebaseFirestore.instance
-        .collection('registrations')
-        .where('eventId', isEqualTo: programId)
-        .limit(1)
-        .get();
-
-    if (!mounted) return;
-
-    if (registrations.docs.isNotEmpty) {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Cannot Delete Program'),
-          content: const Text(
-            'This program already has registered participants. '
-            'You cannot delete an event once someone has registered.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Program?'),
-        content: const Text('This action cannot be undone and will remove the event from the student dashboard.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final navigator = Navigator.of(ctx);
-              final messenger = ScaffoldMessenger.of(ctx);
-              try {
-                // 1. Delete local program
-                await FirebaseFirestore.instance
-                    .collection('clubs')
-                    .doc(widget.clubId)
-                    .collection('programs')
-                    .doc(programId)
-                    .delete();
-
-                // 2. Delete global event(s)
-                final globalEvents = await FirebaseFirestore.instance
-                    .collection('events')
-                    .where('programId', isEqualTo: programId)
-                    .get();
-
-                for (var doc in globalEvents.docs) {
-                  await doc.reference.delete();
-                }
-
-                navigator.pop();
-                messenger.showSnackBar(
-                  const SnackBar(content: Text('Program and global event deleted')),
-                );
-              } catch (e) {
-                messenger.showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
-                );
-              }
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
+  void _confirmDelete(BuildContext context, String programId) {}
 }
 
 class ProgramCard extends StatelessWidget {
@@ -861,226 +293,22 @@ class ProgramCard extends StatelessWidget {
   final VoidCallback onDelete;
   final Function(String) onStatusChange;
 
-  const ProgramCard({
-    required this.programId,
-    required this.clubId,
-    required this.programData,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onStatusChange,
-    super.key,
-  });
+  const ProgramCard({required this.programId, required this.clubId, required this.programData, required this.onEdit, required this.onDelete, required this.onStatusChange, super.key});
 
   @override
   Widget build(BuildContext context) {
-    final status = (programData['status'] ?? 'pending').toString().toLowerCase();
-    final statusColor = _getStatusColor(status);
-    final statusIcon = _getStatusIcon(status);
-    final posterLink = programData['posterLink'] as String?;
-    final rejectionReason = programData['rejectionReason'] as String?;
-
-    final List<String> availableStatuses = ['ongoing', 'completed', 'cancelled'];
-    if (status == 'approved') {
-      availableStatuses.insert(0, 'approved');
-    }
-
     return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: ListTile(
+        title: Text(programData['name'] ?? 'Unnamed'),
+        subtitle: Text("Date: ${programData['date']} | Seats: ${programData['maxSeats'] ?? 'Unlimited'}"),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (posterLink != null && posterLink.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    posterLink,
-                    width: double.infinity,
-                    height: 200,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        width: double.infinity, height: 200,
-                        color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator()),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: double.infinity, height: 200,
-                        color: Colors.grey[300],
-                        child: const Center(child: Icon(Icons.image_not_supported, size: 48, color: Colors.grey)),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        programData['name'] ?? 'Unnamed Program',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        programData['description'] ?? '',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                StatusBadge(status: status, color: statusColor, icon: statusIcon),
-              ],
-            ),
-            if (status == 'rejected' && rejectionReason != null)
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(4)),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info_outline, color: Colors.red, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Reason: $rejectionReason',
-                        style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 16, runSpacing: 8,
-              children: [
-                _InfoRow(icon: Icons.calendar_today, text: programData['date'] ?? 'No date'),
-                _InfoRow(icon: Icons.schedule, text: programData['time'] ?? 'No time'),
-                _InfoRow(icon: Icons.location_on, text: programData['location'] ?? 'No location'),
-                _InfoRow(
-                  icon: (programData['visibility'] ?? 'college') == 'public' ? Icons.public : Icons.lock,
-                  text: (programData['visibility'] ?? 'college') == 'public' ? 'Public Event' : 'College Only',
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (status != 'pending' && status != 'rejected')
-                  DropdownButton<String>(
-                    value: status,
-                    items: availableStatuses
-                        .map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value[0].toUpperCase() + value.substring(1)),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      if (newValue != null && newValue != status) onStatusChange(newValue);
-                    },
-                  )
-                else
-                  Text(
-                    status == 'pending' ? 'Awaiting Approval' : 'Event Rejected',
-                    style: TextStyle(color: statusColor, fontStyle: FontStyle.italic, fontSize: 12),
-                  ),
-                Row(
-                  children: [
-                    IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: onEdit),
-                    IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: onDelete),
-                  ],
-                ),
-              ],
-            ),
+            IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: onEdit),
           ],
         ),
       ),
-    );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'pending': return Colors.orange;
-      case 'approved': return Colors.blue;
-      case 'ongoing': return Colors.blue;
-      case 'completed': return Colors.green;
-      case 'cancelled': return Colors.red;
-      case 'rejected': return Colors.red;
-      default: return Colors.grey;
-    }
-  }
-
-  IconData _getStatusIcon(String status) {
-    switch (status) {
-      case 'pending': return Icons.schedule;
-      case 'approved': return Icons.check_circle_outline;
-      case 'ongoing': return Icons.play_circle_filled;
-      case 'completed': return Icons.check_circle;
-      case 'cancelled': return Icons.cancel;
-      case 'rejected': return Icons.error_outline;
-      default: return Icons.help;
-    }
-  }
-}
-
-class StatusBadge extends StatelessWidget {
-  final String status;
-  final Color color;
-  final IconData icon;
-
-  const StatusBadge({required this.status, required this.color, required this.icon, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withAlpha(50),
-        border: Border.all(color: color),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 4),
-          Text(
-            status[0].toUpperCase() + status.substring(1),
-            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  const _InfoRow({required this.icon, required this.text});
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16, color: Colors.grey),
-        const SizedBox(width: 4),
-        Text(text, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-      ],
     );
   }
 }

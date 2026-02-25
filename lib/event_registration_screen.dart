@@ -17,6 +17,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
   bool isLoading = true;
   bool isSubmitting = false;
   Map<String, dynamic>? studentData;
+  String _registrationType = 'participant';
 
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
@@ -124,6 +125,9 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
         'ktuId': _ktuIdController.text.trim().toUpperCase(),
       };
 
+      final bool requiresVolunteers = (widget.event['requiresVolunteers'] ?? false) == true;
+      final String regType = requiresVolunteers ? _registrationType : 'participant';
+
       // 1. Update Profile if changed
       await FirebaseFirestore.instance
           .collection('student')
@@ -142,6 +146,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
         'year': updatedData['year'],
         'semester': updatedData['semester'],
         'ktuId': updatedData['ktuId'],
+        'registrationType': regType,
         'registeredAt': FieldValue.serverTimestamp(),
       });
 
@@ -150,6 +155,18 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
           .collection('events')
           .doc(widget.event.id)
           .update({'filledSeats': FieldValue.increment(1)});
+
+      // Decrement volunteers needed when a volunteer registers
+      if (regType == 'volunteer') {
+        await FirebaseFirestore.instance.runTransaction((tx) async {
+          final eventRef = FirebaseFirestore.instance.collection('events').doc(widget.event.id);
+          final snap = await tx.get(eventRef);
+          final data = snap.data() as Map<String, dynamic>? ?? {};
+          final int current = (data['volunteerCount'] is int) ? data['volunteerCount'] as int : int.tryParse(data['volunteerCount']?.toString() ?? '') ?? 0;
+          final int next = current > 0 ? current - 1 : 0;
+          tx.update(eventRef, {'volunteerCount': next});
+        });
+      }
 
       if (mounted) {
         // Show Confirmation Dialog
@@ -224,6 +241,10 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool requiresVolunteers = (widget.event['requiresVolunteers'] ?? false) == true;
+    final String? volunteerRole = widget.event['volunteerRole']?.toString();
+    final String volunteerCount = (widget.event['volunteerCount'] ?? '').toString();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Confirm Details'),
@@ -237,6 +258,10 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (requiresVolunteers) ...[
+                      _buildRegisterTypeCard(volunteerCount, volunteerRole),
+                      const SizedBox(height: 20),
+                    ],
                     const Text(
                       "Please review and confirm your details for registration.",
                       style: TextStyle(fontSize: 16, color: Colors.grey),
@@ -303,6 +328,179 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
         }
         return null;
       },
+    );
+  }
+
+  Widget _buildRegisterTypeCard(String volunteerCount, String? volunteerRole) {
+    final String? roleText = (volunteerRole != null && volunteerRole.trim().isNotEmpty) ? volunteerRole.trim() : null;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE6E9F2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F1FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.how_to_reg_outlined, size: 20, color: Color(0xFF4B3CC9)),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  "Register As",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF6F7FB),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE3E7F0)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _RegisterTypePill(
+                    label: "Participant",
+                    icon: Icons.person_outline,
+                    isSelected: _registrationType == 'participant',
+                    onTap: () => setState(() => _registrationType = 'participant'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _RegisterTypePill(
+                    label: "Volunteer",
+                    icon: Icons.volunteer_activism_outlined,
+                    isSelected: _registrationType == 'volunteer',
+                    onTap: () => setState(() => _registrationType = 'volunteer'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7FAFF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE1ECFF)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.volunteer_activism_outlined, size: 18, color: Color(0xFF2B6CB0)),
+                const SizedBox(width: 8),
+                Text(
+                  volunteerCount.isNotEmpty ? "Volunteers Needed: $volunteerCount" : "Volunteers Needed",
+                  style: const TextStyle(color: Color(0xFF2B6CB0), fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          if (roleText != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7E6),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFFE2B3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.list_alt_outlined, size: 18, color: Color(0xFFB7791F)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Role: $roleText",
+                      style: const TextStyle(color: Color(0xFFB7791F), fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RegisterTypePill extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _RegisterTypePill({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF4B3CC9) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isSelected ? const Color(0xFF4B3CC9) : const Color(0xFFE3E7F0)),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF4B3CC9).withOpacity(0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : [],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: isSelected ? Colors.white : const Color(0xFF667085)),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : const Color(0xFF667085),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

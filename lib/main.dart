@@ -1,4 +1,6 @@
 import 'package:animations/animations.dart';
+import 'package:college_event_manager/club_coordinator_dashboard.dart';
+import 'package:college_event_manager/role_selection_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,7 +12,6 @@ import 'welcome_screen.dart';
 import 'student_home.dart';
 import 'faculty_home.dart';
 import 'main_faculty_dashboard.dart' as main_fac;
-import 'role_selection_screen.dart';
 
 // Global ValueNotifier for theme changes
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
@@ -38,7 +39,6 @@ class CampuslyApp extends StatelessWidget {
         final baseTextTheme = Theme.of(context).textTheme;
         final textTheme = GoogleFonts.poppinsTextTheme(baseTextTheme);
 
-        // --- Page Transitions ---
         const pageTransitionsTheme = PageTransitionsTheme(
           builders: {
             TargetPlatform.android: SharedAxisPageTransitionsBuilder(
@@ -48,15 +48,13 @@ class CampuslyApp extends StatelessWidget {
           },
         );
 
-        // --- Color Palette ---
-        const primaryColor = Color(0xFF9575CD); // Soft purple
-        const secondaryColor = Color(0xFF512DA8); // Deep violet
-        const lightBackgroundColor = Color(0xFFEDE7F6); // Very light lavender
-        const darkBackgroundColor = Color(0xFF1A1A2E); // Deep violet-black
+        const primaryColor = Color(0xFF9575CD);
+        const secondaryColor = Color(0xFF512DA8);
+        const lightBackgroundColor = Color(0xFFEDE7F6);
+        const darkBackgroundColor = Color(0xFF1A1A2E);
         const darkSurfaceColor = Color(0xFF2C2C4E);
-        const textColorLight = Color(0xFF3A3A3A); // Charcoal
+        const textColorLight = Color(0xFF3A3A3A);
 
-        // --- Light Theme ---
         final lightTheme = ThemeData(
           useMaterial3: true,
           brightness: Brightness.light,
@@ -75,44 +73,8 @@ class CampuslyApp extends StatelessWidget {
             error: Colors.redAccent,
           ),
           textTheme: textTheme.copyWith(
-            displayLarge: textTheme.displayLarge?.copyWith(fontWeight: FontWeight.bold, color: textColorLight),
-            displayMedium: textTheme.displayMedium?.copyWith(fontWeight: FontWeight.bold, color: textColorLight),
-            displaySmall: textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold, color: textColorLight),
-            headlineLarge: textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w600, color: textColorLight),
-            headlineMedium: textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w600, color: textColorLight),
             headlineSmall: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600, color: secondaryColor),
-            bodyLarge: textTheme.bodyLarge?.copyWith(color: textColorLight, height: 1.5),
-            bodyMedium: textTheme.bodyMedium?.copyWith(color: textColorLight.withOpacity(0.8), height: 1.5),
-            labelLarge: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500), // For buttons
           ),
-          cardTheme: CardThemeData(
-            elevation: 8.0,
-            color: Colors.white,
-            surfaceTintColor: Colors.white,
-            shadowColor: primaryColor.withOpacity(0.1),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500, letterSpacing: 0.5),
-            ),
-          ),
-          outlinedButtonTheme: OutlinedButtonThemeData(
-            style: OutlinedButton.styleFrom(
-              backgroundColor: primaryColor.withOpacity(0.1),
-              foregroundColor: primaryColor,
-              side: BorderSide.none,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500, color: primaryColor),
-            ),
-          ),
-          iconTheme: const IconThemeData(color: primaryColor),
-          dividerTheme: DividerThemeData(color: Colors.grey.shade200, thickness: 1),
           appBarTheme: AppBarTheme(
             backgroundColor: lightBackgroundColor,
             foregroundColor: secondaryColor,
@@ -121,24 +83,8 @@ class CampuslyApp extends StatelessWidget {
             titleTextStyle: textTheme.headlineSmall?.copyWith(color: secondaryColor, fontWeight: FontWeight.bold),
             iconTheme: const IconThemeData(color: secondaryColor),
           ),
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: Colors.white.withOpacity(0.8),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0), borderSide: BorderSide.none),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.0),
-              borderSide: const BorderSide(color: primaryColor, width: 2),
-            ),
-            labelStyle: textTheme.bodyMedium?.copyWith(color: textColorLight.withOpacity(0.6)),
-            floatingLabelStyle: textTheme.bodyMedium?.copyWith(color: primaryColor),
-            prefixIconColor: MaterialStateColor.resolveWith((states) {
-              if (states.contains(MaterialState.focused)) return primaryColor;
-              return textColorLight.withOpacity(0.6);
-            }),
-          ),
         );
 
-        // --- Dark Theme ---
         final darkTheme = ThemeData(
           useMaterial3: true,
           brightness: Brightness.dark,
@@ -147,87 +93,22 @@ class CampuslyApp extends StatelessWidget {
           pageTransitionsTheme: pageTransitionsTheme,
           colorScheme: const ColorScheme.dark(
             primary: primaryColor,
-            secondary: primaryColor, 
+            secondary: primaryColor,
             background: darkBackgroundColor,
             surface: darkSurfaceColor,
-            onPrimary: Colors.white, 
+            onPrimary: Colors.white,
             onSecondary: Colors.white,
             onBackground: Colors.white,
-            onSurface: Colors.white, 
+            onSurface: Colors.white,
             error: Colors.redAccent,
           ),
-          textTheme: textTheme.copyWith(
-            // Headings: white
-            displayLarge: textTheme.displayLarge?.copyWith(color: Colors.white),
-            displayMedium: textTheme.displayMedium?.copyWith(color: Colors.white),
-            displaySmall: textTheme.displaySmall?.copyWith(color: Colors.white),
-            headlineLarge: textTheme.headlineLarge?.copyWith(color: Colors.white),
-            headlineMedium: textTheme.headlineMedium?.copyWith(color: Colors.white),
-            headlineSmall: textTheme.headlineSmall?.copyWith(color: Colors.white),
-            titleLarge: textTheme.titleLarge?.copyWith(color: Colors.white),
-            titleMedium: textTheme.titleMedium?.copyWith(color: Colors.white),
-            titleSmall: textTheme.titleSmall?.copyWith(color: Colors.white),
-            
-            // Body text: light gray
-            bodyLarge: textTheme.bodyLarge?.copyWith(color: Colors.white70),
-            bodyMedium: textTheme.bodyMedium?.copyWith(color: Colors.white70),
-
-            // Labels & captions: muted gray
-            labelMedium: textTheme.labelMedium?.copyWith(color: Colors.white60),
-            labelSmall: textTheme.labelSmall?.copyWith(color: Colors.white60),
-            
-            // Button text: white
-            labelLarge: textTheme.labelLarge?.copyWith(color: Colors.white), 
-          ),
-          cardTheme: CardThemeData(
-            elevation: 4.0,
-            color: darkSurfaceColor,
-            shadowColor: Colors.black.withOpacity(0.5),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
-              foregroundColor: Colors.white, 
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500, letterSpacing: 0.5),
-            ),
-          ),
-          outlinedButtonTheme: OutlinedButtonThemeData(
-            style: OutlinedButton.styleFrom(
-              backgroundColor: primaryColor.withOpacity(0.15),
-              foregroundColor: primaryColor,
-              side: BorderSide.none,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500, color: primaryColor),
-            ),
-          ),
-          dividerTheme: DividerThemeData(color: Colors.white.withOpacity(0.1), thickness: 1),
           appBarTheme: AppBarTheme(
             backgroundColor: darkBackgroundColor,
             foregroundColor: Colors.white,
             elevation: 0,
             systemOverlayStyle: SystemUiOverlayStyle.light,
             titleTextStyle: textTheme.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
-            iconTheme: const IconThemeData(color: Colors.white), 
-          ),
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: darkSurfaceColor.withOpacity(0.8),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0), borderSide: BorderSide.none),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.0),
-              borderSide: const BorderSide(color: primaryColor, width: 2),
-            ),
-            labelStyle: textTheme.bodyMedium?.copyWith(color: Colors.white70),
-            hintStyle: textTheme.bodyMedium?.copyWith(color: Colors.white60),
-            floatingLabelStyle: textTheme.bodyMedium?.copyWith(color: primaryColor),
-            prefixIconColor: MaterialStateColor.resolveWith((states) {
-              if (states.contains(MaterialState.focused)) return primaryColor;
-              return Colors.white70;
-            }),
+            iconTheme: const IconThemeData(color: Colors.white),
           ),
         );
 
@@ -247,69 +128,68 @@ class CampuslyApp extends StatelessWidget {
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
+  Future<Widget> _getInitialScreen(User user) async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastRole = prefs.getString('last_role_${user.uid}');
+
+    final facultySnap = await FirebaseFirestore.instance.collection('faculty').doc(user.uid).get();
+    if (facultySnap.exists) {
+      final data = facultySnap.data()!;
+      if (data['role'] == 'Main Faculty') {
+        return main_fac.MainFacultyDashboard(collegeName: data['college']);
+      }
+      return const FacultyHomeScreen();
+    }
+
+    final studentSnap = await FirebaseFirestore.instance.collection('student').doc(user.uid).get();
+    if (studentSnap.exists) {
+      final coordSnap = await FirebaseFirestore.instance
+          .collection('clubs')
+          .where('coordinatorEmails', arrayContains: user.email)
+          .limit(1)
+          .get();
+
+      final isCoordinator = coordSnap.docs.isNotEmpty;
+
+      if (isCoordinator) {
+        if (lastRole == 'coordinator') {
+          final clubId = prefs.getString('last_club_id_${user.uid}');
+          final clubName = prefs.getString('last_club_name_${user.uid}');
+          if (clubId != null && clubName != null) {
+            return ClubCoordinatorDashboard(initialClubId: clubId, initialClubName: clubName);
+          }
+        }
+        if (lastRole == 'student') {
+          return const StudentHomeScreen();
+        }
+        return const RoleSelectionScreen();
+      }
+      
+      return const StudentHomeScreen();
+    }
+
+    return const WelcomeScreen();
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+      builder: (context, userSnapshot) {
+        if (userSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
-        
-        if (snapshot.hasData) {
-          final user = snapshot.data!;
-          return FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance.collection('faculty').doc(user.uid).get(),
-            builder: (context, facultySnap) {
-              if (facultySnap.connectionState == ConnectionState.waiting) {
+        if (userSnapshot.hasData) {
+          return FutureBuilder<Widget>(
+            future: _getInitialScreen(userSnapshot.data!),
+            builder: (context, screenSnapshot) {
+              if (screenSnapshot.connectionState == ConnectionState.waiting) {
                 return const Scaffold(body: Center(child: CircularProgressIndicator()));
               }
-
-              if (facultySnap.hasData && facultySnap.data!.exists) {
-                final data = facultySnap.data!.data() as Map<String, dynamic>;
-                if (data['role'] == 'Main Faculty') {
-                  return main_fac.MainFacultyDashboard(collegeName: data['college']);
-                }
-                return const FacultyHomeScreen();
-              }
-
-              return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance.collection('student').doc(user.uid).get(),
-                builder: (context, studentSnap) {
-                  if (studentSnap.connectionState == ConnectionState.waiting) {
-                    return const Scaffold(body: Center(child: CircularProgressIndicator()));
-                  }
-
-                  if (studentSnap.hasData && studentSnap.data!.exists) {
-                    final studentData = studentSnap.data!.data() as Map<String, dynamic>;
-                    
-                    return FutureBuilder<QuerySnapshot>(
-                      future: FirebaseFirestore.instance
-                          .collection('clubs')
-                          .where('coordinatorEmails', arrayContains: user.email)
-                          .limit(1)
-                          .get(),
-                      builder: (context, coordSnap) {
-                        if (coordSnap.connectionState == ConnectionState.waiting) {
-                          return const Scaffold(body: Center(child: CircularProgressIndicator()));
-                        }
-                        
-                        if (coordSnap.hasData && coordSnap.data!.docs.isNotEmpty) {
-                          return const RoleSelectionScreen();
-                        }
-                        return const StudentHomeScreen();
-                      },
-                    );
-                  }
-                  
-                  // If user exists in Auth but not in Firestore collections yet (shouldn't happen normally)
-                  return const WelcomeScreen();
-                },
-              );
+              return screenSnapshot.data ?? const WelcomeScreen();
             },
           );
         }
-        
         return const WelcomeScreen();
       },
     );

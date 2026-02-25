@@ -10,114 +10,120 @@ class EventDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Extracting data from Firestore
-    final data = event.data() as Map<String, dynamic>;
-
-    // 2. Handling the "College Only" vs "Public" logic
-    final String visibility = data['visibility'] ?? "public";
-    final bool isCollegeOnly = visibility == "college";
-    final String collegeName = data['college'] ?? "Unknown College";
-
-    // 3. Smart Prize detection
-    final dynamic rawPrize = data['prizeAmount'] ?? data['prizePool'] ?? data['pricePool'] ?? data['prize'];
-    final String prizeText = rawPrize?.toString() ?? "";
-    final bool hasPrize = prizeText.trim().isNotEmpty;
-
-    // 4. General Details
-    final String title = data['title'] ?? data['name'] ?? 'Untitled Event';
-    final String description = data['description'] ?? 'No description provided by the coordinator.';
-    final String date = data['date'] ?? 'TBD';
-    final String venue = data['location'] ?? data['venue'] ?? 'TBD';
-    final String time = data['time'] ?? 'TBD';
-    final String initialClubName = data['clubName'] ?? 'Club';
-    final String clubId = data['clubId'] ?? '';
-    final String coordinatorName = data['coordinatorName'] ?? 'TBD';
-    final String? imageUrl = data['posterLink'] ?? data['imageUrl'];
-    final String eventMode = data['eventMode'] ?? 'TBD';
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("Program Details"),
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- EVENT IMAGE ---
-            _buildHeaderImage(imageUrl),
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: event.reference.snapshots(),
+        initialData: event,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
 
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF4A4A4A)),
+          // 1. Extracting data from Firestore
+          final String visibility = data['visibility'] ?? "public";
+          final bool isCollegeOnly = visibility == "college";
+          final String collegeName = data['college'] ?? "Unknown College";
+
+          // 2. Smart Prize detection
+          final dynamic rawPrize = data['prizeAmount'] ?? data['prizePool'] ?? data['pricePool'] ?? data['prize'];
+          final String prizeText = rawPrize?.toString() ?? "";
+          final bool hasPrize = prizeText.trim().isNotEmpty;
+
+          // 3. General Details
+          final String title = data['title'] ?? data['name'] ?? 'Untitled Event';
+          final String description = data['description'] ?? 'No description provided by the coordinator.';
+          final String date = data['date'] ?? 'TBD';
+          final String venue = data['location'] ?? data['venue'] ?? 'TBD';
+          final String time = data['time'] ?? 'TBD';
+          final String initialClubName = data['clubName'] ?? 'Club';
+          final String clubId = data['clubId'] ?? '';
+          final String coordinatorName = data['coordinatorName'] ?? 'TBD';
+          final String? imageUrl = data['posterLink'] ?? data['imageUrl'];
+          final String eventMode = data['eventMode'] ?? 'TBD';
+
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // --- EVENT IMAGE ---
+                _buildHeaderImage(imageUrl),
+
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF4A4A4A)),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        description,
+                        style: const TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // --- LOGISTICS INFO ---
+                      _buildInfoRow(Icons.calendar_today_outlined, "Date: $date"),
+                      const SizedBox(height: 16),
+                      _buildInfoRow(Icons.access_time, "Time: $time"),
+                      const SizedBox(height: 16),
+                      _buildInfoRow(
+                        eventMode == 'Online' ? Icons.videocam_outlined : Icons.location_on_outlined,
+                        "Mode: $eventMode",
+                      ),
+                      const SizedBox(height: 16),
+                      _buildInfoRow(Icons.place_outlined, venue),
+                      const SizedBox(height: 16),
+                      
+                      // --- CLUB NAME WITH FETCH LOGIC ---
+                      if (clubId.isNotEmpty && (initialClubName == 'Club' || initialClubName.isEmpty))
+                        FutureBuilder<DocumentSnapshot>(
+                          future: FirebaseFirestore.instance.collection('clubs').doc(clubId).get(),
+                          builder: (context, snapshot) {
+                            String nameToShow = initialClubName;
+                            if (snapshot.hasData && snapshot.data!.exists) {
+                              final clubData = snapshot.data!.data() as Map<String, dynamic>;
+                              nameToShow = clubData['clubName'] ?? clubData['name'] ?? initialClubName;
+                            }
+                            return _buildInfoRow(Icons.groups_outlined, "Club: $nameToShow");
+                          },
+                        )
+                      else
+                        _buildInfoRow(Icons.groups_outlined, "Club: $initialClubName"),
+
+                      const SizedBox(height: 16),
+                      _buildInfoRow(Icons.person_outline, "Coordinator: $coordinatorName"),
+                      const SizedBox(height: 16),
+                      _buildVisibilityBadge(isCollegeOnly, collegeName),
+
+                      // --- VOLUNTEER INFO ---
+                      if ((data['requiresVolunteers'] ?? false) == true) ...[
+                        const SizedBox(height: 16),
+                        _buildInfoRow(Icons.volunteer_activism_outlined, "Volunteers Needed: ${data['volunteerCount'] ?? 'N/A'}"),
+                        const SizedBox(height: 8),
+                        if ((data['volunteerRole'] ?? '').toString().isNotEmpty) _buildInfoRow(Icons.list_alt_outlined, "Role: ${data['volunteerRole']}")
+                      ],
+
+                      // --- PRIZE BANNER ---
+                      if (hasPrize) ...[
+                        const SizedBox(height: 24),
+                        _buildPrizeBanner(prizeText),
+                      ],
+
+                      const SizedBox(height: 120), // Padding for the bottom button
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    description,
-                    style: const TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // --- LOGISTICS INFO ---
-                  _buildInfoRow(Icons.calendar_today_outlined, "Date: $date"),
-                  const SizedBox(height: 16),
-                  _buildInfoRow(Icons.access_time, "Time: $time"),
-                  const SizedBox(height: 16),
-                  _buildInfoRow(
-                    eventMode == 'Online' ? Icons.videocam_outlined : Icons.location_on_outlined,
-                    "Mode: $eventMode",
-                  ),
-                  const SizedBox(height: 16),
-                  _buildInfoRow(Icons.place_outlined, venue),
-                  const SizedBox(height: 16),
-                  
-                  // --- CLUB NAME WITH FETCH LOGIC ---
-                  if (clubId.isNotEmpty && (initialClubName == 'Club' || initialClubName.isEmpty))
-                    FutureBuilder<DocumentSnapshot>(
-                      future: FirebaseFirestore.instance.collection('clubs').doc(clubId).get(),
-                      builder: (context, snapshot) {
-                        String nameToShow = initialClubName;
-                        if (snapshot.hasData && snapshot.data!.exists) {
-                          final clubData = snapshot.data!.data() as Map<String, dynamic>;
-                          nameToShow = clubData['clubName'] ?? clubData['name'] ?? initialClubName;
-                        }
-                        return _buildInfoRow(Icons.groups_outlined, "Club: $nameToShow");
-                      },
-                    )
-                  else
-                    _buildInfoRow(Icons.groups_outlined, "Club: $initialClubName"),
-
-                  const SizedBox(height: 16),
-                  _buildInfoRow(Icons.person_outline, "Coordinator: $coordinatorName"),
-                  const SizedBox(height: 16),
-                  _buildVisibilityBadge(isCollegeOnly, collegeName),
-
-                  // --- VOLUNTEER INFO ---
-                  if ((data['requiresVolunteers'] ?? false) == true) ...[
-                    const SizedBox(height: 16),
-                    _buildInfoRow(Icons.volunteer_activism_outlined, "Volunteers Needed: ${data['volunteerCount'] ?? 'N/A'}"),
-                    const SizedBox(height: 8),
-                    if ((data['volunteerRole'] ?? '').toString().isNotEmpty) _buildInfoRow(Icons.list_alt_outlined, "Role: ${data['volunteerRole']}")
-                  ],
-
-                  // --- PRIZE BANNER ---
-                  if (hasPrize) ...[
-                    const SizedBox(height: 24),
-                    _buildPrizeBanner(prizeText),
-                  ],
-
-                  const SizedBox(height: 120), // Padding for the bottom button
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
       // --- REGISTRATION BUTTON ---
       bottomSheet: _buildBottomAction(context),

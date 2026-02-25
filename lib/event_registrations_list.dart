@@ -244,6 +244,8 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                               final data = sortedDocs[index].data() as Map<String, dynamic>;
                               final name = data['studentName']?.toString();
                               final rank = _getRankByName(name);
+                              final String regType = (data['registrationType'] ?? 'participant').toString();
+                              final bool isVolunteer = regType.toLowerCase() == 'volunteer';
 
                               return Card(
                                 elevation: 2,
@@ -270,7 +272,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                                         ),
                                     ],
                                   ),
-                                  subtitle: Text(rank != null ? "Ranked Winner" : "Participant"),
+                                  subtitle: Text(rank != null ? "Ranked Winner" : (isVolunteer ? "Volunteer" : "Participant")),
                                   trailing: rank != null 
                                     ? Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -283,11 +285,14 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                                     : Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                         decoration: BoxDecoration(
-                                          color: Colors.blue.withOpacity(0.1),
+                                          color: isVolunteer ? Colors.green.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
                                           borderRadius: BorderRadius.circular(20),
-                                          border: Border.all(color: Colors.blue),
+                                          border: Border.all(color: isVolunteer ? Colors.green : Colors.blue),
                                         ),
-                                        child: const Text("PARTICIPANT", style: TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
+                                        child: Text(
+                                          isVolunteer ? "VOLUNTEER" : "PARTICIPANT",
+                                          style: TextStyle(color: isVolunteer ? Colors.green : Colors.blue, fontSize: 10, fontWeight: FontWeight.bold),
+                                        ),
                                       ),
                                   children: [
                                     Padding(
