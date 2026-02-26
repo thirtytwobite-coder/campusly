@@ -1,28 +1,27 @@
 import 'package:animations/animations.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:college_event_manager/club_coordinator_dashboard.dart';
 import 'package:college_event_manager/role_selection_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'welcome_screen.dart';
-import 'student_home.dart';
+
 import 'faculty_home.dart';
 import 'main_faculty_dashboard.dart' as main_fac;
+import 'student_home.dart';
+import 'welcome_screen.dart';
 
-// Global ValueNotifier for theme changes
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  // Load the saved theme preference
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  bool isDarkMode = prefs.getBool('isDarkMode') ?? false;
+  final prefs = await SharedPreferences.getInstance();
+  final isDarkMode = prefs.getBool('isDarkMode') ?? false;
   themeNotifier.value = isDarkMode ? ThemeMode.dark : ThemeMode.light;
 
   runApp(const CampuslyApp());
@@ -35,9 +34,8 @@ class CampuslyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
-      builder: (_, mode, __) {
-        final baseTextTheme = Theme.of(context).textTheme;
-        final textTheme = GoogleFonts.poppinsTextTheme(baseTextTheme);
+      builder: (context, mode, child) {
+        final textTheme = GoogleFonts.manropeTextTheme();
 
         const pageTransitionsTheme = PageTransitionsTheme(
           builders: {
@@ -48,67 +46,145 @@ class CampuslyApp extends StatelessWidget {
           },
         );
 
-        const primaryColor = Color(0xFF9575CD);
-        const secondaryColor = Color(0xFF512DA8);
-        const lightBackgroundColor = Color(0xFFEDE7F6);
-        const darkBackgroundColor = Color(0xFF1A1A2E);
-        const darkSurfaceColor = Color(0xFF2C2C4E);
-        const textColorLight = Color(0xFF3A3A3A);
+        const lightScheme = ColorScheme.light(
+          primary: Color(0xFF0F4C81),
+          secondary: Color(0xFF0EA5A4),
+          surface: Color(0xFFFFFFFF),
+          onPrimary: Color(0xFFFFFFFF),
+          onSecondary: Color(0xFFFFFFFF),
+          onSurface: Color(0xFF0F172A),
+          error: Color(0xFFDC2626),
+        );
+
+        const darkScheme = ColorScheme.dark(
+          primary: Color(0xFF60A5FA),
+          secondary: Color(0xFF2DD4BF),
+          surface: Color(0xFF111827),
+          onPrimary: Color(0xFF0F172A),
+          onSecondary: Color(0xFF0F172A),
+          onSurface: Color(0xFFE2E8F0),
+          error: Color(0xFFF87171),
+        );
 
         final lightTheme = ThemeData(
           useMaterial3: true,
           brightness: Brightness.light,
-          scaffoldBackgroundColor: lightBackgroundColor,
-          primaryColor: primaryColor,
+          colorScheme: lightScheme,
+          scaffoldBackgroundColor: const Color(0xFFF3F6FA),
           pageTransitionsTheme: pageTransitionsTheme,
-          colorScheme: const ColorScheme.light(
-            primary: primaryColor,
-            secondary: secondaryColor,
-            background: lightBackgroundColor,
-            surface: Colors.white,
-            onPrimary: Colors.white,
-            onSecondary: Colors.white,
-            onBackground: textColorLight,
-            onSurface: textColorLight,
-            error: Colors.redAccent,
-          ),
-          textTheme: textTheme.copyWith(
-            headlineSmall: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600, color: secondaryColor),
-          ),
+          textTheme: textTheme,
           appBarTheme: AppBarTheme(
-            backgroundColor: lightBackgroundColor,
-            foregroundColor: secondaryColor,
+            backgroundColor: Colors.transparent,
+            foregroundColor: lightScheme.onSurface,
             elevation: 0,
+            centerTitle: false,
             systemOverlayStyle: SystemUiOverlayStyle.dark,
-            titleTextStyle: textTheme.headlineSmall?.copyWith(color: secondaryColor, fontWeight: FontWeight.bold),
-            iconTheme: const IconThemeData(color: secondaryColor),
+            titleTextStyle: textTheme.titleLarge?.copyWith(
+              color: lightScheme.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          cardTheme: CardThemeData(
+            color: Colors.white.withValues(alpha: 0.84),
+            elevation: 0,
+            margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: lightScheme.primary.withValues(alpha: 0.18),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: lightScheme.primary.withValues(alpha: 0.16),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: lightScheme.primary, width: 1.6),
+            ),
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
           ),
         );
 
         final darkTheme = ThemeData(
           useMaterial3: true,
           brightness: Brightness.dark,
-          scaffoldBackgroundColor: darkBackgroundColor,
-          primaryColor: primaryColor,
+          colorScheme: darkScheme,
+          scaffoldBackgroundColor: const Color(0xFF0B1220),
           pageTransitionsTheme: pageTransitionsTheme,
-          colorScheme: const ColorScheme.dark(
-            primary: primaryColor,
-            secondary: primaryColor,
-            background: darkBackgroundColor,
-            surface: darkSurfaceColor,
-            onPrimary: Colors.white,
-            onSecondary: Colors.white,
-            onBackground: Colors.white,
-            onSurface: Colors.white,
-            error: Colors.redAccent,
-          ),
+          textTheme: textTheme,
           appBarTheme: AppBarTheme(
-            backgroundColor: darkBackgroundColor,
-            foregroundColor: Colors.white,
+            backgroundColor: Colors.transparent,
+            foregroundColor: darkScheme.onSurface,
             elevation: 0,
+            centerTitle: false,
             systemOverlayStyle: SystemUiOverlayStyle.light,
-            titleTextStyle: textTheme.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
-            iconTheme: const IconThemeData(color: Colors.white),
+            titleTextStyle: textTheme.titleLarge?.copyWith(
+              color: darkScheme.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          cardTheme: CardThemeData(
+            color: darkScheme.surface.withValues(alpha: 0.9),
+            elevation: 0,
+            margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: darkScheme.surface,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: darkScheme.primary.withValues(alpha: 0.3),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(
+                color: darkScheme.primary.withValues(alpha: 0.28),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: darkScheme.primary, width: 1.6),
+            ),
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
           ),
         );
 
@@ -132,7 +208,10 @@ class AuthWrapper extends StatelessWidget {
     final prefs = await SharedPreferences.getInstance();
     final lastRole = prefs.getString('last_role_${user.uid}');
 
-    final facultySnap = await FirebaseFirestore.instance.collection('faculty').doc(user.uid).get();
+    final facultySnap = await FirebaseFirestore.instance
+        .collection('faculty')
+        .doc(user.uid)
+        .get();
     if (facultySnap.exists) {
       final data = facultySnap.data()!;
       if (data['role'] == 'Main Faculty') {
@@ -141,7 +220,10 @@ class AuthWrapper extends StatelessWidget {
       return const FacultyHomeScreen();
     }
 
-    final studentSnap = await FirebaseFirestore.instance.collection('student').doc(user.uid).get();
+    final studentSnap = await FirebaseFirestore.instance
+        .collection('student')
+        .doc(user.uid)
+        .get();
     if (studentSnap.exists) {
       final coordSnap = await FirebaseFirestore.instance
           .collection('clubs')
@@ -156,7 +238,10 @@ class AuthWrapper extends StatelessWidget {
           final clubId = prefs.getString('last_club_id_${user.uid}');
           final clubName = prefs.getString('last_club_name_${user.uid}');
           if (clubId != null && clubName != null) {
-            return ClubCoordinatorDashboard(initialClubId: clubId, initialClubName: clubName);
+            return ClubCoordinatorDashboard(
+              initialClubId: clubId,
+              initialClubName: clubName,
+            );
           }
         }
         if (lastRole == 'student') {
@@ -164,7 +249,7 @@ class AuthWrapper extends StatelessWidget {
         }
         return const RoleSelectionScreen();
       }
-      
+
       return const StudentHomeScreen();
     }
 
@@ -177,14 +262,18 @@ class AuthWrapper extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, userSnapshot) {
         if (userSnapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
         if (userSnapshot.hasData) {
           return FutureBuilder<Widget>(
             future: _getInitialScreen(userSnapshot.data!),
             builder: (context, screenSnapshot) {
               if (screenSnapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
               }
               return screenSnapshot.data ?? const WelcomeScreen();
             },

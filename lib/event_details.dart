@@ -11,15 +11,13 @@ class EventDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Program Details"),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text("Program Details"), elevation: 0),
       body: StreamBuilder<DocumentSnapshot>(
         stream: event.reference.snapshots(),
         initialData: event,
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData)
+            return const Center(child: CircularProgressIndicator());
           final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
 
           // 1. Extracting data from Firestore
@@ -28,13 +26,20 @@ class EventDetailsScreen extends StatelessWidget {
           final String collegeName = data['college'] ?? "Unknown College";
 
           // 2. Smart Prize detection
-          final dynamic rawPrize = data['prizeAmount'] ?? data['prizePool'] ?? data['pricePool'] ?? data['prize'];
+          final dynamic rawPrize =
+              data['prizeAmount'] ??
+              data['prizePool'] ??
+              data['pricePool'] ??
+              data['prize'];
           final String prizeText = rawPrize?.toString() ?? "";
           final bool hasPrize = prizeText.trim().isNotEmpty;
 
           // 3. General Details
-          final String title = data['title'] ?? data['name'] ?? 'Untitled Event';
-          final String description = data['description'] ?? 'No description provided by the coordinator.';
+          final String title =
+              data['title'] ?? data['name'] ?? 'Untitled Event';
+          final String description =
+              data['description'] ??
+              'No description provided by the coordinator.';
           final String date = data['date'] ?? 'TBD';
           final String venue = data['location'] ?? data['venue'] ?? 'TBD';
           final String time = data['time'] ?? 'TBD';
@@ -58,56 +63,102 @@ class EventDetailsScreen extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF4A4A4A)),
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF4A4A4A),
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         description,
-                        style: const TextStyle(fontSize: 16, color: Colors.grey),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                        ),
                       ),
 
                       const SizedBox(height: 32),
 
                       // --- LOGISTICS INFO ---
-                      _buildInfoRow(Icons.calendar_today_outlined, "Date: $date"),
+                      _buildInfoRow(
+                        Icons.calendar_today_outlined,
+                        "Date: $date",
+                      ),
                       const SizedBox(height: 16),
                       _buildInfoRow(Icons.access_time, "Time: $time"),
                       const SizedBox(height: 16),
                       _buildInfoRow(
-                        eventMode == 'Online' ? Icons.videocam_outlined : Icons.location_on_outlined,
+                        eventMode == 'Online'
+                            ? Icons.videocam_outlined
+                            : Icons.location_on_outlined,
                         "Mode: $eventMode",
                       ),
                       const SizedBox(height: 16),
                       _buildInfoRow(Icons.place_outlined, venue),
                       const SizedBox(height: 16),
-                      
+
                       // --- CLUB NAME WITH FETCH LOGIC ---
-                      if (clubId.isNotEmpty && (initialClubName == 'Club' || initialClubName.isEmpty))
+                      if (clubId.isNotEmpty &&
+                          (initialClubName == 'Club' ||
+                              initialClubName.isEmpty))
                         FutureBuilder<DocumentSnapshot>(
-                          future: FirebaseFirestore.instance.collection('clubs').doc(clubId).get(),
+                          future: FirebaseFirestore.instance
+                              .collection('clubs')
+                              .doc(clubId)
+                              .get(),
                           builder: (context, snapshot) {
                             String nameToShow = initialClubName;
                             if (snapshot.hasData && snapshot.data!.exists) {
-                              final clubData = snapshot.data!.data() as Map<String, dynamic>;
-                              nameToShow = clubData['clubName'] ?? clubData['name'] ?? initialClubName;
+                              final clubData =
+                                  snapshot.data!.data() as Map<String, dynamic>;
+                              nameToShow =
+                                  clubData['clubName'] ??
+                                  clubData['name'] ??
+                                  initialClubName;
                             }
-                            return _buildInfoRow(Icons.groups_outlined, "Club: $nameToShow");
+                            return _buildInfoRow(
+                              Icons.groups_outlined,
+                              "Club: $nameToShow",
+                            );
                           },
                         )
                       else
-                        _buildInfoRow(Icons.groups_outlined, "Club: $initialClubName"),
+                        _buildInfoRow(
+                          Icons.groups_outlined,
+                          "Club: $initialClubName",
+                        ),
 
                       const SizedBox(height: 16),
-                      _buildInfoRow(Icons.person_outline, "Coordinator: $coordinatorName"),
+                      _buildInfoRow(
+                        Icons.person_outline,
+                        "Coordinator: $coordinatorName",
+                      ),
                       const SizedBox(height: 16),
                       _buildVisibilityBadge(isCollegeOnly, collegeName),
 
                       // --- VOLUNTEER INFO ---
                       if ((data['requiresVolunteers'] ?? false) == true) ...[
                         const SizedBox(height: 16),
-                        _buildInfoRow(Icons.volunteer_activism_outlined, "Volunteers Needed: ${data['volunteerCount'] ?? 'N/A'}"),
+                        _buildInfoRow(
+                          Icons.volunteer_activism_outlined,
+                          "Volunteers Needed: ${data['volunteerCount'] ?? 'N/A'}",
+                        ),
                         const SizedBox(height: 8),
-                        if ((data['volunteerRole'] ?? '').toString().isNotEmpty) _buildInfoRow(Icons.list_alt_outlined, "Role: ${data['volunteerRole']}")
+                        if ((data['volunteerRole'] ?? '').toString().isNotEmpty)
+                          _buildInfoRow(
+                            Icons.list_alt_outlined,
+                            "Role: ${data['volunteerRole']}",
+                          ),
+                      ],
+                      if ((data['isTeamEvent'] ?? false) == true) ...[
+                        const SizedBox(height: 16),
+                        _buildInfoRow(Icons.groups_rounded, "Team Event: Yes"),
+                        const SizedBox(height: 8),
+                        _buildInfoRow(
+                          Icons.format_list_numbered_rounded,
+                          "Team Size: ${data['teamSize'] ?? 'N/A'}",
+                        ),
                       ],
 
                       // --- PRIZE BANNER ---
@@ -116,7 +167,9 @@ class EventDetailsScreen extends StatelessWidget {
                         _buildPrizeBanner(prizeText),
                       ],
 
-                      const SizedBox(height: 120), // Padding for the bottom button
+                      const SizedBox(
+                        height: 120,
+                      ), // Padding for the bottom button
                     ],
                   ),
                 ),
@@ -126,7 +179,7 @@ class EventDetailsScreen extends StatelessWidget {
         },
       ),
       // --- REGISTRATION BUTTON ---
-      bottomSheet: _buildBottomAction(context),
+      bottomSheet: _buildBottomAction(context, event),
     );
   }
 
@@ -136,7 +189,12 @@ class EventDetailsScreen extends StatelessWidget {
       width: double.infinity,
       color: Colors.grey[100],
       child: url != null && url.isNotEmpty
-          ? Image.network(url, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 80, color: Colors.grey))
+          ? Image.network(
+              url,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.broken_image, size: 80, color: Colors.grey),
+            )
           : const Icon(Icons.image_outlined, size: 80, color: Colors.grey),
     );
   }
@@ -178,10 +236,21 @@ class EventDetailsScreen extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("PRIZE POOL", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber)),
+              const Text(
+                "PRIZE POOL",
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.amber,
+                ),
+              ),
               Text(
                 "₹ $amount",
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.black),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.black,
+                ),
               ),
             ],
           ),
@@ -198,34 +267,52 @@ class EventDetailsScreen extends StatelessWidget {
         const SizedBox(width: 15),
         Expanded(
           child: Text(
-            value, 
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: Color(0xFF616161)),
+            value,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFF616161),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildBottomAction(BuildContext context) {
+  Widget _buildBottomAction(
+    BuildContext context,
+    DocumentSnapshot liveEventDoc,
+  ) {
+    final liveData = liveEventDoc.data() as Map<String, dynamic>? ?? {};
+    final isTeamEvent = (liveData['isTeamEvent'] ?? false) == true;
+
     return Container(
       padding: const EdgeInsets.all(20),
       color: Colors.white,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           minimumSize: const Size(double.infinity, 55),
-          backgroundColor: const Color(0xFF673AB7), // Purple color from the screenshot
+          backgroundColor: const Color(
+            0xFF673AB7,
+          ), // Purple color from the screenshot
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => EventRegistrationScreen(event: event),
+              builder: (context) =>
+                  EventRegistrationScreen(event: liveEventDoc),
             ),
           );
         },
-        child: const Text("Register Now", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        child: Text(
+          isTeamEvent ? "Register Team" : "Register Now",
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }

@@ -80,10 +80,10 @@ class _ApprovalCard extends StatelessWidget {
   Future<void> _approveEvent(BuildContext context) async {
     try {
       final String? requestedStatus = data['requestedStatus'];
-      
+
       if (requestedStatus != null) {
         // --- CASE 1: APPROVING A STATUS CHANGE (Ongoing/Completed/etc.) ---
-        
+
         // 1. Update program status to the requested status
         await FirebaseFirestore.instance
             .collection('clubs')
@@ -130,7 +130,7 @@ class _ApprovalCard extends StatelessWidget {
         });
       } else {
         // --- CASE 2: NEW PROGRAM APPROVAL ---
-        
+
         // 1. Update program status to 'approved'
         await FirebaseFirestore.instance
             .collection('clubs')
@@ -142,8 +142,14 @@ class _ApprovalCard extends StatelessWidget {
           'approvedAt': FieldValue.serverTimestamp(),
         });
 
-        // 2. Add to global 'events' collection
-        await FirebaseFirestore.instance.collection('events').add({
+        // 2. Add or Update in global 'events' collection
+        final existingEvents = await FirebaseFirestore.instance
+            .collection('events')
+            .where('programId', isEqualTo: programId)
+            .limit(1)
+            .get();
+
+        final Map<String, dynamic> eventPayload = {
           'title': data['name'],
           'description': data['description'],
           'venue': data['location'],
@@ -154,18 +160,28 @@ class _ApprovalCard extends StatelessWidget {
           'clubId': clubId,
           'programId': programId,
           'category': data['category'] ?? 'Technical',
-          'status': 'approved', // Initial status
+          'status': 'approved',
           'maxSeats': 100,
           'filledSeats': 0,
           'posterLink': data['posterLink'],
           'visibility': data['visibility'] ?? 'college',
           'college': data['college'],
-          // volunteer info (if coordinator requested volunteers)
           'requiresVolunteers': data['requiresVolunteers'] ?? false,
-          'volunteerCount': data['volunteerCount'] ?? null,
-          'volunteerRole': data['volunteerRole'] ?? null,
+          'volunteerCount': data['volunteerCount'],
+          'volunteerRole': data['volunteerRole'],
+          // Team event details
+          'isTeamEvent': data['isTeamEvent'] ?? false,
+          'teamSize': data['teamSize'],
           'createdAt': FieldValue.serverTimestamp(),
-        });
+        };
+
+        if (existingEvents.docs.isNotEmpty) {
+          // Update existing event
+          await existingEvents.docs.first.reference.update(eventPayload);
+        } else {
+          // Add new event
+          await FirebaseFirestore.instance.collection('events').add(eventPayload);
+        }
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -226,11 +242,9 @@ class _ApprovalCard extends StatelessWidget {
               }
 
               final String? requestedStatus = data['requestedStatus'];
-              
+
               if (requestedStatus != null) {
-                // Rejecting a status change: Revert to previous status (which we'll assume was the one before pending)
-                // However, without historical state, we might just set it back to something sensible or leave as 'approved'
-                // For now, let's revert to 'approved' if it was a status change request
+                // Rejecting a status change: Revert to previous status
                 await FirebaseFirestore.instance
                     .collection('clubs')
                     .doc(clubId)
@@ -255,7 +269,7 @@ class _ApprovalCard extends StatelessWidget {
                   'rejectedAt': FieldValue.serverTimestamp(),
                 });
               }
-              
+
               if (context.mounted) {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -294,8 +308,8 @@ class _ApprovalCard extends StatelessWidget {
       elevation: isStatusChange ? 4 : 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: isStatusChange 
-            ? BorderSide(color: Colors.orange.shade300, width: 2) 
+        side: isStatusChange
+            ? BorderSide(color: Colors.orange.shade300, width: 2)
             : BorderSide.none,
       ),
       child: Padding(
@@ -401,6 +415,10 @@ class _ApprovalCard extends StatelessWidget {
             if ((data['requiresVolunteers'] ?? false) == true) ...[
               _detailRow(Icons.volunteer_activism, 'Volunteers Needed', (data['volunteerCount'] ?? '').toString()),
               if ((data['volunteerRole'] ?? '').toString().isNotEmpty) _detailRow(Icons.list, 'Volunteer Role', data['volunteerRole']?.toString()),
+            ],
+            // Team event details
+            if ((data['isTeamEvent'] ?? false) == true) ...[
+              _detailRow(Icons.groups, 'Team Size', (data['teamSize'] ?? '').toString()),
             ],
             const SizedBox(height: 16),
             Row(

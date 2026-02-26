@@ -5,10 +5,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'main.dart'; 
+import 'main.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
-import 'list_approval_screen.dart';
+import 'program_approval_screen.dart';
+import 'program_status_screen.dart';
 
 class FacultyHomeScreen extends StatefulWidget {
   const FacultyHomeScreen({super.key});
@@ -32,7 +33,10 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        final doc = await FirebaseFirestore.instance.collection('faculty').doc(user.uid).get();
+        final doc = await FirebaseFirestore.instance
+            .collection('faculty')
+            .doc(user.uid)
+            .get();
         if (doc.exists && mounted) {
           setState(() {
             facultyCollege = doc.data()?['college'];
@@ -53,8 +57,14 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
           title: const Text('Exit'),
           content: const Text('Are you sure you want to Exit?'),
           actions: <Widget>[
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('No')),
-            TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Yes')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Yes'),
+            ),
           ],
         );
       },
@@ -66,7 +76,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const UnifiedLoginScreen()),
-              (route) => false,
+          (route) => false,
         );
       }
       return false;
@@ -79,7 +89,10 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
       _selectedIndex = index;
     });
     if (index == 1) {
-      Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+      );
     }
   }
 
@@ -96,82 +109,105 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
             IconButton(
               icon: const Icon(Icons.brightness_6),
               onPressed: () async {
-                themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+                themeNotifier.value = themeNotifier.value == ThemeMode.light
+                    ? ThemeMode.dark
+                    : ThemeMode.light;
                 SharedPreferences prefs = await SharedPreferences.getInstance();
-                prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
+                prefs.setBool(
+                  'isDarkMode',
+                  themeNotifier.value == ThemeMode.dark,
+                );
               },
             ),
           ],
         ),
-        body: _isLoadingInfo 
-          ? const Center(child: CircularProgressIndicator())
-          : StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('club_mappings')
-              .where('facultyEmail', isEqualTo: user?.email)
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        body: _isLoadingInfo
+            ? const Center(child: CircularProgressIndicator())
+            : StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('club_mappings')
+                    .where('facultyEmail', isEqualTo: user?.email)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-            final docs = snapshot.data?.docs ?? [];
+                  final docs = snapshot.data?.docs ?? [];
 
-            return CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Container(
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.account_balance, color: Colors.blueAccent, size: 24),
-                        const SizedBox(width: 12),
-                        Expanded(child: Text(facultyCollege ?? "Institution Unknown", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
-                      ],
-                    ),
-                  ).animate().fadeIn().slideY(begin: -0.1),
-                ),
-
-                if (docs.isEmpty)
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Center(child: Text("No Clubs Assigned")),
-                  ),
-
-                if (docs.isNotEmpty)
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                          var doc = docs[index];
-                          var data = doc.data() as Map<String, dynamic>;
-                          String clubName = data['clubName'] ?? "My Club";
-                          String clubId = data['clubId'];
-
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: _buildClubOptionsCard(
-                              clubName: clubName,
-                              clubId: clubId,
-                              clubMappingDoc: doc,
+                  return CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: Container(
+                          margin: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(
+                              color: Theme.of(
+                                context,
+                              ).primaryColor.withOpacity(0.3),
                             ),
-                          );
-                        },
-                        childCount: docs.length,
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.account_balance,
+                                color: Colors.blueAccent,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  facultyCollege ?? "Institution Unknown",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ).animate().fadeIn().slideY(begin: -0.1),
                       ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
+
+                      if (docs.isEmpty)
+                        const SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(child: Text("No Clubs Assigned")),
+                        ),
+
+                      if (docs.isNotEmpty)
+                        SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              var doc = docs[index];
+                              var data = doc.data() as Map<String, dynamic>;
+                              String clubName = data['clubName'] ?? "My Club";
+                              String clubId = data['clubId'];
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: _buildClubOptionsCard(
+                                  clubName: clubName,
+                                  clubId: clubId,
+                                  clubMappingDoc: doc,
+                                ),
+                              );
+                            }, childCount: docs.length),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
         bottomNavigationBar: BottomNavigationBar(
           items: const <BottomNavigationBarItem>[
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
@@ -205,8 +241,11 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    clubName, 
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    clubName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -220,13 +259,24 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
               runSpacing: 12,
               children: [
                 SizedBox(
-                  width: (MediaQuery.of(context).size.width - 76) / 2, // Approximate half width with padding
+                  width:
+                      (MediaQuery.of(context).size.width - 76) /
+                      2, // Approximate half width with padding
                   child: _buildOptionButton(
                     icon: Icons.bar_chart,
                     label: "Analytics",
                     color: Colors.green,
                     onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => AnalyticsScreen(clubId: clubId, clubName: clubName, isFaculty: true)));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AnalyticsScreen(
+                            clubId: clubId,
+                            clubName: clubName,
+                            isFaculty: true,
+                          ),
+                        ),
+                      );
                     },
                   ),
                 ),
@@ -237,7 +287,73 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                     label: "Coordinators",
                     color: Colors.blue,
                     onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => ClubManagementScreen(clubMappingDoc: clubMappingDoc)));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ClubManagementScreen(
+                            clubMappingDoc: clubMappingDoc,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(
+                  width: (MediaQuery.of(context).size.width - 76) / 2,
+                  child: _buildOptionButton(
+                    icon: Icons.task_alt_outlined,
+                    label: "Approve Events",
+                    color: Colors.orange,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProgramApprovalScreen(
+                            clubId: clubId,
+                            clubName: clubName,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(
+                  width: (MediaQuery.of(context).size.width - 76) / 2,
+                  child: _buildOptionButton(
+                    icon: Icons.check_circle_outline,
+                    label: "Approved",
+                    color: Colors.green,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProgramStatusScreen(
+                            clubId: clubId,
+                            clubName: clubName,
+                            status: 'approved',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(
+                  width: (MediaQuery.of(context).size.width - 76) / 2,
+                  child: _buildOptionButton(
+                    icon: Icons.cancel_outlined,
+                    label: "Rejected",
+                    color: Colors.red,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProgramStatusScreen(
+                            clubId: clubId,
+                            clubName: clubName,
+                            status: 'rejected',
+                          ),
+                        ),
+                      );
                     },
                   ),
                 ),
@@ -259,7 +375,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
       onPressed: onTap,
       icon: Icon(icon, size: 18),
       label: Text(
-        label, 
+        label,
         style: const TextStyle(fontSize: 12),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -317,8 +433,12 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                     Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: TextField(
-                        onChanged: (value) => setDialogState(() => searchQuery = value),
-                        decoration: const InputDecoration(labelText: 'Search by name', prefixIcon: Icon(Icons.search)),
+                        onChanged: (value) =>
+                            setDialogState(() => searchQuery = value),
+                        decoration: const InputDecoration(
+                          labelText: 'Search by name',
+                          prefixIcon: Icon(Icons.search),
+                        ),
                       ),
                     ),
                     Expanded(
@@ -332,10 +452,20 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                               final clubId = widget.clubMappingDoc['clubId'];
                               final studentEmail = student['email'];
                               if (studentEmail != null) {
-                                await FirebaseFirestore.instance.collection('clubs').doc(clubId).update({
-                                  'coordinators': FieldValue.arrayUnion([{'studentId': student.id, 'studentName': student['name'], 'studentEmail': studentEmail}]),
-                                  'coordinatorEmails': FieldValue.arrayUnion([studentEmail])
-                                });
+                                await FirebaseFirestore.instance
+                                    .collection('clubs')
+                                    .doc(clubId)
+                                    .update({
+                                      'coordinators': FieldValue.arrayUnion([
+                                        {
+                                          'studentId': student.id,
+                                          'studentName': student['name'],
+                                          'studentEmail': studentEmail,
+                                        },
+                                      ]),
+                                      'coordinatorEmails':
+                                          FieldValue.arrayUnion([studentEmail]),
+                                    });
                               }
                               if (mounted) Navigator.of(context).pop();
                             },
@@ -346,7 +476,12 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                   ],
                 ),
               ),
-              actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel'))],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+              ],
             );
           },
         );
@@ -357,10 +492,19 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
   Future<void> _removeCoordinator(Map<String, dynamic> coordinator) async {
     final clubId = widget.clubMappingDoc['clubId'];
     final studentEmail = coordinator['studentEmail'];
-    final updateData = {'coordinators': FieldValue.arrayRemove([coordinator])};
-    if (studentEmail != null) updateData['coordinatorEmails'] = FieldValue.arrayRemove([studentEmail]);
-    await FirebaseFirestore.instance.collection('clubs').doc(clubId).update(updateData);
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${coordinator['studentName']} removed.')));
+    final updateData = {
+      'coordinators': FieldValue.arrayRemove([coordinator]),
+    };
+    if (studentEmail != null)
+      updateData['coordinatorEmails'] = FieldValue.arrayRemove([studentEmail]);
+    await FirebaseFirestore.instance
+        .collection('clubs')
+        .doc(clubId)
+        .update(updateData);
+    if (mounted)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${coordinator['studentName']} removed.')),
+      );
   }
 
   @override
@@ -378,18 +522,37 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Club Coordinators', style: Theme.of(context).textTheme.headlineSmall),
-                IconButton(onPressed: _showAddCoordinatorDialog, icon: const Icon(Icons.person_add, color: Colors.blue), tooltip: 'Add Coordinator'),
+                Text(
+                  'Club Coordinators',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                IconButton(
+                  onPressed: _showAddCoordinatorDialog,
+                  icon: const Icon(Icons.person_add, color: Colors.blue),
+                  tooltip: 'Add Coordinator',
+                ),
               ],
             ),
             const Divider(),
             StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance.collection('clubs').doc(clubId).snapshots(),
+              stream: FirebaseFirestore.instance
+                  .collection('clubs')
+                  .doc(clubId)
+                  .snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                if (!snapshot.hasData)
+                  return const Center(child: CircularProgressIndicator());
                 final clubData = snapshot.data!.data() as Map<String, dynamic>?;
-                final coordinators = (clubData?['coordinators'] as List<dynamic>?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
-                if (coordinators.isEmpty) return const Padding(padding: EdgeInsets.symmetric(vertical: 40), child: Center(child: Text('No coordinators assigned.')));
+                final coordinators =
+                    (clubData?['coordinators'] as List<dynamic>?)
+                        ?.map((e) => e as Map<String, dynamic>)
+                        .toList() ??
+                    [];
+                if (coordinators.isEmpty)
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40),
+                    child: Center(child: Text('No coordinators assigned.')),
+                  );
                 return ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -401,8 +564,16 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                       child: ListTile(
                         leading: const Icon(Icons.person),
                         title: Text(coordinator['studentName'] ?? 'Unnamed'),
-                        subtitle: Text(coordinator['studentEmail'] ?? 'No email'),
-                        trailing: IconButton(icon: Icon(Icons.remove_circle_outline, color: Theme.of(context).colorScheme.error), onPressed: () => _removeCoordinator(coordinator)),
+                        subtitle: Text(
+                          coordinator['studentEmail'] ?? 'No email',
+                        ),
+                        trailing: IconButton(
+                          icon: Icon(
+                            Icons.remove_circle_outline,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          onPressed: () => _removeCoordinator(coordinator),
+                        ),
                       ),
                     );
                   },

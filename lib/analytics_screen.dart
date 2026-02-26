@@ -100,7 +100,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 }
 
                 final allEvents = snapshot.data?.docs ?? [];
-                
+
                 final events = allEvents.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
                   // If it's a coordinator, filter by their programs. Faculty sees all.
@@ -114,7 +114,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 events.sort((a, b) {
                   final dateA = (a.data() as Map<String, dynamic>)['date'] ?? '';
                   final dateB = (b.data() as Map<String, dynamic>)['date'] ?? '';
-                  return dateB.compareTo(dateA); 
+                  return dateB.compareTo(dateA);
                 });
 
                 if (events.isEmpty) {
@@ -136,10 +136,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   itemBuilder: (context, index) {
                     final event = events[index];
                     final data = event.data() as Map<String, dynamic>;
-                    
+
                     final title = data['title'] ?? 'Untitled Event';
                     final date = data['date'] ?? 'N/A';
-                    
+
                     return Card(
                       elevation: 3,
                       clipBehavior: Clip.antiAlias,
