@@ -988,8 +988,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       final coll =
           (uDoc.data() as Map<String, dynamic>?)?['college'] ?? 'Unknown';
 
-      // create program in club collection
-      final programRef = await FirebaseFirestore.instance
+      // show loading state if needed, though Navigator.pop happens immediately after Firestore call
+      await FirebaseFirestore.instance
           .collection('clubs')
           .doc(clubId!)
           .collection('programs')
@@ -1026,26 +1026,22 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           });
-
-      // also create a minimal entry in global events collection so that
-      // cloud functions can fire and students/faculty can navigate to it.
-      await FirebaseFirestore.instance.collection('events').add({
-        'title': name.trim(),
-        'programId': programRef.id,
-        'createdBy': user?.uid,
-        'status': 'pending',
-        'clubId': clubId,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      Navigator.pop(ctx);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Program proposed successfully!')),
-      );
+      
+      // Close proposal dialog
+      if (mounted) Navigator.pop(ctx);
+      
+      // Navigate to Home or Stay on Home (Coordinator Dashboard)
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Program proposed successfully!')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
   }
 

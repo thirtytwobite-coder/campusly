@@ -241,51 +241,56 @@ class _EventRegistrationsListScreenState
                   children: [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Column(
                         children: [
-                          Text(
-                            "Total: ${docs.length} Students",
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                            ),
-                            icon: const Icon(Icons.auto_awesome),
-                            label: const Text("Bulk Generate All"),
-                            onPressed: () {
-                              final nonWinners = docs.where((doc) {
-                                final name =
-                                    (doc.data()
-                                            as Map<
-                                              String,
-                                              dynamic
-                                            >)['studentName']
-                                        ?.toString();
-                                return _getRankByName(name) == null;
-                              }).toList();
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Total: ${docs.length} Students",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  foregroundColor: Colors.white,
+                                ),
+                                icon: const Icon(Icons.auto_awesome),
+                                label: const Text("Bulk Generate All"),
+                                onPressed: () {
+                                  final nonWinners = docs.where((doc) {
+                                    final name =
+                                        (doc.data()
+                                                as Map<
+                                                  String,
+                                                  dynamic
+                                                >)['studentName']
+                                            ?.toString();
+                                    return _getRankByName(name) == null;
+                                  }).toList();
 
-                              if (nonWinners.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      "All students are winners. Use Generate Winners Certs.",
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                _generateCertificatesFromDocs(
-                                  nonWinners,
-                                  isWinner: false,
-                                );
-                              }
-                            },
+                                  if (nonWinners.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          "All students are winners. Use Generate Winners Certs.",
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    _generateCertificatesFromDocs(
+                                      nonWinners,
+                                      isWinner: false,
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
                           ),
+                          _buildLowParticipationAlert(docs.length),
                         ],
                       ),
                     ),
@@ -561,6 +566,37 @@ class _EventRegistrationsListScreenState
         ],
       ),
     );
+  }
+
+  Widget _buildLowParticipationAlert(int count) {
+    if (count >= 10) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.red.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              "Low Participation: Only $count students registered.",
+              style: TextStyle(
+                color: Colors.red.shade900,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate().shake(hz: 4, duration: 500.ms);
   }
 
   void _showWinnersDialog() {
