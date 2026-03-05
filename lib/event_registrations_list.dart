@@ -71,7 +71,6 @@ class _EventRegistrationsListScreenState
       final eventData = eventDoc.data();
       _clubId = eventData?['clubId'];
 
-      // Load manual winners if stored
       if (eventData != null && eventData.containsKey('manualWinners')) {
         setState(() {
           final stored = eventData['manualWinners'] as Map<String, dynamic>;
@@ -218,7 +217,6 @@ class _EventRegistrationsListScreenState
 
                 final docs = snapshot.data?.docs ?? [];
 
-                // Sort: Winners first, then non-winners
                 final List<QueryDocumentSnapshot> sortedDocs = List.from(docs);
                 sortedDocs.sort((a, b) {
                   final aName =
@@ -261,7 +259,6 @@ class _EventRegistrationsListScreenState
                             icon: const Icon(Icons.auto_awesome),
                             label: const Text("Bulk Generate All"),
                             onPressed: () {
-                              // Filter out winners for bulk generation
                               final nonWinners = docs.where((doc) {
                                 final name =
                                     (doc.data()
@@ -509,7 +506,6 @@ class _EventRegistrationsListScreenState
                                         const SizedBox(height: 16),
                                         Row(
                                           children: [
-                                            // Only show Participation Cert for non-winners
                                             if (rank == null)
                                               Expanded(
                                                 child: OutlinedButton.icon(
@@ -524,8 +520,6 @@ class _EventRegistrationsListScreenState
                                                       ),
                                                 ),
                                               ),
-
-                                            // Only show Winner Cert for winners
                                             if (rank != null)
                                               Expanded(
                                                 child: ElevatedButton.icon(
@@ -641,36 +635,40 @@ class _EventRegistrationsListScreenState
         length: 2,
         child: AlertDialog(
           title: const Text("Design Templates"),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const TabBar(
-                  tabs: [
-                    Tab(text: "Participant"),
-                    Tab(text: "Winners"),
-                  ],
-                  labelColor: Colors.blue,
-                  unselectedLabelColor: Colors.grey,
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 400,
-                  child: TabBarView(
-                    children: [
-                      _buildTemplateForm(
-                        _certSettings,
-                        (val) => setState(() => _certSettings = val),
-                      ),
-                      _buildTemplateForm(
-                        _winnerSettings,
-                        (val) => setState(() => _winnerSettings = val),
-                      ),
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.6,
+            ),
+            child: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const TabBar(
+                    tabs: [
+                      Tab(text: "Participant"),
+                      Tab(text: "Winners"),
                     ],
+                    labelColor: Colors.blue,
+                    unselectedLabelColor: Colors.grey,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _buildTemplateForm(
+                          _certSettings,
+                          (val) => setState(() => _certSettings = val),
+                        ),
+                        _buildTemplateForm(
+                          _winnerSettings,
+                          (val) => setState(() => _winnerSettings = val),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
