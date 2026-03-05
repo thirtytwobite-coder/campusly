@@ -232,7 +232,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisSize: MainAxisSize.min, // Allow card to shrink to content
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -253,115 +253,160 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
               ],
             ),
             const Divider(height: 24),
-            // Use Wrap or Row with Expanded to handle smaller screens
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 2.8, // Adjusted for better button proportions
               children: [
-                SizedBox(
-                  width:
-                      (MediaQuery.of(context).size.width - 76) /
-                      2, // Approximate half width with padding
-                  child: _buildOptionButton(
-                    icon: Icons.bar_chart,
-                    label: "Analytics",
-                    color: Colors.green,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AnalyticsScreen(
-                            clubId: clubId,
-                            clubName: clubName,
-                            isFaculty: true,
-                          ),
+                _buildOptionButton(
+                  icon: Icons.bar_chart,
+                  label: "Analytics",
+                  color: Colors.green,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AnalyticsScreen(
+                          clubId: clubId,
+                          clubName: clubName,
+                          isFaculty: true,
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
-                SizedBox(
-                  width: (MediaQuery.of(context).size.width - 76) / 2,
-                  child: _buildOptionButton(
-                    icon: Icons.people_outline,
-                    label: "Coordinators",
-                    color: Colors.blue,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ClubManagementScreen(
-                            clubMappingDoc: clubMappingDoc,
-                          ),
+                _buildOptionButton(
+                  icon: Icons.people_outline,
+                  label: "Coordinators",
+                  color: Colors.blue,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ClubManagementScreen(
+                          clubMappingDoc: clubMappingDoc,
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
-                SizedBox(
-                  width: (MediaQuery.of(context).size.width - 76) / 2,
-                  child: _buildOptionButton(
-                    icon: Icons.task_alt_outlined,
-                    label: "Approve Events",
-                    color: Colors.orange,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ProgramApprovalScreen(
-                            clubId: clubId,
-                            clubName: clubName,
-                          ),
+                _buildApproveButton(clubId, clubName),
+                _buildOptionButton(
+                  icon: Icons.check_circle_outline,
+                  label: "Approved",
+                  color: Colors.green,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProgramStatusScreen(
+                          clubId: clubId,
+                          clubName: clubName,
+                          status: 'approved',
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
-                SizedBox(
-                  width: (MediaQuery.of(context).size.width - 76) / 2,
-                  child: _buildOptionButton(
-                    icon: Icons.check_circle_outline,
-                    label: "Approved",
-                    color: Colors.green,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ProgramStatusScreen(
-                            clubId: clubId,
-                            clubName: clubName,
-                            status: 'approved',
-                          ),
+                _buildOptionButton(
+                  icon: Icons.cancel_outlined,
+                  label: "Rejected",
+                  color: Colors.red,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProgramStatusScreen(
+                          clubId: clubId,
+                          clubName: clubName,
+                          status: 'rejected',
                         ),
-                      );
-                    },
-                  ),
-                ),
-                SizedBox(
-                  width: (MediaQuery.of(context).size.width - 76) / 2,
-                  child: _buildOptionButton(
-                    icon: Icons.cancel_outlined,
-                    label: "Rejected",
-                    color: Colors.red,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ProgramStatusScreen(
-                            clubId: clubId,
-                            clubName: clubName,
-                            status: 'rejected',
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildApproveButton(String clubId, String clubName) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('clubs')
+          .doc(clubId)
+          .collection('programs')
+          .where('status', isEqualTo: 'pending')
+          .snapshots(),
+      builder: (context, snapshot) {
+        final bool hasPending = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+        final int pendingCount = snapshot.data?.docs.length ?? 0;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: _buildOptionButton(
+                icon: Icons.task_alt_outlined,
+                label: "Approve Events",
+                color: Colors.orange,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProgramApprovalScreen(
+                        clubId: clubId,
+                        clubName: clubName,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            if (hasPending)
+              Positioned(
+                right: -2,
+                top: -2,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 20,
+                    minHeight: 20,
+                  ),
+                  child: Text(
+                    pendingCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ).animate(onPlay: (controller) => controller.repeat()).shake(
+                  hz: 2,
+                  offset: const Offset(1, 1),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -376,7 +421,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
       icon: Icon(icon, size: 18),
       label: Text(
         label,
-        style: const TextStyle(fontSize: 12),
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -384,7 +429,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
         backgroundColor: color.withOpacity(0.1),
         foregroundColor: color,
         elevation: 0,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );

@@ -271,9 +271,10 @@ class _ApprovalCard extends StatelessWidget {
               }
 
               if (context.mounted) {
-                Navigator.pop(ctx);
+                Navigator.pop(ctx); // Close dialog
+                Navigator.pop(context); // Redirect to Dashboard
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Request Rejected')),
+                  const SnackBar(content: Text('Request Rejected and returned to dashboard')),
                 );
                 onProcessed();
               }

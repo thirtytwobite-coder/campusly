@@ -988,7 +988,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       final coll =
           (uDoc.data() as Map<String, dynamic>?)?['college'] ?? 'Unknown';
 
-      await FirebaseFirestore.instance
+      // create program in club collection
+      final programRef = await FirebaseFirestore.instance
           .collection('clubs')
           .doc(clubId!)
           .collection('programs')
@@ -1025,6 +1026,18 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           });
+
+      // also create a minimal entry in global events collection so that
+      // cloud functions can fire and students/faculty can navigate to it.
+      await FirebaseFirestore.instance.collection('events').add({
+        'title': name.trim(),
+        'programId': programRef.id,
+        'createdBy': user?.uid,
+        'status': 'pending',
+        'clubId': clubId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
       Navigator.pop(ctx);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Program proposed successfully!')),
@@ -1716,6 +1729,19 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             'status': 'pending', // Reset status on edit
             'updatedAt': FieldValue.serverTimestamp(),
           });
+      // keep the corresponding global event document in sync as well
+      final eventQuery = await FirebaseFirestore.instance
+          .collection('events')
+          .where('programId', isEqualTo: programId)
+          .limit(1)
+          .get();
+      if (eventQuery.docs.isNotEmpty) {
+        await eventQuery.docs.first.reference.update({
+          'title': name.trim(),
+          'status': 'pending',
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
       navigator.pop();
       messenger.showSnackBar(
         const SnackBar(

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'main.dart';
 import 'event_details.dart';
@@ -11,6 +12,7 @@ import 'profile_screen.dart';
 import 'club_coordinator_dashboard.dart';
 import 'vibrant_background.dart';
 import 'participation_history.dart';
+import 'notification_service.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -27,6 +29,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   bool _isLoadingCollege = true;
   DateTime? _selectedDate;
   List<DocumentSnapshot> managedClubs = [];
+  int _unreadNotifications = 0;
+  bool _isInitialLoad = true;
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -34,6 +38,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   void initState() {
     super.initState();
     _fetchDashboardData();
+    _requestNotificationPermission();
+    _listenForNotifications();
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) _isInitialLoad = false;
+    });
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    if (await Permission.notification.isDenied) {
+      await Permission.notification.request();
+    }
   }
 
   // 🔹 Fetch student data and managed clubs
@@ -41,7 +56,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        // Fetch College
         DocumentSnapshot doc = await FirebaseFirestore.instance
             .collection('student')
             .doc(user.uid)
@@ -54,7 +68,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               .get();
         }
 
-        // Fetch ALL clubs managed by this student
         final coordQuery = await FirebaseFirestore.instance
             .collection('clubs')
             .where('coordinatorEmails', arrayContains: user.email)
@@ -67,7 +80,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             managedClubs = coordQuery.docs;
             _isLoadingCollege = false;
           });
-          return;
         }
       } catch (e) {
         debugPrint("Error fetching dashboard data: $e");
@@ -76,7 +88,211 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     if (mounted) setState(() => _isLoadingCollege = false);
   }
 
-  // 🔹 Switch to coordinator view
+  void _listenForNotifications() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // 1. Listen for new ongoing events (Global/College)
+    FirebaseFirestore.instance
+        .collection('events')
+        .where('status', isEqualTo: 'ongoing')
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted || _isInitialLoad) return;
+      for (var change in snapshot.docChanges) {
+        if (change.type == DocumentChangeType.added) {
+          final data = change.doc.data() as Map<String, dynamic>?;
+          final eventCollege = (data?['college'] ?? '').toString();
+          final visibility = (data?['visibility'] ?? 'public').toString().toLowerCase();
+
+          bool shouldNotify = visibility == 'public' || 
+                             (studentCollege != null && eventCollege.toLowerCase() == studentCollege!.toLowerCase());
+
+          if (shouldNotify) {
+            NotificationService.showNotification(
+              id: change.doc.id.hashCode,
+              title: 'New Event Live!',
+              body: '${data?['title']} has just started. Register now!',
+            );
+          }
+        }
+      }
+    });
+
+    // 2. Listen for personal Team Invitations count
+    FirebaseFirestore.instance
+        .collection('student')
+        .doc(user.uid)
+        .collection('notifications')
+        .where('read', isEqualTo: false)
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+      setState(() {
+        _unreadNotifications = snapshot.docs.length;
+      });
+
+      if (_isInitialLoad) return;
+
+      for (var change in snapshot.docChanges) {
+        if (change.type == DocumentChangeType.added) {
+          final data = change.doc.data() as Map<String, dynamic>?;
+          if (data != null) {
+            NotificationService.showNotification(
+              id: change.doc.id.hashCode,
+              title: data['title'] ?? 'New Request',
+              body: data['message'] ?? 'You have a new team invitation.',
+            );
+          }
+        }
+      }
+    });
+  }
+
+  Future<void> _confirmInvite(DocumentReference docRef, Map<String, dynamic> data) async {
+    final String? eventId = data['eventId'];
+    final bool isAlreadyRead = data['read'] ?? false;
+    
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              data['type'] == 'team_invite' ? Icons.group_add : Icons.notifications,
+              color: Colors.indigo,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                data['title'] ?? 'Notification',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Text(data['message'] ?? 'You have a new message.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Close", style: TextStyle(color: Colors.grey)),
+          ),
+          if (eventId != null)
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final eventDoc = await FirebaseFirestore.instance.collection('events').doc(eventId).get();
+                if (eventDoc.exists && mounted) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailsScreen(event: eventDoc)));
+                }
+              },
+              child: const Text("View Event", style: TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold)),
+            ),
+          if (!isAlreadyRead)
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                
+                // 1. Mark notification as read
+                await docRef.update({'read': true});
+
+                // 2. 🔹 Update the registration status to confirmed
+                final String? regId = data['regId'];
+                if (data['type'] == 'team_invite' && regId != null) {
+                  try {
+                    await FirebaseFirestore.instance
+                        .collection('registrations')
+                        .doc(regId)
+                        .update({'status': 'confirmed'});
+                    
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Team participation confirmed!')),
+                      );
+                    }
+                  } catch (e) {
+                    debugPrint("Error confirming registration: $e");
+                  }
+                }
+              },
+              child: const Text("Acknowledge"),
+            )
+          else
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text("Acknowledged", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showNotifications() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Notifications"),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('student')
+                .doc(user.uid)
+                .collection('notifications')
+                .orderBy('timestamp', descending: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(child: Text("No new requests"));
+              }
+              final docs = snapshot.data!.docs;
+              return ListView.separated(
+                itemCount: docs.length,
+                separatorBuilder: (_, __) => const Divider(),
+                itemBuilder: (context, index) {
+                  final doc = docs[index];
+                  final data = doc.data() as Map<String, dynamic>;
+                  final isRead = data['read'] ?? false;
+                  return ListTile(
+                    leading: Icon(
+                      data['type'] == 'team_invite' ? Icons.group_add : Icons.notifications,
+                      color: isRead ? Colors.grey : Colors.indigo,
+                    ),
+                    title: Text(
+                      data['title'] ?? 'Team Request',
+                      style: TextStyle(fontWeight: isRead ? FontWeight.normal : FontWeight.bold, fontSize: 14),
+                    ),
+                    subtitle: Text(data['message'] ?? '', style: const TextStyle(fontSize: 12)),
+                    onTap: () => _confirmInvite(doc.reference, data),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Close"),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _handleCoordinatorSwitch() {
     if (managedClubs.isEmpty) return;
 
@@ -137,7 +353,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     }
   }
 
-  // 🔹 Date picker
   Future<void> _selectDate(BuildContext context) async {
     final picked = await showDatePicker(
       context: context,
@@ -182,6 +397,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                 ),
                               ),
                             ),
+                            _headerIconButton(
+                              icon: Icons.notifications_none_rounded,
+                              tooltip: "Notifications",
+                              onTap: _showNotifications,
+                              badgeCount: _unreadNotifications,
+                            ),
                             if (managedClubs.isNotEmpty)
                               _headerIconButton(
                                 icon: Icons.admin_panel_settings_outlined,
@@ -211,46 +432,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         ),
                       ),
                     ),
-                    if (_selectedIndex == 1 && studentCollege != null)
-                      Container(
-                        margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(
-                            alpha: 0.1,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.15,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.school_rounded,
-                              size: 18,
-                              color: theme.colorScheme.primary,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                "Showing events for: $studentCollege",
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
+                    
                     if (_selectedIndex != 2) ...[
+                      _buildTeamInvitesSection(),
                       _buildSearchBar(),
                       _buildCategoryChips(),
                       const SizedBox(height: 8),
@@ -294,6 +478,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     required IconData icon,
     required String tooltip,
     required VoidCallback onTap,
+    int badgeCount = 0,
   }) {
     final theme = Theme.of(context);
     return Padding(
@@ -313,10 +498,102 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 color: theme.colorScheme.outline.withValues(alpha: 0.2),
               ),
             ),
-            child: Icon(icon, size: 20),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(icon, size: 20),
+                if (badgeCount > 0)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
+                      child: Text(
+                        badgeCount.toString(),
+                        style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTeamInvitesSection() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('student')
+          .doc(user.uid)
+          .collection('notifications')
+          .where('type', isEqualTo: 'team_invite')
+          .where('read', isEqualTo: false)
+          .limit(3)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const SizedBox.shrink();
+
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.indigo.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.indigo.shade100),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.group_add, color: Colors.indigo, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    "Recent Team Invites",
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...snapshot.data!.docs.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: InkWell(
+                    onTap: () => _confirmInvite(doc.reference, data),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.arrow_right, size: 16, color: Colors.indigo),
+                        Expanded(
+                          child: Text(
+                            data['message'] ?? 'New Invitation',
+                            style: const TextStyle(fontSize: 13),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right, size: 14, color: Colors.indigo),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ).animate().fadeIn().slideX();
+      },
     );
   }
 
@@ -337,48 +614,29 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
         final filteredDocs = snapshot.data!.docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
-
           final eventCollege = (data['college'] ?? "").toString().trim();
-          final visibility = (data['visibility'] ?? "public")
-              .toString()
-              .toLowerCase()
-              .trim();
+          final visibility = (data['visibility'] ?? "public").toString().toLowerCase().trim();
           final status = (data['status'] ?? "approved").toString().toLowerCase().trim();
 
-          // 🔹 Filter: Only show events that have "Started" (ongoing)
           if (status != 'ongoing') return false;
 
-          final isFromMyCollege =
-              studentCollege != null &&
+          final isFromMyCollege = studentCollege != null &&
               eventCollege.isNotEmpty &&
               eventCollege.toLowerCase() == studentCollege!.toLowerCase();
 
-          // 🔹 Tab filtering
           if (_selectedIndex == 0) {
             if (visibility != 'public') return false;
           } else {
             if (!isFromMyCollege) return false;
           }
 
-          // 🔹 Category
-          if (selectedCategory != "All" &&
-              data['category'] != selectedCategory) {
-            return false;
-          }
+          if (selectedCategory != "All" && data['category'] != selectedCategory) return false;
 
-          // 🔹 Search
-          if (!(data['title'] ?? "").toString().toLowerCase().contains(
-            _searchQuery,
-          )) {
-            return false;
-          }
+          if (!(data['title'] ?? "").toString().toLowerCase().contains(_searchQuery)) return false;
 
-          // 🔹 Date filter
           if (_selectedDate != null) {
             final selected = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-            if (data['date'] != selected) {
-              return false;
-            }
+            if (data['date'] != selected) return false;
           }
 
           return true;
@@ -428,16 +686,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.assignment_late_outlined,
-                  size: 60,
-                  color: Colors.grey,
-                ),
+                Icon(Icons.assignment_late_outlined, size: 60, color: Colors.grey),
                 SizedBox(height: 16),
-                Text(
-                  "No registered events found.",
-                  style: TextStyle(color: Colors.grey),
-                ),
+                Text("No registered events found.", style: TextStyle(color: Colors.grey)),
               ],
             ),
           );
@@ -453,14 +704,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             final eventId = regData['eventId'];
 
             return FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance
-                  .collection('events')
-                  .doc(eventId)
-                  .get(),
+              future: FirebaseFirestore.instance.collection('events').doc(eventId).get(),
               builder: (context, eventSnap) {
-                if (!eventSnap.hasData) return const SizedBox.shrink();
-                if (!eventSnap.data!.exists) return const SizedBox.shrink();
-
+                if (!eventSnap.hasData || !eventSnap.data!.exists) return const SizedBox.shrink();
                 return _buildEventCard(eventSnap.data!);
               },
             );
@@ -471,6 +717,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   }
 
   Widget _buildSearchBar() {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: TextField(
@@ -491,7 +738,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 icon: Icon(
                   Icons.calendar_month,
                   color: _selectedDate != null
-                      ? Theme.of(context).colorScheme.primary
+                      ? theme.colorScheme.primary
                       : null,
                 ),
                 onPressed: () => _selectDate(context),
@@ -499,9 +746,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             ],
           ),
           filled: true,
-          fillColor: Theme.of(
-            context,
-          ).colorScheme.surface.withValues(alpha: 0.92),
+          fillColor: theme.colorScheme.surface.withValues(alpha: 0.92),
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
@@ -513,14 +758,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   }
 
   Widget _buildCategoryChips() {
-    final categories = [
-      "All",
-      "Technical",
-      "Cultural",
-      "Sports",
-      "Academic",
-      "Social",
-    ];
+    final categories = ["All", "Technical", "Cultural", "Sports", "Academic", "Social"];
 
     return SizedBox(
       height: 48,
@@ -540,16 +778,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   ? Theme.of(context).colorScheme.onPrimary
                   : Theme.of(context).colorScheme.onSurface,
             ),
-            selectedColor: Theme.of(context).colorScheme.primary,
-            backgroundColor: Theme.of(
-              context,
-            ).colorScheme.surface.withValues(alpha: 0.82),
+            selectedColor: themeNotifier.value == ThemeMode.light ? Theme.of(context).colorScheme.primary : Colors.indigoAccent,
+            backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.82),
             side: BorderSide(
               color: selectedCategory == categories[i]
                   ? Theme.of(context).colorScheme.primary
-                  : Theme.of(
-                      context,
-                    ).colorScheme.outline.withValues(alpha: 0.25),
+                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.25),
             ),
           ),
         ),
@@ -559,41 +793,20 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   Widget _buildEventCard(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    final visibility = (data['visibility'] ?? "public")
-        .toString()
-        .toLowerCase();
-    final isCollegeOnly = visibility == 'college';
     final prize = (data['prizeAmount'] ?? "").toString();
     final eventDate = data['date'] ?? "TBD";
     final posterLink = data['posterLink'] as String?;
     final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
-
     final status = (data['status'] ?? 'approved').toString().toLowerCase();
 
-    Color statusInfoColor;
-    Color statusInfoText;
-    String statusLabel;
+    Color statusInfoColor = Colors.orange.shade100;
+    Color statusInfoText = Colors.orange.shade900;
+    String statusLabel = "ONGOING";
 
-    switch (status) {
-      case 'ongoing':
-        statusInfoColor = Colors.orange.shade100;
-        statusInfoText = Colors.orange.shade900;
-        statusLabel = "ONGOING";
-        break;
-      case 'completed':
-        statusInfoColor = Colors.grey.shade300;
-        statusInfoText = Colors.grey.shade800;
-        statusLabel = "COMPLETED";
-        break;
-      case 'cancelled':
-        statusInfoColor = Colors.red.shade100;
-        statusInfoText = Colors.red.shade900;
-        statusLabel = "CANCELLED";
-        break;
-      default:
-        statusInfoColor = Colors.blue.shade50;
-        statusInfoText = Colors.blue.shade900;
-        statusLabel = "UPCOMING";
+    if (status == 'completed') {
+      statusInfoColor = Colors.grey.shade300;
+      statusInfoText = Colors.grey.shade800;
+      statusLabel = "COMPLETED";
     }
 
     return Card(
@@ -618,15 +831,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   height: 170,
                   width: double.infinity,
                   color: Colors.grey[200],
-                  child: const Icon(
-                    Icons.image_not_supported,
-                    size: 50,
-                    color: Colors.grey,
-                  ),
+                  child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
                 ),
               ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+              padding: const EdgeInsets.all(14),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -634,16 +843,14 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: isCollegeOnly
+                      color: (data['visibility'] == 'college')
                           ? Colors.indigo.withValues(alpha: 0.12)
                           : Colors.green.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      isCollegeOnly
-                          ? Icons.school_rounded
-                          : Icons.public_rounded,
-                      color: isCollegeOnly ? Colors.indigo : Colors.green,
+                      (data['visibility'] == 'college') ? Icons.school : Icons.public,
+                      color: (data['visibility'] == 'college') ? Colors.indigo : Colors.green,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -653,63 +860,31 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       children: [
                         Text(
                           data['title'] ?? "Untitled Event",
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           "${data['college'] ?? "General Event"} - $eventDate",
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withValues(alpha: 0.7),
-                              ),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 8,
                           runSpacing: 6,
                           children: [
-                            _eventTag(
-                              isCollegeOnly ? "College-Only" : "Public",
-                              bgColor: isCollegeOnly
-                                  ? Colors.indigo.withValues(alpha: 0.15)
-                                  : Colors.green.withValues(alpha: 0.15),
-                              fgColor: isCollegeOnly
-                                  ? Colors.indigo
-                                  : Colors.green.shade800,
-                            ),
-                            _eventTag(
-                              statusLabel,
-                              bgColor: statusInfoColor,
-                              fgColor: statusInfoText,
-                            ),
+                            _eventTag(statusLabel, bgColor: statusInfoColor, fgColor: statusInfoText),
                             if (isTeamEvent)
-                              _eventTag(
-                                "Team • ${data['teamSize'] ?? 'N/A'}",
-                                bgColor: Colors.purple.withValues(alpha: 0.14),
-                                fgColor: Colors.purple.shade900,
-                              ),
+                              _eventTag("Team • ${data['teamSize'] ?? 'N/A'}", bgColor: Colors.purple.withValues(alpha: 0.14), fgColor: Colors.purple.shade900),
                             if (prize.isNotEmpty && prize != "0")
-                              _eventTag(
-                                "Prize Rs.$prize",
-                                bgColor: Colors.orange.withValues(alpha: 0.14),
-                                fgColor: Colors.orange.shade900,
-                              ),
+                              _eventTag("Prize Rs.$prize", bgColor: Colors.orange.withValues(alpha: 0.14), fgColor: Colors.orange.shade900),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 14,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.45),
-                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
                 ],
               ),
             ),
@@ -719,32 +894,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1);
   }
 
-  Widget _eventTag(
-    String text, {
-    required Color bgColor,
-    required Color fgColor,
-  }) {
+  Widget _eventTag(String text, {required Color bgColor, required Color fgColor}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          color: fgColor,
-        ),
-      ),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
+      child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: fgColor)),
     );
   }
 
   void _toggleTheme() async {
-    themeNotifier.value = themeNotifier.value == ThemeMode.light
-        ? ThemeMode.dark
-        : ThemeMode.light;
+    themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     final prefs = await SharedPreferences.getInstance();
     prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
   }

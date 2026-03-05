@@ -1,9 +1,12 @@
 import 'package:animations/animations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:college_event_manager/club_coordinator_dashboard.dart';
+import 'package:college_event_manager/notification_service.dart';
 import 'package:college_event_manager/role_selection_screen.dart';
+import 'package:college_event_manager/event_details.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -15,16 +18,126 @@ import 'student_home.dart';
 import 'welcome_screen.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+String? _fcmToken;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  // 🔹 Initialize Local Notifications with navigation support
+  await NotificationService.init(navigatorKey: navigatorKey);
+
+  // set up firebase messaging (permission, token, listeners)
+  await _setupFCM();
+
+  // listen for auth changes to save token once user logs in
+  FirebaseAuth.instance.authStateChanges().listen((user) {
+    if (user != null && _fcmToken != null) {
+      _saveTokenToFirestore(_fcmToken!);
+    }
+  });
 
   final prefs = await SharedPreferences.getInstance();
   final isDarkMode = prefs.getBool('isDarkMode') ?? false;
   themeNotifier.value = isDarkMode ? ThemeMode.dark : ThemeMode.light;
 
   runApp(const CampuslyApp());
+}
+
+Future<void> _setupFCM() async {
+  try {
+    final messaging = FirebaseMessaging.instance;
+    NotificationSettings settings = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+      provisional: false,
+    );
+    // ignore: avoid_print
+    print('FCM permission status: ${settings.authorizationStatus}');
+
+    _fcmToken = await messaging.getToken();
+    if (_fcmToken != null) {
+      await _saveTokenToFirestore(_fcmToken!);
+    }
+
+    messaging.onTokenRefresh.listen((newToken) async {
+      _fcmToken = newToken;
+      await _saveTokenToFirestore(newToken);
+    });
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      final notification = message.notification;
+      final data = message.data;
+      final title = notification?.title ?? '';
+      final body = notification?.body ?? '';
+      final eventId = data['eventId'] ?? '';
+
+      if (title.isNotEmpty || body.isNotEmpty) {
+        NotificationService.showNotification(
+          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          title: title,
+          body: body,
+          payload: eventId,
+        );
+      }
+    });
+
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
+
+    // handle case when app was terminated
+    final initial = await FirebaseMessaging.instance.getInitialMessage();
+    if (initial != null) {
+      _handleMessage(initial);
+    }
+  } catch (e) {
+    debugPrint("Error setting up FCM: $e");
+  }
+}
+
+Future<void> _saveTokenToFirestore(String token) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) return;
+
+  try {
+    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final doc = await userRef.get();
+    if (doc.exists) {
+      await userRef.update({'fcmToken': token});
+    } else {
+      String name = '';
+      String role = 'STUDENT';
+      final studentSnap = await FirebaseFirestore.instance.collection('student').doc(user.uid).get();
+      if (studentSnap.exists) {
+        name = studentSnap.data()?['name'] ?? '';
+        role = 'STUDENT';
+      } else {
+        final facultySnap = await FirebaseFirestore.instance.collection('faculty').doc(user.uid).get();
+        if (facultySnap.exists) {
+          name = facultySnap.data()?['name'] ?? '';
+          role = 'FACULTY';
+        }
+      }
+      await userRef.set({'name': name, 'role': role, 'fcmToken': token});
+    }
+  } catch (e) {
+    debugPrint("Error saving token: $e");
+  }
+}
+
+void _handleMessage(RemoteMessage message) {
+  final eventId = message.data['eventId'];
+  if (eventId != null && eventId.toString().isNotEmpty) {
+    FirebaseFirestore.instance.collection('events').doc(eventId).get().then((doc) {
+      if (doc.exists) {
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (context) => EventDetailsScreen(event: doc),
+          ),
+        );
+      }
+    });
+  }
 }
 
 class CampuslyApp extends StatelessWidget {
@@ -189,6 +302,7 @@ class CampuslyApp extends StatelessWidget {
         );
 
         return MaterialApp(
+          navigatorKey: navigatorKey, // 🔹 Set the navigatorKey
           title: 'Campusly',
           debugShowCheckedModeBanner: false,
           theme: lightTheme,
@@ -225,6 +339,7 @@ class AuthWrapper extends StatelessWidget {
         .doc(user.uid)
         .get();
     if (studentSnap.exists) {
+      final data = studentSnap.data()!;
       final coordSnap = await FirebaseFirestore.instance
           .collection('clubs')
           .where('coordinatorEmails', arrayContains: user.email)

@@ -37,12 +37,26 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final userCredential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(
-            email: _loginEmail.text.trim(),
-            password: _loginPass.text.trim(),
-          );
+      // 🔹 Workaround for the Pigeon codec mismatch error:
+      // The login often succeeds natively even if the return value fails to decode.
+      try {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: _loginEmail.text.trim(),
+          password: _loginPass.text.trim(),
+        );
+      } on TypeError catch (e) {
+        debugPrint('Sign-in decoding error (caught & proceeding): $e');
+      }
 
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw FirebaseAuthException(
+          code: 'user-not-found',
+          message: 'Authentication failed.',
+        );
+      }
+
+      // Check Admin
       if (_loginEmail.text.trim() == 'admin@test.com') {
         if (mounted) {
           Navigator.pushReplacement(
@@ -53,63 +67,55 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
         return;
       }
 
+      // Check Faculty
       final facultyDoc = await FirebaseFirestore.instance
           .collection('faculty')
-          .doc(userCredential.user!.uid)
+          .doc(user.uid)
           .get();
 
       if (facultyDoc.exists) {
         final data = facultyDoc.data()!;
-        if (data.containsKey('isActive') && data['isActive'] == false) {
+        if (data['isActive'] == false) {
+          await FirebaseAuth.instance.signOut();
           _showErrorDialog('Account disabled. Contact Admin.');
           return;
         }
 
         if (mounted) {
-          switch (data['role']) {
-            case 'Main Faculty':
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => main_fac.MainFacultyDashboard(
-                    collegeName: data['college'],
-                  ),
+          if (data['role'] == 'Main Faculty') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => main_fac.MainFacultyDashboard(
+                  collegeName: data['college'],
                 ),
-              );
-              break;
-            case 'Faculty':
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const FacultyHomeScreen()),
-              );
-              break;
-            default:
-              _showErrorDialog('Invalid role assigned');
+              ),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const FacultyHomeScreen()),
+            );
           }
         }
       } else {
+        // Check Student
         final studentDoc = await FirebaseFirestore.instance
             .collection('student')
-            .doc(userCredential.user!.uid)
+            .doc(user.uid)
             .get();
+
         if (studentDoc.exists) {
           await _handleStudentLogin(studentDoc);
         } else {
+          await FirebaseAuth.instance.signOut();
           _showErrorDialog('No user record found. Please register.');
         }
       }
     } on FirebaseAuthException catch (e) {
-      var errorMessage = 'Login failed';
-      if (e.code == 'user-not-found') {
-        errorMessage = 'No user found with this email.';
-      } else if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
-        errorMessage = 'Incorrect password.';
-      } else if (e.code == 'invalid-email') {
-        errorMessage = 'The email address is badly formatted.';
-      } else if (e.code == 'user-disabled') {
-        errorMessage = 'This user account has been disabled.';
-      }
-      _showErrorDialog(errorMessage);
+      _showErrorDialog(e.message ?? 'Login failed');
+    } catch (e) {
+      _showErrorDialog('An unexpected error occurred.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -118,22 +124,15 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
   Future<void> _handleStudentLogin(DocumentSnapshot studentDoc) async {
     final studentData = studentDoc.data() as Map<String, dynamic>;
 
-    if (studentData.containsKey('isActive') &&
-        studentData['isActive'] == false) {
+    if (studentData['isActive'] == false) {
+      await FirebaseAuth.instance.signOut();
       _showErrorDialog('Account disabled. Contact Admin.');
       return;
     }
 
     final coordinatorQuery = await FirebaseFirestore.instance
         .collection('clubs')
-        .where(
-          'coordinators',
-          arrayContains: {
-            'studentId': studentDoc.id,
-            'studentName': studentData['name'],
-            'studentEmail': studentData['email'],
-          },
-        )
+        .where('coordinatorEmails', arrayContains: studentData['email'])
         .limit(1)
         .get();
 
@@ -157,7 +156,6 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
       _showErrorDialog('Please enter your email to reset the password.');
       return;
     }
-
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(
         email: _loginEmail.text.trim(),
@@ -202,35 +200,34 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final wide = constraints.maxWidth > 760;
-
                       return Container(
-                            decoration: BoxDecoration(
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xE6172233)
+                              : const Color(0xEEFFFFFF),
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white12
+                                : const Color(0x1A0F172A),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
                               color: isDark
-                                  ? const Color(0xE6172233)
-                                  : const Color(0xEEFFFFFF),
-                              borderRadius: BorderRadius.circular(28),
-                              border: Border.all(
-                                color: isDark
-                                    ? Colors.white12
-                                    : const Color(0x1A0F172A),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: isDark
-                                      ? Colors.black38
-                                      : const Color(0x1A0F172A),
-                                  blurRadius: 34,
-                                  offset: const Offset(0, 16),
-                                ),
-                              ],
+                                  ? Colors.black38
+                                  : const Color(0x1A0F172A),
+                              blurRadius: 34,
+                              offset: const Offset(0, 16),
                             ),
-                            child: wide
-                                ? _buildWideLayout(theme)
-                                : _buildCompactLayout(theme),
-                          )
-                          .animate()
-                          .fadeIn(duration: 300.ms)
-                          .slideY(begin: 0.05, end: 0);
+                          ],
+                        ),
+                        child: wide
+                            ? _buildWideLayout(theme)
+                            : _buildCompactLayout(theme),
+                      ).animate().fadeIn(duration: 300.ms).slideY(
+                        begin: 0.05,
+                        end: 0,
+                      );
                     },
                   ),
                 ),
@@ -320,7 +317,6 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
 
 class _LeftPromo extends StatelessWidget {
   final ThemeData theme;
-
   const _LeftPromo({required this.theme});
 
   @override
@@ -331,7 +327,7 @@ class _LeftPromo extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.2),
+            color: Colors.white.withOpacity(0.2),
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
@@ -355,7 +351,7 @@ class _LeftPromo extends StatelessWidget {
         Text(
           'Discover events, run clubs, and create unforgettable student experiences.',
           style: theme.textTheme.bodyLarge?.copyWith(
-            color: Colors.white.withValues(alpha: 0.9),
+            color: Colors.white.withOpacity(0.9),
             height: 1.35,
           ),
         ),
@@ -372,20 +368,18 @@ class _LeftPromo extends StatelessWidget {
 
 class _PromoPoint extends StatelessWidget {
   final String text;
-
   const _PromoPoint({required this.text});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     return Row(
       children: [
         Container(
           width: 20,
           height: 20,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.2),
+            color: Colors.white.withOpacity(0.2),
             shape: BoxShape.circle,
           ),
           child: const Icon(Icons.check, size: 14, color: Colors.white),
@@ -435,7 +429,7 @@ class _AuthForm extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.14),
+                color: theme.colorScheme.primary.withOpacity(0.14),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -457,9 +451,7 @@ class _AuthForm extends StatelessWidget {
                   Text(
                     'Continue with your college email',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(
-                        alpha: 0.72,
-                      ),
+                      color: theme.colorScheme.onSurface.withOpacity(0.72),
                     ),
                   ),
                 ],
@@ -520,7 +512,7 @@ class _AuthForm extends StatelessWidget {
             Text(
               "Don't have an account? ",
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                color: theme.colorScheme.onSurface.withOpacity(0.72),
               ),
             ),
             GestureDetector(
@@ -645,7 +637,6 @@ class AdminDashboard extends StatelessWidget {
     VoidCallback onTap,
   ) {
     final theme = Theme.of(context);
-
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
@@ -659,7 +650,7 @@ class AdminDashboard extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.14),
+                  color: theme.colorScheme.primary.withOpacity(0.14),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(icon, size: 26, color: theme.colorScheme.primary),
@@ -738,7 +729,6 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(title: const Text('Manage Clubs')),
       floatingActionButton: FloatingActionButton(
@@ -755,7 +745,6 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
               final docs = snapshot.data!.docs;
-
               return ListView.builder(
                 padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
                 itemCount: docs.length,

@@ -242,7 +242,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
       final coordinatorName = (userDoc.data() as Map<String, dynamic>?)?['name'] ?? 'Unknown';
       final college = (userDoc.data() as Map<String, dynamic>?)?['college'] ?? 'Unknown';
 
-      await FirebaseFirestore.instance.collection('clubs').doc(widget.clubId).collection('programs').add({
+      final programRef = await FirebaseFirestore.instance.collection('clubs').doc(widget.clubId).collection('programs').add({
         'name': name.trim(),
         'description': description.trim(),
         'date': date,
@@ -259,6 +259,16 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
         'coordinatorName': coordinatorName,
         'createdAt': FieldValue.serverTimestamp(),
       });
+      
+      // create global event entry for notification & navigation
+      await FirebaseFirestore.instance.collection('events').add({
+        'title': name.trim(),
+        'programId': programRef.id,
+        'createdBy': user?.uid,
+        'status': 'pending',
+        'clubId': widget.clubId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
       Navigator.pop(context);
     } catch (e) { print(e); }
   }
@@ -272,14 +282,28 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
         'category': category,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+      // update global event if exists
+      final eventQuery = await FirebaseFirestore.instance.collection('events').where('programId', isEqualTo: programId).limit(1).get();
+      if (eventQuery.docs.isNotEmpty) {
+        await eventQuery.docs.first.reference.update({
+          'title': name.trim(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
       Navigator.pop(context);
     } catch (e) { print(e); }
   }
 
   Future<void> _requestStatusChange(String programId, String newStatus) async {
-    // 🔹 When approving, we must also sync 'maxSeats' to the 'events' collection
+    // 🔹 When approving, we must also sync to the 'events' collection
     final programRef = FirebaseFirestore.instance.collection('clubs').doc(widget.clubId).collection('programs').doc(programId);
     await programRef.update({'status': newStatus, 'updatedAt': FieldValue.serverTimestamp()});
+
+    // keep global event in step as well
+    final eventQuery = await FirebaseFirestore.instance.collection('events').where('programId', isEqualTo: programId).get();
+    for (var doc in eventQuery.docs) {
+      await doc.reference.update({'status': newStatus, 'updatedAt': FieldValue.serverTimestamp()});
+    }
   }
 
   void _confirmDelete(BuildContext context, String programId) {}
