@@ -32,6 +32,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   String? userName;
   int _selectedIndex = 0;
   bool _loading = true;
+  String searchQuery = '';
 
   @override
   void initState() {
@@ -260,28 +261,28 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
 
               const SizedBox(height: 30),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    "Events",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              const Text(
+                "Events",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const SizedBox(height: 15),
+
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search events...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
                   ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ManageProgramsScreen(
-                            clubId: clubId!,
-                            clubName: clubName ?? 'Club',
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Text("View All"),
-                  ),
-                ],
+                  filled: true,
+                  fillColor: Colors.grey.withOpacity(0.1),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    searchQuery = value.toLowerCase();
+                  });
+                },
               ),
               const SizedBox(height: 15),
 
@@ -325,11 +326,42 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                     );
                   }
 
-                  final docs = snapshot.data!.docs;
+                  var docs = snapshot.data!.docs;
+
+                  if (searchQuery.isNotEmpty) {
+                    docs = docs.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      final name = (data['name'] ?? data['title'] ?? '').toString().toLowerCase();
+                      return name.contains(searchQuery);
+                    }).toList();
+                  }
+
+                  if (docs.isEmpty && snapshot.data!.docs.isNotEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40.0),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.search_off,
+                              size: 60,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No events found matching your search',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
                   return ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: docs.length > 5 ? 5 : docs.length,
+                    itemCount: docs.length,
                     itemBuilder: (context, index) {
                       final programDoc = docs[index];
                       final programData =
