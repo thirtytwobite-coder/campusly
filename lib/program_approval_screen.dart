@@ -16,50 +16,151 @@ class ProgramApprovalScreen extends StatefulWidget {
 }
 
 class _ProgramApprovalScreenState extends State<ProgramApprovalScreen> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Pending Approvals - ${widget.clubName}'),
-        backgroundColor: const Color(0xFF1A237E),
-        foregroundColor: Colors.white,
+  Future<void> _rejectAll(BuildContext context, List<QueryDocumentSnapshot> docs) async {
+    final reasonController = TextEditingController();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Reject All (${docs.length})'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Are you sure you want to reject all pending requests? This cannot be undone.'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Reason for Bulk Rejection',
+                hintText: 'e.g., Incomplete details in multiple proposals',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () {
+              if (reasonController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please provide a reason')));
+                return;
+              }
+              Navigator.pop(ctx, true);
+            },
+            child: const Text('Reject All'),
+          ),
+        ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('clubs')
-            .doc(widget.clubId)
-            .collection('programs')
-            .where('status', isEqualTo: 'pending')
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.data!.docs.isEmpty) {
-            return const Center(
-              child: Text('No pending programs for approval'),
-            );
+    );
+
+    if (confirm == true) {
+      try {
+        final batch = FirebaseFirestore.instance.batch();
+        final String reason = reasonController.text.trim();
+
+        for (var doc in docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final String? requestedStatus = data['requestedStatus'];
+          final programRef = FirebaseFirestore.instance
+              .collection('clubs')
+              .doc(widget.clubId)
+              .collection('programs')
+              .doc(doc.id);
+
+          if (requestedStatus != null) {
+            batch.update(programRef, {
+              'status': 'approved',
+              'requestedStatus': FieldValue.delete(),
+              'rejectionReason': 'Status change rejected: $reason',
+              'rejectedAt': FieldValue.serverTimestamp(),
+            });
+          } else {
+            batch.update(programRef, {
+              'status': 'rejected',
+              'rejectionReason': reason,
+              'rejectedAt': FieldValue.serverTimestamp(),
+            });
           }
 
-          return ListView.builder(
-            itemCount: snapshot.data!.docs.length,
-            padding: const EdgeInsets.all(12),
-            itemBuilder: (context, index) {
-              final doc = snapshot.data!.docs[index];
-              final data = doc.data() as Map<String, dynamic>;
-              return _ApprovalCard(
-                programId: doc.id,
-                clubId: widget.clubId,
-                data: data,
-                onProcessed: () => setState(() {}),
+          // Send individual notifications
+          final notifyRef = FirebaseFirestore.instance
+              .collection('clubs')
+              .doc(widget.clubId)
+              .collection('notifications')
+              .doc();
+          batch.set(notifyRef, {
+            'title': 'Request Rejected',
+            'message': 'Your request for "${data['name']}" was rejected. Reason: $reason',
+            'timestamp': FieldValue.serverTimestamp(),
+            'type': 'rejection',
+            'read': false,
+          });
+        }
+
+        await batch.commit();
+        if (context.mounted) {
+          Navigator.pop(context); // Go back to dashboard
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('All requests rejected successfully.')));
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error rejecting all: $e')));
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('clubs')
+          .doc(widget.clubId)
+          .collection('programs')
+          .where('status', isEqualTo: 'pending')
+          .snapshots(),
+      builder: (context, snapshot) {
+        final List<QueryDocumentSnapshot> docs = snapshot.data?.docs ?? [];
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text('Pending Approvals - ${widget.clubName}'),
+            backgroundColor: const Color(0xFF1A237E),
+            foregroundColor: Colors.white,
+            actions: [
+              if (docs.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.delete_sweep_outlined),
+                  tooltip: 'Reject All',
+                  onPressed: () => _rejectAll(context, docs),
+                ),
+            ],
+          ),
+          body: Builder(
+            builder: (context) {
+              if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+              if (docs.isEmpty) return const Center(child: Text('No pending programs for approval'));
+
+              return ListView.builder(
+                itemCount: docs.length,
+                padding: const EdgeInsets.all(12),
+                itemBuilder: (context, index) {
+                  final doc = docs[index];
+                  final data = doc.data() as Map<String, dynamic>;
+                  return _ApprovalCard(
+                    programId: doc.id,
+                    clubId: widget.clubId,
+                    data: data,
+                    onProcessed: () => setState(() {}),
+                  );
+                },
               );
             },
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

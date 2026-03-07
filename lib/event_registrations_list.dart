@@ -319,6 +319,7 @@ class _EventRegistrationsListScreenState
                                 (data['isTeamEvent'] ?? false) == true;
                             final String teamId = (data['teamId'] ?? '')
                                 .toString();
+                            final String? feedback = data['feedback'];
 
                             return Card(
                               elevation: 2,
@@ -481,6 +482,8 @@ class _EventRegistrationsListScreenState
                                       vertical: 8.0,
                                     ),
                                     child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         _buildDetailRow(
                                           Icons.badge_outlined,
@@ -506,6 +509,46 @@ class _EventRegistrationsListScreenState
                                                         : teamId.length,
                                                   )
                                                 : 'N/A',
+                                          ),
+                                        ],
+                                        if (feedback != null &&
+                                            feedback.isNotEmpty) ...[
+                                          const SizedBox(height: 12),
+                                          const Divider(),
+                                          const Row(
+                                            children: [
+                                              Icon(
+                                                Icons.rate_review_outlined,
+                                                size: 16,
+                                                color: Colors.blue,
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                "Student Feedback",
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 13,
+                                                  color: Colors.blue,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue.shade50,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              feedback,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            ),
                                           ),
                                         ],
                                         const SizedBox(height: 16),
@@ -582,7 +625,11 @@ class _EventRegistrationsListScreenState
       ),
       child: Row(
         children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.red.shade700, size: 20),
+          Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.red.shade700,
+            size: 20,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -681,10 +728,7 @@ class _EventRegistrationsListScreenState
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const TabBar(
-                    tabs: [
-                      Tab(text: "Participant"),
-                      Tab(text: "Winners"),
-                    ],
+                    tabs: [Tab(text: "Participant"), Tab(text: "Winners")],
                     labelColor: Colors.blue,
                     unselectedLabelColor: Colors.grey,
                   ),
