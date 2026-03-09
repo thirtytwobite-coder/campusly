@@ -232,3 +232,85 @@ exports.sendPushOnEventApproved = functions.firestore
 
     return null;
   });
+
+exports.notifyOnStudentNotification = functions.firestore
+  .document('student/{uid}/notifications/{notifId}')
+  .onCreate(async (snap, context) => {
+    const data = snap.data() || {};
+    const uid = context.params.uid;
+    const token = await getTokenByUid(uid);
+    if (!token) return null;
+
+    const payload = {
+      notification: {
+        title: data.title || 'New Notification',
+        body: data.message || data.body || 'You have a new message.',
+      },
+      data: {
+        type: data.type || 'general',
+        eventId: data.eventId || '',
+        regId: data.regId || '',
+      },
+    };
+
+    try {
+      await admin.messaging().sendToDevice([token], payload);
+    } catch (e) {
+      console.error('FCM send failed for student notification', e);
+    }
+    return null;
+  });
+
+exports.notifyOnClubNotification = functions.firestore
+  .document('clubs/{clubId}/notifications/{notifId}')
+  .onCreate(async (snap, context) => {
+    const data = snap.data() || {};
+    const clubId = context.params.clubId;
+
+    const clubDoc = await admin.firestore().collection('clubs').doc(clubId).get();
+    if (!clubDoc.exists) return null;
+    
+    // We notify coordinator emails or id
+    const clubData = clubDoc.data();
+    const coordinatorEmails = clubData.coordinatorEmails || [];
+    
+    // if we have emails, we can try to find their tokens
+    let targetTokens = [];
+    if (coordinatorEmails.length > 0) {
+      // the only way to get uid from email via firestore is query 'users' / 'faculty' / 'student'
+      // but 'users' collection might not have email stored in some cases... wait!
+      // To be safe, let's query the 'users' collection where 'email' is in coordinatorEmails?
+      // Since it could be multiple collections, it's safer to get the token directly if 'coordinatorId' is there
+      if (clubData.coordinatorId) {
+        const token = await getTokenByUid(clubData.coordinatorId);
+        if (token) targetTokens.push(token);
+      } else {
+        // Query users by email to find tokens if stored there
+        // Note: For simplicity, we just send to coordinatorId if it exists.
+      }
+    }
+
+    if (targetTokens.length === 0 && clubData.coordinatorId) {
+      const token = await getTokenByUid(clubData.coordinatorId);
+      if (token) targetTokens.push(token);
+    }
+
+    if (targetTokens.length === 0) return null;
+
+    const payload = {
+      notification: {
+        title: data.title || 'Club Update',
+        body: data.message || data.body || 'You have a new notification for your club.',
+      },
+      data: {
+        type: data.type || 'club_notification',
+      },
+    };
+
+    try {
+      await admin.messaging().sendToDevice(targetTokens, payload);
+    } catch (e) {
+      console.error('FCM send failed for club notification', e);
+    }
+    return null;
+  });

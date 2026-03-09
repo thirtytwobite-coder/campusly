@@ -105,16 +105,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           final eventCollege = (data?['college'] ?? '').toString();
           final visibility = (data?['visibility'] ?? 'public').toString().toLowerCase();
 
-          bool shouldNotify = visibility == 'public' || 
-                             (studentCollege != null && eventCollege.toLowerCase() == studentCollege!.toLowerCase());
-
-          if (shouldNotify) {
-            NotificationService.showNotification(
-              id: change.doc.id.hashCode,
-              title: 'New Event Live!',
-              body: '${data?['title']} has just started. Register now!',
-            );
-          }
+          // Notification is now handled by Firebase Cloud Messaging (FCM) push notifications.
+          // The background and foreground push will automatically display the alert.
         }
       }
     });
@@ -138,11 +130,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         if (change.type == DocumentChangeType.added) {
           final data = change.doc.data() as Map<String, dynamic>?;
           if (data != null) {
-            NotificationService.showNotification(
-              id: change.doc.id.hashCode,
-              title: data['title'] ?? 'New Request',
-              body: data['message'] ?? 'You have a new team invitation.',
-            );
+          // We no longer trigger a local notification here because the FCM push 
+          // notification handles it (whether the app is background or foreground).
           }
         }
       }
@@ -797,6 +786,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final eventDate = data['date'] ?? "TBD";
     final posterLink = data['posterLink'] as String?;
     final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
+    final bool requiresVolunteers = (data['requiresVolunteers'] ?? false) == true;
+    final int volunteerCount = data['volunteerCount'] ?? 0;
+    final String? volunteerRole = data['volunteerRole']?.toString();
     final status = (data['status'] ?? 'approved').toString().toLowerCase();
 
     Color statusInfoColor = Colors.orange.shade100;
@@ -877,6 +869,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             _eventTag(statusLabel, bgColor: statusInfoColor, fgColor: statusInfoText),
                             if (isTeamEvent)
                               _eventTag("Team • ${data['teamSize'] ?? 'N/A'}", bgColor: Colors.purple.withValues(alpha: 0.14), fgColor: Colors.purple.shade900),
+                            if (requiresVolunteers && volunteerCount > 0)
+                              _eventTag("Volunteers Needed: $volunteerCount", bgColor: Colors.green.withValues(alpha: 0.14), fgColor: Colors.green.shade900),
                             if (prize.isNotEmpty && prize != "0")
                               _eventTag("Prize Rs.$prize", bgColor: Colors.orange.withValues(alpha: 0.14), fgColor: Colors.orange.shade900),
                           ],

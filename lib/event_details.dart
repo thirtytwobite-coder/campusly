@@ -32,6 +32,9 @@ class EventDetailsScreen extends StatelessWidget {
           final String? imageUrl = data['posterLink'] ?? data['imageUrl'];
           final String eventMode = data['eventMode'] ?? 'TBD';
           final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
+          final bool requiresVolunteers = (data['requiresVolunteers'] ?? false) == true;
+          final String volunteerRole = data['volunteerRole']?.toString() ?? '';
+          final int volunteerCount = data['volunteerCount'] ?? 0;
 
           return SingleChildScrollView(
             child: Column(
@@ -56,6 +59,15 @@ class EventDetailsScreen extends StatelessWidget {
                       _buildInfoRow(Icons.place_outlined, venue),
                       const SizedBox(height: 16),
                       _buildInfoRow(Icons.person_outline, "Coordinator: $coordinatorName"),
+                      
+                      if (requiresVolunteers) ...[
+                        const SizedBox(height: 16),
+                        _buildInfoRow(Icons.people_alt_outlined, "Volunteers Needed: $volunteerCount"),
+                        if (volunteerRole.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _buildInfoRow(Icons.assignment_turned_in_outlined, "Volunteer Task:\n$volunteerRole"),
+                        ],
+                      ],
                       
                       if (isTeamEvent) ...[
                         const SizedBox(height: 32),
