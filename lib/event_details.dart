@@ -59,6 +59,21 @@ class EventDetailsScreen extends StatelessWidget {
                       _buildInfoRow(Icons.place_outlined, venue),
                       const SizedBox(height: 16),
                       _buildInfoRow(Icons.person_outline, "Coordinator: $coordinatorName"),
+                      const SizedBox(height: 16),
+                      
+                      Builder(builder: (context) {
+                        final int totalSeats = data['totalSeats'] ?? data['maxSeats'] ?? 0;
+                        final int filledSeats = data['filledSeats'] ?? 0;
+                        final int availableSeats = totalSeats > 0 ? ((totalSeats - filledSeats > 0) ? (totalSeats - filledSeats) : 0) : -1;
+                        final Color seatColor = availableSeats != 0 ? Colors.green : Colors.red;
+                        return Row(
+                          children: [
+                            Icon(Icons.event_seat_outlined, size: 20, color: seatColor),
+                            const SizedBox(width: 15),
+                            Expanded(child: Text(availableSeats == -1 ? "Unlimited Seats" : (availableSeats > 0 ? "Seats Available: $availableSeats / $totalSeats" : "Registration Full"), style: TextStyle(fontSize: 15, color: seatColor, fontWeight: FontWeight.bold))),
+                          ],
+                        );
+                      }),
                       
                       if (requiresVolunteers) ...[
                         const SizedBox(height: 16),
@@ -247,6 +262,10 @@ class EventDetailsScreen extends StatelessWidget {
       builder: (context, snapshot) {
         final bool isRegistered = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
         final data = eventDoc.data() as Map<String, dynamic>? ?? {};
+        final int totalSeats = data['totalSeats'] ?? data['maxSeats'] ?? 0;
+        final int filledSeats = data['filledSeats'] ?? 0;
+        final int availableSeats = totalSeats > 0 ? ((totalSeats - filledSeats > 0) ? (totalSeats - filledSeats) : 0) : -1;
+        final bool isFull = availableSeats == 0 && !isRegistered;
         final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
 
         return Container(
@@ -255,15 +274,15 @@ class EventDetailsScreen extends StatelessWidget {
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 55),
-              backgroundColor: isRegistered ? Colors.grey : const Color(0xFF673AB7),
+              backgroundColor: isRegistered || isFull ? Colors.grey : const Color(0xFF673AB7),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            onPressed: isRegistered ? null : () {
+            onPressed: (isRegistered || isFull) ? null : () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => EventRegistrationScreen(event: eventDoc)));
             },
             child: Text(
-              isRegistered ? "Already Registered" : (isTeamEvent ? "Register Team" : "Register Now"),
+              isRegistered ? "Already Registered" : (isFull ? "Event Full" : (isTeamEvent ? "Register Team" : "Register Now")),
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),

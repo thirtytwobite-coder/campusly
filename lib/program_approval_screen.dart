@@ -262,8 +262,8 @@ class _ApprovalCard extends StatelessWidget {
           'programId': programId,
           'category': data['category'] ?? 'Technical',
           'status': 'approved',
-          'maxSeats': 100,
-          'filledSeats': 0,
+          'totalSeats': data['totalSeats'] ?? 0,
+          'filledSeats': data['filledSeats'] ?? 0,
           'posterLink': data['posterLink'],
           'visibility': data['visibility'] ?? 'college',
           'college': data['college'],
@@ -509,6 +509,7 @@ class _ApprovalCard extends StatelessWidget {
             _detailRow(Icons.person, 'Coordinator', data['coordinatorName']),
             _detailRow(Icons.category, 'Category', data['category'] ?? ''),
             _detailRow(Icons.event, 'Mode', data['eventMode'] ?? ''),
+            _detailRow(Icons.event_seat, 'Total Seats', (data['totalSeats'] ?? 'N/A').toString()),
             // Prize details
             if ((data['hasPrizePool'] ?? false) == true) ...[
               _detailRow(Icons.emoji_events, 'Prize', data['prizeAmount']?.toString() ?? 'N/A'),

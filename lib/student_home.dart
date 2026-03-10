@@ -794,9 +794,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final bool isVolunteerReg = regData?['registrationType']?.toString().toLowerCase() == 'volunteer';
     final String? assignedTask = regData?['assignedTask']?.toString();
 
+    final int totalSeats = data['totalSeats'] ?? data['maxSeats'] ?? 0;
+    final int filledSeats = data['filledSeats'] ?? 0;
+    final int availableSeats = totalSeats > 0 ? ((totalSeats - filledSeats > 0) ? (totalSeats - filledSeats) : 0) : -1;
+
     Color statusInfoColor = Colors.orange.shade100;
     Color statusInfoText = Colors.orange.shade900;
-    String statusLabel = "ONGOING";
+    String statusLabel = availableSeats == -1 ? "OPEN" : (availableSeats > 0 ? "SEATS: $availableSeats" : "FULL");
 
     if (status == 'completed') {
       statusInfoColor = Colors.grey.shade300;

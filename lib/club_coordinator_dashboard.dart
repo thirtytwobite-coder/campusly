@@ -692,6 +692,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     final timeController = TextEditingController();
     final prizeAmountController = TextEditingController();
     final posterLinkController = TextEditingController();
+    final totalSeatsController = TextEditingController();
     bool hasPrizePool = false;
     String visibility = 'college';
     String? category;
@@ -737,6 +738,16 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                     border: OutlineInputBorder(),
                   ),
                   maxLines: 3,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: totalSeatsController,
+                  decoration: const InputDecoration(
+                    labelText: 'Total Seats (Capacity) *',
+                    border: OutlineInputBorder(),
+                    hintText: 'e.g., 100',
+                  ),
+                  keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
@@ -949,6 +960,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 volunteerRoleController.text,
                 isTeamEvent,
                 teamSizeController.text,
+                totalSeatsController.text,
               ),
               child: const Text('Submit Proposal'),
             ),
@@ -976,19 +988,30 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     String volunteerRole,
     bool isTeamEvent,
     String teamSize,
+    String totalSeats,
   ) async {
     if (name.trim().isEmpty ||
         desc.trim().isEmpty ||
         date.trim().isEmpty ||
         time.trim().isEmpty ||
         loc.trim().isEmpty ||
+        totalSeats.trim().isEmpty ||
         cat == null ||
         mode == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Please fill required fields (Name, Description, Date, Time, Venue, Category, Event Mode)',
+            'Please fill required fields (Name, Description, Total Seats, Date, Time, Venue, Category, Event Mode)',
           ),
+        ),
+      );
+      return;
+    }
+    final int parsedTotalSeats = int.tryParse(totalSeats.trim()) ?? 0;
+    if (parsedTotalSeats < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Total Seats must be a valid number greater than 0.'),
         ),
       );
       return;
@@ -1052,6 +1075,9 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             'volunteerRole': volunteerRole.isNotEmpty
                 ? volunteerRole.trim()
                 : null,
+            // seat details
+            'totalSeats': int.tryParse(totalSeats.trim()) ?? 0,
+            'filledSeats': 0, // Need to track filled seats from the beginning
             // team event details
             'isTeamEvent': isTeamEvent,
             'teamSize': isTeamEvent ? int.tryParse(teamSize.trim()) ?? 0 : null,

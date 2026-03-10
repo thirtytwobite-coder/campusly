@@ -104,6 +104,26 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
       final int teamSize = int.tryParse((widget.event['teamSize'] ?? '').toString()) ?? 0;
       final bool shouldRegisterAsTeam = isTeamEvent && _registrationType == 'participant';
 
+      final int totalSeats = widget.event['totalSeats'] ?? widget.event['maxSeats'] ?? 0;
+      final int filledSeats = widget.event['filledSeats'] ?? 0;
+      final int availableSeats = totalSeats > 0 ? ((totalSeats - filledSeats > 0) ? (totalSeats - filledSeats) : 0) : -1;
+      final int seatsRequired = shouldRegisterAsTeam ? teamSize : 1;
+      
+      if (availableSeats != -1 && availableSeats < seatsRequired) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Event Full'),
+              content: const Text('Sorry, there are not enough seats remaining for this registration.'),
+              actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
+            ),
+          );
+        }
+        setState(() => isSubmitting = false);
+        return;
+      }
+
       if (shouldRegisterAsTeam) {
         final requiredMateCount = teamSize - 1;
         if (_selectedTeammates.length != requiredMateCount) {
