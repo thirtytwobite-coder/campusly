@@ -696,7 +696,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               future: FirebaseFirestore.instance.collection('events').doc(eventId).get(),
               builder: (context, eventSnap) {
                 if (!eventSnap.hasData || !eventSnap.data!.exists) return const SizedBox.shrink();
-                return _buildEventCard(eventSnap.data!);
+                return _buildEventCard(eventSnap.data!, regData: regData);
               },
             );
           },
@@ -780,7 +780,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  Widget _buildEventCard(DocumentSnapshot doc) {
+  Widget _buildEventCard(DocumentSnapshot doc, {Map<String, dynamic>? regData}) {
     final data = doc.data() as Map<String, dynamic>;
     final prize = (data['prizeAmount'] ?? "").toString();
     final eventDate = data['date'] ?? "TBD";
@@ -790,6 +790,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final int volunteerCount = data['volunteerCount'] ?? 0;
     final String? volunteerRole = data['volunteerRole']?.toString();
     final status = (data['status'] ?? 'approved').toString().toLowerCase();
+
+    final bool isVolunteerReg = regData?['registrationType']?.toString().toLowerCase() == 'volunteer';
+    final String? assignedTask = regData?['assignedTask']?.toString();
 
     Color statusInfoColor = Colors.orange.shade100;
     Color statusInfoText = Colors.orange.shade900;
@@ -867,10 +870,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           runSpacing: 6,
                           children: [
                             _eventTag(statusLabel, bgColor: statusInfoColor, fgColor: statusInfoText),
-                            if (isTeamEvent)
+                            if (isTeamEvent && !isVolunteerReg)
                               _eventTag("Team • ${data['teamSize'] ?? 'N/A'}", bgColor: Colors.purple.withValues(alpha: 0.14), fgColor: Colors.purple.shade900),
-                            if (requiresVolunteers && volunteerCount > 0)
+                            if (requiresVolunteers && volunteerCount > 0 && regData == null)
                               _eventTag("Volunteers Needed: $volunteerCount", bgColor: Colors.green.withValues(alpha: 0.14), fgColor: Colors.green.shade900),
+                            if (isVolunteerReg)
+                              _eventTag(
+                                assignedTask?.isNotEmpty == true ? "Task: $assignedTask" : "Task: Pending", 
+                                bgColor: Colors.green.shade100, 
+                                fgColor: Colors.green.shade900,
+                              ),
                             if (prize.isNotEmpty && prize != "0")
                               _eventTag("Prize Rs.$prize", bgColor: Colors.orange.withValues(alpha: 0.14), fgColor: Colors.orange.shade900),
                           ],

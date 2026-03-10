@@ -53,6 +53,9 @@ class ParticipationHistoryScreen extends StatelessWidget {
               final String eventId = data['eventId'] ?? '';
               final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
               final String? teamId = data['teamId'];
+              final String regType = (data['registrationType'] ?? 'participant').toString();
+              final bool isVolunteer = regType.toLowerCase() == 'volunteer';
+              final String? assignedTask = data['assignedTask'];
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
@@ -74,6 +77,36 @@ class ParticipationHistoryScreen extends StatelessWidget {
                           const Divider(),
                           const SizedBox(height: 8),
                           
+                          if (isVolunteer) ...[
+                            const Row(
+                              children: [
+                                Icon(Icons.assignment, size: 18, color: Colors.green),
+                                SizedBox(width: 8),
+                                Text("Volunteer Task", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.green.shade100),
+                              ),
+                              child: Text(
+                                assignedTask?.isNotEmpty == true ? assignedTask! : "Waiting for task assignment...",
+                                style: TextStyle(
+                                  fontStyle: assignedTask?.isNotEmpty == true ? FontStyle.normal : FontStyle.italic,
+                                  color: assignedTask?.isNotEmpty == true ? Colors.black87 : Colors.grey.shade700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            const Divider(),
+                            const SizedBox(height: 8),
+                          ],
+
                           if (isTeamEvent && teamId != null) ...[
                             const Row(
                               children: [

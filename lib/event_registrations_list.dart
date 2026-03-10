@@ -551,6 +551,58 @@ class _EventRegistrationsListScreenState
                                             ),
                                           ),
                                         ],
+                                        if (isVolunteer) ...[
+                                          const SizedBox(height: 12),
+                                          const Divider(),
+                                          Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    const Row(
+                                                      children: [
+                                                        Icon(Icons.assignment, size: 16, color: Colors.green),
+                                                        SizedBox(width: 8),
+                                                        Text(
+                                                          "Assigned Task",
+                                                          style: TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize: 13,
+                                                            color: Colors.green,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      data['assignedTask']?.toString().isNotEmpty == true
+                                                          ? data['assignedTask']!
+                                                          : "No task assigned yet.",
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: data['assignedTask']?.toString().isNotEmpty == true ? Colors.black87 : Colors.grey,
+                                                        fontStyle: data['assignedTask']?.toString().isNotEmpty == true ? FontStyle.normal : FontStyle.italic,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              TextButton.icon(
+                                                onPressed: () => _assignVolunteerTask(
+                                                  sortedDocs[index].id,
+                                                  data['assignedTask']?.toString() ?? '',
+                                                ),
+                                                icon: const Icon(Icons.edit_note, size: 18),
+                                                label: const Text("Assign"),
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor: Colors.green,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                         const SizedBox(height: 16),
                                         Row(
                                           children: [
@@ -644,6 +696,54 @@ class _EventRegistrationsListScreenState
         ],
       ),
     ).animate().shake(hz: 4, duration: 500.ms);
+  }
+
+  void _assignVolunteerTask(String registrationId, String currentTask) {
+    final taskController = TextEditingController(text: currentTask);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Assign Volunteer Task"),
+        content: TextField(
+          controller: taskController,
+          decoration: const InputDecoration(
+            labelText: "Task Description",
+            hintText: "E.g., Stage Management, Registration Desk...",
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await FirebaseFirestore.instance
+                    .collection('registrations')
+                    .doc(registrationId)
+                    .update({'assignedTask': taskController.text.trim()});
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Task assigned successfully!")),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Error: $e")),
+                  );
+                }
+              }
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showWinnersDialog() {

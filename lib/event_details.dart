@@ -73,7 +73,12 @@ class EventDetailsScreen extends StatelessWidget {
                         const SizedBox(height: 32),
                         const Divider(),
                         const SizedBox(height: 16),
-                        _buildTeamSection(context, user?.uid, event.id),
+                        _buildParticipationDetails(context, user?.uid, event.id, isTeamEvent),
+                      ] else ...[
+                        const SizedBox(height: 32),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        _buildParticipationDetails(context, user?.uid, event.id, isTeamEvent),
                       ],
 
                       const SizedBox(height: 120),
@@ -89,7 +94,7 @@ class EventDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTeamSection(BuildContext context, String? userId, String eventId) {
+  Widget _buildParticipationDetails(BuildContext context, String? userId, String eventId, bool isTeamEvent) {
     if (userId == null) return const SizedBox.shrink();
 
     return StreamBuilder<QuerySnapshot>(
@@ -102,72 +107,109 @@ class EventDetailsScreen extends StatelessWidget {
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const SizedBox.shrink();
         
         final regData = snapshot.data!.docs.first.data() as Map<String, dynamic>;
-        final List<dynamic> members = regData['teamMembers'] ?? [];
-        final String? teamId = regData['teamId'];
+        final bool isVolunteer = regData['registrationType']?.toString().toLowerCase() == 'volunteer';
+        final String? assignedTask = regData['assignedTask']?.toString();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
-              children: [
-                Icon(Icons.groups_rounded, color: Colors.indigo),
-                SizedBox(width: 10),
-                Text("Your Team", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (teamId != null)
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('registrations')
-                    .where('teamId', isEqualTo: teamId)
-                    .snapshots(),
-                builder: (context, teamSnap) {
-                  if (!teamSnap.hasData) return const CircularProgressIndicator();
-                  
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: teamSnap.data!.docs.length,
-                    itemBuilder: (context, index) {
-                      final memberDoc = teamSnap.data!.docs[index].data() as Map<String, dynamic>;
-                      final String name = memberDoc['studentName'] ?? 'Unknown';
-                      final String status = memberDoc['status'] ?? 'confirmed';
-                      final bool isLeader = memberDoc['isTeamLeader'] ?? false;
+            if (isVolunteer) ...[
+              const Row(
+                children: [
+                  Icon(Icons.assignment, color: Colors.green),
+                  SizedBox(width: 10),
+                  Text("Your Volunteer Task", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green.shade100),
+                ),
+                child: Text(
+                  assignedTask?.isNotEmpty == true ? assignedTask! : "Waiting for task assignment...",
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: assignedTask?.isNotEmpty == true ? Colors.black87 : Colors.grey.shade700,
+                    fontStyle: assignedTask?.isNotEmpty == true ? FontStyle.normal : FontStyle.italic,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
 
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.indigo.withOpacity(0.1),
-                          child: Text(name[0], style: const TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold)),
-                        ),
-                        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text(isLeader ? "Team Leader" : "Member"),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: status == 'confirmed' ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            status.toUpperCase(),
-                            style: TextStyle(
-                              color: status == 'confirmed' ? Colors.green : Colors.orange,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              )
-            else
-              const Text("Loading team details..."),
+            if (isTeamEvent)
+              _buildTeamSectionInner(regData['teamId']),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildTeamSectionInner(String? teamId) {
+    if (teamId == null) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            Icon(Icons.groups_rounded, color: Colors.indigo),
+            SizedBox(width: 10),
+            Text("Your Team", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('registrations')
+              .where('teamId', isEqualTo: teamId)
+              .snapshots(),
+          builder: (context, teamSnap) {
+            if (!teamSnap.hasData) return const CircularProgressIndicator();
+            
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: teamSnap.data!.docs.length,
+              itemBuilder: (context, index) {
+                final memberDoc = teamSnap.data!.docs[index].data() as Map<String, dynamic>;
+                final String name = memberDoc['studentName'] ?? 'Unknown';
+                final String status = memberDoc['status'] ?? 'confirmed';
+                final bool isLeader = memberDoc['isTeamLeader'] ?? false;
+
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.indigo.withOpacity(0.1),
+                    child: Text(name[0], style: const TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold)),
+                  ),
+                  title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(isLeader ? "Team Leader" : "Member"),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: status == 'confirmed' ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      status.toUpperCase(),
+                      style: TextStyle(
+                        color: status == 'confirmed' ? Colors.green : Colors.orange,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ],
     );
   }
 
