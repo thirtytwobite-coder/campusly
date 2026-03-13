@@ -362,7 +362,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         ? "Campus Events"
         : _selectedIndex == 1
         ? "My College Events"
-        : "Participation History";
+        : "History";
 
     return Scaffold(
       body: Stack(
@@ -400,8 +400,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                               ),
                             if (_selectedIndex == 2)
                               _headerIconButton(
-                                icon: Icons.history,
-                                tooltip: "Participation History",
+                                icon: Icons.emoji_events_outlined,
+                                tooltip: "My Awards",
                                 onTap: () {
                                   Navigator.push(
                                     context,

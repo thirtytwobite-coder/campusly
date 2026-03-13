@@ -9,8 +9,7 @@ class EventRegistrationScreen extends StatefulWidget {
   const EventRegistrationScreen({super.key, required this.event});
 
   @override
-  State<EventRegistrationScreen> createState() =>
-      _EventRegistrationScreenState();
+  State<EventRegistrationScreen> createState() => _EventRegistrationScreenState();
 }
 
 class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
@@ -19,7 +18,6 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
   bool isSubmitting = false;
   Map<String, dynamic>? studentData;
   String _registrationType = 'participant';
-  final List<_StudentOption> _selectedTeammates = [];
 
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
@@ -31,43 +29,44 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
   @override
   void initState() {
     super.initState();
+    // Initialize controllers immediately to avoid LateInitializationError
+    _nameController = TextEditingController();
+    _phoneController = TextEditingController();
+    _deptController = TextEditingController();
+    _yearController = TextEditingController();
+    _semController = TextEditingController();
+    _ktuIdController = TextEditingController();
     _fetchStudentData();
   }
 
   Future<void> _fetchStudentData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      var doc = await FirebaseFirestore.instance
-          .collection('student')
-          .doc(user.uid)
-          .get();
-
-      if (!doc.exists) {
-        doc = await FirebaseFirestore.instance
-            .collection('faculty')
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('student')
             .doc(user.uid)
             .get();
-      }
 
-      if (doc.exists) {
-        studentData = doc.data() as Map<String, dynamic>;
-        _nameController = TextEditingController(text: studentData?['name'] ?? '');
-        _phoneController = TextEditingController(text: studentData?['phone'] ?? '');
-        _deptController = TextEditingController(text: studentData?['department'] ?? '');
-        _yearController = TextEditingController(text: studentData?['year']?.toString() ?? '');
-        _semController = TextEditingController(text: studentData?['semester']?.toString() ?? '');
-        _ktuIdController = TextEditingController(text: studentData?['ktuId'] ?? '');
-      } else {
-        _nameController = TextEditingController();
-        _phoneController = TextEditingController();
-        _deptController = TextEditingController();
-        _yearController = TextEditingController();
-        _semController = TextEditingController();
-        _ktuIdController = TextEditingController();
+        if (doc.exists && mounted) {
+          studentData = doc.data() as Map<String, dynamic>;
+          setState(() {
+            _nameController.text = studentData?['name'] ?? '';
+            _phoneController.text = studentData?['phone'] ?? '';
+            _deptController.text = studentData?['department'] ?? '';
+            _yearController.text = studentData?['year']?.toString() ?? '';
+            _semController.text = studentData?['semester']?.toString() ?? '';
+            _ktuIdController.text = studentData?['ktuId'] ?? '';
+          });
+        }
+      } catch (e) {
+        debugPrint("Error fetching student data: $e");
       }
     }
     if (mounted) {
-      setState(() => isLoading = false);
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -85,11 +84,44 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
   Future<void> _handleRegistration() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => isSubmitting = true);
+    setState(() {
+      isSubmitting = true;
+    });
 
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
+
+      final eventData = widget.event.data() as Map<String, dynamic>? ?? {};
+
+      // 🔹 Check if already registered
+      final existingReg = await FirebaseFirestore.instance
+          .collection('registrations')
+          .where('userId', isEqualTo: user.uid)
+          .where('eventId', isEqualTo: widget.event.id)
+          .get();
+
+      if (existingReg.docs.isNotEmpty) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text("Already Registered"),
+              content: const Text("You have already registered for this event."),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx); // Close dialog
+                    Navigator.pop(context); // Go back to event details
+                  },
+                  child: const Text("OK"),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
 
       final updatedData = {
         'name': _nameController.text.trim(),
@@ -100,83 +132,20 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
         'ktuId': _ktuIdController.text.trim().toUpperCase(),
       };
 
-      final bool isTeamEvent = (widget.event['isTeamEvent'] ?? false) == true;
-      final int teamSize = int.tryParse((widget.event['teamSize'] ?? '').toString()) ?? 0;
-      final bool shouldRegisterAsTeam = isTeamEvent && _registrationType == 'participant';
+      final bool requiresVolunteers = eventData['requiresVolunteers'] == true;
+      final String regType = requiresVolunteers ? _registrationType : 'participant';
 
-      final int totalSeats = widget.event['totalSeats'] ?? widget.event['maxSeats'] ?? 0;
-      final int filledSeats = widget.event['filledSeats'] ?? 0;
-      final int availableSeats = totalSeats > 0 ? ((totalSeats - filledSeats > 0) ? (totalSeats - filledSeats) : 0) : -1;
-      final int seatsRequired = shouldRegisterAsTeam ? teamSize : 1;
-      
-      if (availableSeats != -1 && availableSeats < seatsRequired) {
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Event Full'),
-              content: const Text('Sorry, there are not enough seats remaining for this registration.'),
-              actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
-            ),
-          );
-        }
-        setState(() => isSubmitting = false);
-        return;
-      }
+      // 1. Update Profile if changed
+      await FirebaseFirestore.instance
+          .collection('student')
+          .doc(user.uid)
+          .set(updatedData, SetOptions(merge: true));
 
-      if (shouldRegisterAsTeam) {
-        final requiredMateCount = teamSize - 1;
-        if (_selectedTeammates.length != requiredMateCount) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please select exactly $requiredMateCount teammates.')));
-          setState(() => isSubmitting = false);
-          return;
-        }
-      }
-
-      final List<String> finalMemberIds = [user.uid, ..._selectedTeammates.map((e) => e.uid)];
-
-      for (final memberId in finalMemberIds) {
-        final existingReg = await FirebaseFirestore.instance
-            .collection('registrations')
-            .where('userId', isEqualTo: memberId)
-            .where('eventId', isEqualTo: widget.event.id)
-            .limit(1).get();
-
-        if (existingReg.docs.isNotEmpty) {
-          final existingData = existingReg.docs.first.data();
-          final memberName = (existingData['studentName'] ?? 'A selected member').toString();
-          if (mounted) {
-            showDialog(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: const Text('Already Registered'),
-                content: Text('$memberName is already registered for this event.'),
-                actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
-              ),
-            );
-          }
-          setState(() => isSubmitting = false);
-          return;
-        }
-      }
-
-      await FirebaseFirestore.instance.collection('student').doc(user.uid).set(updatedData, SetOptions(merge: true));
-
-      final List<Map<String, dynamic>> teamMembersPayload = shouldRegisterAsTeam
-          ? [
-              {'userId': user.uid, 'name': updatedData['name'], 'email': user.email ?? ''},
-              ..._selectedTeammates.map((m) => {'userId': m.uid, 'name': m.name, 'email': m.email}),
-            ]
-          : [];
-      
-      final String? teamId = shouldRegisterAsTeam ? FirebaseFirestore.instance.collection('registrations').doc().id : null;
-      final WriteBatch batch = FirebaseFirestore.instance.batch();
-
-      final captainDoc = FirebaseFirestore.instance.collection('registrations').doc();
-      batch.set(captainDoc, {
+      // 2. Register for Event
+      await FirebaseFirestore.instance.collection('registrations').add({
         'userId': user.uid,
         'eventId': widget.event.id,
-        'eventTitle': widget.event['title'] ?? 'Untitled Event',
+        'eventTitle': eventData['title'] ?? eventData['name'] ?? 'Untitled Event',
         'studentName': updatedData['name'],
         'studentEmail': user.email,
         'studentPhone': updatedData['phone'],
@@ -184,114 +153,110 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
         'year': updatedData['year'],
         'semester': updatedData['semester'],
         'ktuId': updatedData['ktuId'],
-        'registrationType': _registrationType,
+        'registrationType': regType,
         'registeredAt': FieldValue.serverTimestamp(),
-        'isTeamEvent': shouldRegisterAsTeam,
-        'teamId': teamId,
-        'teamSize': shouldRegisterAsTeam ? teamSize : null,
-        'isTeamLeader': shouldRegisterAsTeam,
-        'teamMembers': teamMembersPayload,
-        'status': 'confirmed', // Leader is auto-confirmed
       });
 
-      if (shouldRegisterAsTeam) {
-        for (final mate in _selectedTeammates) {
-          final memberDoc = FirebaseFirestore.instance.collection('registrations').doc();
-          batch.set(memberDoc, {
-            'userId': mate.uid,
-            'eventId': widget.event.id,
-            'eventTitle': widget.event['title'] ?? 'Untitled Event',
-            'studentName': mate.name,
-            'studentEmail': mate.email,
-            'studentPhone': mate.phone,
-            'department': mate.department,
-            'year': mate.year,
-            'semester': mate.semester,
-            'ktuId': mate.ktuId.toUpperCase(),
-            'registrationType': 'participant',
-            'registeredAt': FieldValue.serverTimestamp(),
-            'isTeamEvent': true,
-            'teamId': teamId,
-            'teamSize': teamSize,
-            'isTeamLeader': false,
-            'teamMembers': teamMembersPayload,
-            'status': 'pending', // Teammates are pending until confirmation
-          });
+      // Increment filledSeats count
+      await FirebaseFirestore.instance
+          .collection('events')
+          .doc(widget.event.id)
+          .update({'filledSeats': FieldValue.increment(1)});
 
-          final notificationDoc = FirebaseFirestore.instance
-              .collection('student')
-              .doc(mate.uid)
-              .collection('notifications')
-              .doc();
-          batch.set(notificationDoc, {
-            'title': 'New Team Invitation',
-            'message': '${updatedData['name']} added you to their team for ${widget.event['title'] ?? 'the event'}.',
-            'type': 'team_invite',
-            'timestamp': FieldValue.serverTimestamp(),
-            'read': false,
-            'eventId': widget.event.id,
-            'regId': memberDoc.id, // Link to the specific registration for confirmation
-          });
-        }
-      }
-
-      await batch.commit();
-
-      await FirebaseFirestore.instance.collection('events').doc(widget.event.id).update({
-        'filledSeats': FieldValue.increment(shouldRegisterAsTeam ? teamSize : 1),
-      });
-
-      if (_registrationType == 'volunteer') {
+      // Decrement volunteers needed when a volunteer registers
+      if (regType == 'volunteer') {
         await FirebaseFirestore.instance.runTransaction((tx) async {
           final eventRef = FirebaseFirestore.instance.collection('events').doc(widget.event.id);
           final snap = await tx.get(eventRef);
-          final current = int.tryParse(snap.data()?['volunteerCount']?.toString() ?? '0') ?? 0;
-          tx.update(eventRef, {'volunteerCount': current > 0 ? current - 1 : 0});
+          final data = snap.data() as Map<String, dynamic>? ?? {};
+          final int current = (data['volunteerCount'] is int) ? data['volunteerCount'] as int : int.tryParse(data['volunteerCount']?.toString() ?? '') ?? 0;
+          final int next = current > 0 ? current - 1 : 0;
+          tx.update(eventRef, {'volunteerCount': next});
         });
       }
 
       if (mounted) {
+        // Show Confirmation Dialog
         await showDialog(
           context: context,
           barrierDismissible: false,
           builder: (context) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            contentPadding: const EdgeInsets.all(24),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 60),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check_circle, color: Colors.green, size: 60),
+                ),
                 const SizedBox(height: 16),
-                const Text('Registration Successful!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const Text(
+                  "Registration Successful!",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 8),
-                Text('You and your team have been successfully registered for\n${widget.event['title']}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+                Text(
+                  "You have successfully registered for\n${eventData['title'] ?? eventData['name'] ?? 'Untitled Event'}",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.grey),
+                ),
                 const SizedBox(height: 24),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4B3CC9), foregroundColor: Colors.white),
-                  onPressed: () => Navigator.pop(context), 
-                  child: const Text('OK'),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context); // Close dialog
+                    },
+                    child: const Text("OK", style: TextStyle(fontSize: 16)),
+                  ),
                 ),
               ],
             ),
           ),
         );
-        if (mounted) Navigator.pop(context);
+        
+        if (mounted) {
+          Navigator.pop(context); // Go back to event details
+        }
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     } finally {
-      if (mounted) setState(() => isSubmitting = false);
+      if (mounted) {
+        setState(() {
+          isSubmitting = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool requiresVolunteers = (widget.event['requiresVolunteers'] ?? false) == true;
-    final bool isTeamEvent = (widget.event['isTeamEvent'] ?? false) == true;
-    final int teamSize = int.tryParse((widget.event['teamSize'] ?? '').toString()) ?? 0;
-    final bool showTeamSection = isTeamEvent && _registrationType == 'participant';
+    final eventData = widget.event.data() as Map<String, dynamic>? ?? {};
+    final bool requiresVolunteers = eventData['requiresVolunteers'] == true;
+    final String? volunteerRole = eventData['volunteerRole']?.toString();
+    final String volunteerCount = (eventData['volunteerCount'] ?? '').toString();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Confirm Details')),
+      appBar: AppBar(
+        title: const Text('Confirm Details'),
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -302,38 +267,49 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (requiresVolunteers) ...[
-                      _buildRegisterTypeCard(),
+                      _buildRegisterTypeCard(volunteerCount, volunteerRole),
                       const SizedBox(height: 20),
                     ],
-                    if (showTeamSection) ...[
-                      _buildTeamSelectionCard(teamSize),
-                      const SizedBox(height: 20),
-                    ],
-                    const Text("Confirm your details for registration.", style: TextStyle(fontSize: 16, color: Colors.grey)),
+                    const Text(
+                      "Please review and confirm your details for registration.",
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
                     const SizedBox(height: 24),
                     _buildTextField(_nameController, "Full Name", Icons.person_outline),
                     const SizedBox(height: 16),
-                    _buildTextField(_phoneController, "Phone", Icons.phone_outlined, keyboardType: TextInputType.phone),
+                    _buildTextField(_phoneController, "Phone Number", Icons.phone_outlined,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)]),
                     const SizedBox(height: 16),
                     _buildTextField(_deptController, "Department", Icons.business_outlined),
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        Expanded(child: _buildTextField(_yearController, "Year", Icons.calendar_today_outlined, keyboardType: TextInputType.number)),
+                        Expanded(
+                          child: _buildTextField(_yearController, "Year", Icons.calendar_today_outlined,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)]),
+                        ),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildTextField(_semController, "Sem", Icons.format_list_numbered_outlined, keyboardType: TextInputType.number)),
+                        Expanded(
+                          child: _buildTextField(_semController, "Semester", Icons.format_list_numbered_outlined,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)]),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    _buildTextField(_ktuIdController, "KTU ID", Icons.badge_outlined, inputFormatters: [UpperCaseTextFormatter()]),
+                    _buildTextField(_ktuIdController, "KTU ID", Icons.badge_outlined,
+                        inputFormatters: [UpperCaseTextFormatter()]),
                     const SizedBox(height: 32),
                     SizedBox(
                       width: double.infinity,
                       height: 55,
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4B3CC9), foregroundColor: Colors.white),
                         onPressed: isSubmitting ? null : _handleRegistration,
-                        child: isSubmitting ? const CircularProgressIndicator(color: Colors.white) : const Text("Confirm & Register"),
+                        child: isSubmitting
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text("Confirm & Register", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -343,205 +319,137 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon, {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon,
+      {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters, bool isRequired = true}) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
-      decoration: InputDecoration(labelText: '$label *', prefixIcon: Icon(icon), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-      validator: (v) => (v == null || v.trim().isEmpty) ? '$label is required' : null,
+      decoration: InputDecoration(
+        labelText: isRequired ? '$label *' : label,
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      validator: (value) {
+        if (isRequired && (value == null || value.trim().isEmpty)) {
+          return '$label is required';
+        }
+        return null;
+      },
     );
   }
 
-  Widget _buildTeamSelectionCard(int teamSize) {
-    final int requiredMateCount = teamSize - 1;
+  Widget _buildRegisterTypeCard(String volunteerCount, String? volunteerRole) {
+    final String? roleText = (volunteerRole != null && volunteerRole.trim().isNotEmpty) ? volunteerRole.trim() : null;
+
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE3E7F0))),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE6E9F2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [Icon(Icons.groups_rounded, color: const Color(0xFF4B3CC9)), const SizedBox(width: 8), const Text('Team Registration', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))]),
-          const SizedBox(height: 8),
-          Text('Select $requiredMateCount teammates from your college.', style: const TextStyle(color: Colors.grey)),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _openTeammateSelector,
-              icon: const Icon(Icons.person_add_alt_1_rounded),
-              label: Text(_selectedTeammates.isEmpty ? 'Choose Teammates' : 'Selected ${_selectedTeammates.length}/$requiredMateCount'),
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F1FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.how_to_reg_outlined, size: 20, color: Color(0xFF4B3CC9)),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  "Register As",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
           ),
-          if (_selectedTeammates.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              children: _selectedTeammates.map((m) => Chip(
-                label: Text(m.name),
-                deleteIcon: const Icon(Icons.close, size: 16),
-                onDeleted: () => setState(() => _selectedTeammates.removeWhere((e) => e.uid == m.uid)),
-              )).toList(),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF6F7FB),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE3E7F0)),
             ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Future<void> _openTeammateSelector() async {
-    final int teamSize = int.tryParse((widget.event['teamSize'] ?? '').toString()) ?? 0;
-    final int requiredMateCount = teamSize - 1;
-    final String myCollege = (studentData?['college'] ?? '').toString().trim();
-    final String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
-
-    List<_StudentOption> workingSelection = List<_StudentOption>.from(_selectedTeammates);
-    String search = '';
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          return Container(
-            height: MediaQuery.of(context).size.height * 0.8,
-            padding: const EdgeInsets.all(16),
-            child: Column(
+            child: Row(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Choose Teammates (${workingSelection.length}/$requiredMateCount)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
-                  ],
-                ),
-                TextField(
-                  decoration: const InputDecoration(hintText: 'Search by name', prefixIcon: Icon(Icons.search)),
-                  onChanged: (v) => setSheetState(() => search = v),
-                ),
-                const SizedBox(height: 16),
                 Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('student')
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      
-                      // 🔹 Robust filtering: Case-insensitive, exclude members already in teams
-                      final candidates = (snapshot.data?.docs ?? [])
-                          .where((doc) {
-                            if (doc.id == currentUserId) return false;
-                            final data = doc.data() as Map<String, dynamic>;
-                            final college = (data['college'] ?? '').toString().trim().toLowerCase();
-                            return college == myCollege.toLowerCase();
-                          })
-                          .map((doc) {
-                            final data = doc.data() as Map<String, dynamic>;
-                            return _StudentOption(
-                              uid: doc.id,
-                              name: (data['name'] ?? '').toString(),
-                              email: (data['email'] ?? '').toString(),
-                              college: (data['college'] ?? '').toString(),
-                              phone: (data['phone'] ?? '').toString(),
-                              department: (data['department'] ?? '').toString(),
-                              year: (data['year'] ?? '').toString(),
-                              semester: (data['semester'] ?? '').toString(),
-                              ktuId: (data['ktuId'] ?? '').toString(),
-                            );
-                          })
-                          .where((s) {
-                            final q = search.toLowerCase();
-                            return s.name.toLowerCase().contains(q);
-                          })
-                          .toList()
-                        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-
-                      if (candidates.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.person_search, size: 64, color: Colors.grey[300]),
-                              const SizedBox(height: 16),
-                              Text(
-                                search.isEmpty ? "No other students found in your college." : "No students match your search.",
-                                style: const TextStyle(color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      return ListView.builder(
-                        itemCount: candidates.length,
-                        itemBuilder: (context, index) {
-                          final s = candidates[index];
-                          final isSelected = workingSelection.any((e) => e.uid == s.uid);
-                          return CheckboxListTile(
-                            activeColor: const Color(0xFF4B3CC9),
-                            value: isSelected,
-                            title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                            onChanged: (val) {
-                              setSheetState(() {
-                                if (val == true) {
-                                  if (!isSelected && workingSelection.length < requiredMateCount) {
-                                    workingSelection.add(s);
-                                  }
-                                } else {
-                                  workingSelection.removeWhere((e) => e.uid == s.uid);
-                                }
-                              });
-                            },
-                          );
-                        },
-                      );
-                    },
+                  child: _RegisterTypePill(
+                    label: "Participant",
+                    icon: Icons.person_outline,
+                    isSelected: _registrationType == 'participant',
+                    onTap: () => setState(() => _registrationType = 'participant'),
                   ),
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4B3CC9), foregroundColor: Colors.white),
-                    onPressed: () {
-                      setState(() {
-                        _selectedTeammates.clear();
-                        _selectedTeammates.addAll(workingSelection);
-                      });
-                      Navigator.pop(ctx);
-                    },
-                    child: const Text('Confirm Selection'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _RegisterTypePill(
+                    label: "Volunteer",
+                    icon: Icons.volunteer_activism_outlined,
+                    isSelected: _registrationType == 'volunteer',
+                    onTap: () => setState(() => _registrationType = 'volunteer'),
                   ),
                 ),
               ],
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildRegisterTypeCard() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE6E9F2))),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("Register As", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(child: _RegisterTypePill(label: "Participant", icon: Icons.person_outline, isSelected: _registrationType == 'participant', onTap: () => setState(() => _registrationType = 'participant'))),
-              const SizedBox(width: 8),
-              Expanded(child: _RegisterTypePill(label: "Volunteer", icon: Icons.volunteer_activism_outlined, isSelected: _registrationType == 'volunteer', onTap: () => setState(() { _registrationType = 'volunteer'; _selectedTeammates.clear(); }))),
-            ],
           ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7FAFF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE1ECFF)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.volunteer_activism_outlined, size: 18, color: Color(0xFF2B6CB0)),
+                const SizedBox(width: 8),
+                Text(
+                  volunteerCount.isNotEmpty ? "Volunteers Needed: $volunteerCount" : "Volunteers Needed",
+                  style: const TextStyle(color: Color(0xFF2B6CB0), fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          if (roleText != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7E6),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFFE2B3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.list_alt_outlined, size: 18, color: Color(0xFFB7791F)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Role: $roleText",
+                      style: const TextStyle(color: Color(0xFFB7791F), fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -553,25 +461,51 @@ class _RegisterTypePill extends StatelessWidget {
   final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
-  const _RegisterTypePill({required this.label, required this.icon, required this.isSelected, required this.onTap});
+
+  const _RegisterTypePill({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap,
       borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF4B3CC9) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: isSelected ? const Color(0xFF4B3CC9) : const Color(0xFFE3E7F0)),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF4B3CC9).withOpacity(0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : [],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: isSelected ? Colors.white : Colors.grey),
+            Icon(icon, size: 18, color: isSelected ? Colors.white : const Color(0xFF667085)),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.grey, fontWeight: FontWeight.bold)),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : const Color(0xFF667085),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -579,12 +513,12 @@ class _RegisterTypePill extends StatelessWidget {
   }
 }
 
-class _StudentOption {
-  final String uid, name, email, college, phone, department, year, semester, ktuId;
-  const _StudentOption({required this.uid, required this.name, required this.email, required this.college, required this.phone, required this.department, required this.year, required this.semester, required this.ktuId});
-}
-
 class UpperCaseTextFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) => TextEditingValue(text: newValue.text.toUpperCase(), selection: newValue.selection);
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    return TextEditingValue(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
+    );
+  }
 }

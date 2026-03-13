@@ -15,7 +15,7 @@ class AnalyticsScreen extends StatefulWidget {
     required this.clubId,
     required this.clubName,
     this.coordinatorId,
-    this.isFaculty = false, // Added isFaculty parameter
+    this.isFaculty = false,
   });
 
   @override
@@ -25,6 +25,8 @@ class AnalyticsScreen extends StatefulWidget {
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Set<String> _myProgramIds = {};
   bool _isLoadingIds = true;
+  String _searchQuery = "";
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -32,8 +34,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     _fetchMyProgramIds();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchMyProgramIds() async {
-    // If it's a faculty member, they don't need to filter by their own programs
     if (widget.isFaculty || widget.coordinatorId == null) {
       setState(() => _isLoadingIds = false);
       return;
@@ -61,15 +68,22 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? Colors.black : Colors.grey[50],
       appBar: AppBar(
-        title: Text("${widget.clubName} Analytics"),
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          "${widget.clubName} Analytics",
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+        ),
         actions: [
-          // Show approval button only for faculty
           if (widget.isFaculty)
             IconButton(
-              icon: const Icon(Icons.playlist_add_check),
-              tooltip: 'Approve Participant/Winner Lists',
+              icon: const Icon(Icons.playlist_add_check_circle_rounded),
+              tooltip: 'Verification',
               onPressed: () {
                 Navigator.push(
                   context,
@@ -84,96 +98,232 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             )
         ],
       ),
-      body: _isLoadingIds
-          ? const Center(child: CircularProgressIndicator())
-          : StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('events')
-                  .where('clubId', isEqualTo: widget.clubId)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                   return Center(child: Text('Error: ${snapshot.error}'));
-                }
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+      body: Column(
+        children: [
+          // 🔹 Modern Search Bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[900] : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  )
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value.toLowerCase();
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: "Search events by name...",
+                  prefixIcon: const Icon(Icons.search_rounded, color: Colors.blue),
+                  suffixIcon: _searchQuery.isNotEmpty 
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() { _searchQuery = ""; });
+                        },
+                      )
+                    : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                ),
+              ),
+            ),
+          ),
+          
+          Expanded(
+            child: _isLoadingIds
+                ? const Center(child: CircularProgressIndicator())
+                : StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('events')
+                        .where('clubId', isEqualTo: widget.clubId)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+                      if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
 
-                final allEvents = snapshot.data?.docs ?? [];
+                      final allEvents = snapshot.data?.docs ?? [];
+                      
+                      // 🔹 Apply filters: (Coordinator access) AND (Search query)
+                      final events = allEvents.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final title = (data['title'] ?? data['name'] ?? '').toString().toLowerCase();
+                        
+                        // Filter 1: Access Control
+                        bool hasAccess = true;
+                        if (widget.coordinatorId != null && !widget.isFaculty) {
+                          hasAccess = _myProgramIds.contains(data['programId']);
+                        }
+                        
+                        // Filter 2: Search Match
+                        bool matchesSearch = title.contains(_searchQuery);
+                        
+                        return hasAccess && matchesSearch;
+                      }).toList();
 
-                final events = allEvents.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  // If it's a coordinator, filter by their programs. Faculty sees all.
-                  if (widget.coordinatorId != null && !widget.isFaculty) {
-                    final pId = data['programId'];
-                    return _myProgramIds.contains(pId);
-                  }
-                  return true;
-                }).toList();
+                      events.sort((a, b) {
+                        final dateA = (a.data() as Map<String, dynamic>)['date'] ?? '';
+                        final dateB = (b.data() as Map<String, dynamic>)['date'] ?? '';
+                        return dateB.compareTo(dateA); 
+                      });
 
-                events.sort((a, b) {
-                  final dateA = (a.data() as Map<String, dynamic>)['date'] ?? '';
-                  final dateB = (b.data() as Map<String, dynamic>)['date'] ?? '';
-                  return dateB.compareTo(dateA);
-                });
+                      if (events.isEmpty) {
+                         return Center(
+                           child: Column(
+                             mainAxisAlignment: MainAxisAlignment.center,
+                             children: [
+                               Icon(_searchQuery.isEmpty ? Icons.analytics_outlined : Icons.search_off_rounded, size: 80, color: Colors.grey[300]),
+                               const SizedBox(height: 16),
+                               Text(
+                                 _searchQuery.isEmpty ? "No published events found." : "No events match '$_searchQuery'", 
+                                 style: TextStyle(fontSize: 16, color: Colors.grey[600], fontWeight: FontWeight.w500)
+                               ),
+                             ],
+                           ),
+                         ).animate().fadeIn();
+                      }
 
-                if (events.isEmpty) {
-                   return const Center(
-                     child: Column(
-                       mainAxisAlignment: MainAxisAlignment.center,
-                       children: [
-                         Icon(Icons.analytics_outlined, size: 80, color: Colors.grey),
-                         SizedBox(height: 16),
-                         Text("No published events found.", style: TextStyle(fontSize: 18, color: Colors.grey)),
-                       ],
-                     ),
-                   );
-                }
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                        itemCount: events.length,
+                        itemBuilder: (context, index) {
+                          final event = events[index];
+                          final data = event.data() as Map<String, dynamic>;
+                          
+                          final title = data['title'] ?? data['name'] ?? 'Untitled Event';
+                          final date = data['date'] ?? 'N/A';
+                          final filled = data['filledSeats'] ?? 0;
+                          final total = data['maxSeats'] ?? 100;
+                          final String? poster = data['posterLink'];
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: events.length,
-                  itemBuilder: (context, index) {
-                    final event = events[index];
-                    final data = event.data() as Map<String, dynamic>;
-
-                    final title = data['title'] ?? 'Untitled Event';
-                    final date = data['date'] ?? 'N/A';
-
-                    return Card(
-                      elevation: 3,
-                      clipBehavior: Clip.antiAlias,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EventRegistrationsListScreen(
-                                eventId: event.id,
-                                eventName: title,
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 20),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.grey[900] : Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 10),
+                                )
+                              ],
+                            ),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(24),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => EventRegistrationsListScreen(
+                                      eventId: event.id,
+                                      eventName: title,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (poster != null && poster.isNotEmpty)
+                                    ClipRRect(
+                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                                      child: Image.network(
+                                        poster,
+                                        height: 140,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (c, e, s) => Container(
+                                          height: 140,
+                                          width: double.infinity,
+                                          color: Theme.of(context).primaryColor.withOpacity(0.1),
+                                          child: Icon(Icons.event, color: Theme.of(context).primaryColor),
+                                        ),
+                                      ),
+                                    ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(20),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                title, 
+                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            _infoBadge(Icons.calendar_today_rounded, date, Colors.blue),
+                                            const SizedBox(width: 12),
+                                            _infoBadge(Icons.people_alt_rounded, "$filled Registered", Colors.orange),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: LinearProgressIndicator(
+                                            value: total > 0 ? filled / total : 0,
+                                            backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
+                                            color: Theme.of(context).primaryColor,
+                                            minHeight: 8,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          );
+                          ).animate().fadeIn(delay: (100 * index).ms).slideX(begin: 0.1);
                         },
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                              const SizedBox(height: 6),
-                              Text("Date: $date"),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ).animate().fadeIn().slideY(begin: 0.1, delay: (50 * index).ms);
-                  },
-                );
-              },
-            ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoBadge(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label, 
+            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
     );
   }
 }

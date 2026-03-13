@@ -11,6 +11,7 @@ import 'manage_programs.dart';
 import 'profile_screen.dart';
 import 'student_home.dart';
 import 'vibrant_background.dart';
+import 'event_registrations_list.dart';
 
 class ClubCoordinatorDashboard extends StatefulWidget {
   final String? initialClubId;
@@ -1874,37 +1875,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 }
 
-class _ProcedureStep extends StatelessWidget {
-  final String step;
-  final String text;
-  const _ProcedureStep({required this.step, required this.text});
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 12,
-            backgroundColor: Colors.blue,
-            child: Text(
-              step,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
-        ],
-      ),
-    );
-  }
-}
-
 class ProgramCard extends StatelessWidget {
   final String programId;
   final String clubId;
@@ -1926,6 +1896,7 @@ class ProgramCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = (programData['status'] ?? 'pending').toString().toLowerCase();
+    final bool isCompleted = status == 'completed';
     final bool isApproved = status == 'approved' || status == 'ongoing' || status == 'completed';
 
     Color statusColor;
@@ -2032,6 +2003,32 @@ class ProgramCard extends StatelessWidget {
                     onTap: () => onStatusChange('completed'),
                   ),
                 ],
+              ),
+            ],
+            if (isCompleted) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    // Navigate to EventRegistrationsListScreen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EventRegistrationsListScreen(
+                          eventId: programId, // Or actual global event ID if needed
+                          eventName: programData['name'] ?? 'Event',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.emoji_events_outlined),
+                  label: const Text("Manage Winners & Certificates"),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.orange,
+                    side: const BorderSide(color: Colors.orange),
+                  ),
+                ),
               ),
             ],
           ],
