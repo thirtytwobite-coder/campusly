@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:path_provider/path_provider.dart';
@@ -12,6 +13,7 @@ import 'package:open_file/open_file.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Ensure these imports match your actual file names
+import 'analytics_dashboard_screen.dart';
 import 'change_password.dart';
 import 'login_screen.dart';
 import 'main.dart';
@@ -121,7 +123,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                                   ? Theme.of(context).colorScheme.secondary
                                   : Theme.of(context).colorScheme.primary),
                         ),
-                        title: Text(clubData['clubName'],
+                        title: Text(clubData['clubName']?.toUpperCase() ?? 'CLUB',
                             style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Padding(
                           padding: const EdgeInsets.only(top: 4),
@@ -278,7 +280,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                   final data = docs[index].data() as Map<String, dynamic>;
                   final clubId = docs[index].id;
                   return ListTile(
-                    title: Text(data['clubName'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                    title: Text(data['clubName']?.toUpperCase() ?? 'CLUB', style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: const Text("Local Club"),
                     trailing: IconButton(
                       icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -410,12 +412,9 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
             children: [
-              _buildCard(
-                  "Mapping Dashboard", Icons.rule_folder_outlined, _openMappingDashboard),
-              _buildCard(
-                  "Manage Clubs", Icons.business_center_outlined, _openManageClubs),
-              _buildCard(
-                  "Add Local Club", Icons.add_business_outlined, _addClubDialog),
+              _buildCard("Mapping Dashboard", Icons.rule_folder_outlined, _openMappingDashboard),
+              _buildCard("Manage Clubs", Icons.business_center_outlined, _openManageClubs),
+              _buildCard("Add Local Club", Icons.add_business_outlined, _addClubDialog),
               _buildCard("Register Faculty", Icons.person_add_alt_1_outlined, () {
                 Navigator.push(
                     context,
@@ -423,16 +422,59 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                         builder: (c) =>
                             AddFacultyScreen(collegeName: widget.collegeName)));
               }),
+              _buildCard("College Analytics", Icons.analytics_outlined, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (c) => AnalyticsDashboardScreen(
+                      collegeName: widget.collegeName,
+                    ),
+                  ),
+                );
+              }),
             ].animate(interval: 200.ms).fadeIn(duration: 300.ms).slideY(),
           ),
-          bottomNavigationBar: BottomNavigationBar(
-            items: const <BottomNavigationBarItem>[
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-              BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-            ],
-            currentIndex: _selectedIndex,
-            selectedItemColor: Theme.of(context).colorScheme.primary,
-            onTap: _onItemTapped,
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              boxShadow: [
+                BoxShadow(
+                  blurRadius: 20,
+                  color: Colors.black.withOpacity(.1),
+                )
+              ],
+            ),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
+                child: GNav(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  rippleColor: Colors.grey[300]!,
+                  hoverColor: Colors.grey[100]!,
+                  gap: 8,
+                  activeColor: Theme.of(context).colorScheme.primary,
+                  iconSize: 24,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  duration: const Duration(milliseconds: 400),
+                  tabBackgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  color: Theme.of(context).iconTheme.color ?? Colors.grey,
+                  tabs: const [
+                    GButton(
+                      icon: Icons.home,
+                      text: 'Home',
+                    ),
+                    GButton(
+                      icon: Icons.person,
+                      text: 'Profile',
+                    ),
+                  ],
+                  selectedIndex: _selectedIndex,
+                  onTabChange: (index) {
+                    _onItemTapped(index);
+                  },
+                ),
+              ),
+            ),
           ),
         ));
   }

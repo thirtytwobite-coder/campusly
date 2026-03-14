@@ -153,6 +153,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
         'year': updatedData['year'],
         'semester': updatedData['semester'],
         'ktuId': updatedData['ktuId'],
+        'college': studentData?['college'], // Added college field
         'registrationType': regType,
         'registeredAt': FieldValue.serverTimestamp(),
       });

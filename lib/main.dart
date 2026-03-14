@@ -7,7 +7,7 @@ import 'package:college_event_manager/event_details.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
- import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,6 +16,7 @@ import 'faculty_home.dart';
 import 'main_faculty_dashboard.dart' as main_fac;
 import 'student_home.dart';
 import 'welcome_screen.dart';
+import 'splash_screen.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -198,7 +199,7 @@ class CampuslyApp extends StatelessWidget {
             ),
           ),
           cardTheme: CardThemeData(
-            color: Colors.white.withValues(alpha: 0.84),
+            color: Colors.white.withOpacity(0.84),
             elevation: 0,
             margin: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
@@ -215,13 +216,13 @@ class CampuslyApp extends StatelessWidget {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(
-                color: lightScheme.primary.withValues(alpha: 0.18),
+                color: lightScheme.primary.withOpacity(0.18),
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(
-                color: lightScheme.primary.withValues(alpha: 0.16),
+                color: lightScheme.primary.withOpacity(0.16),
               ),
             ),
             focusedBorder: OutlineInputBorder(
@@ -259,7 +260,7 @@ class CampuslyApp extends StatelessWidget {
             ),
           ),
           cardTheme: CardThemeData(
-            color: darkScheme.surface.withValues(alpha: 0.9),
+            color: darkScheme.surface.withOpacity(0.9),
             elevation: 0,
             margin: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
@@ -276,13 +277,13 @@ class CampuslyApp extends StatelessWidget {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(
-                color: darkScheme.primary.withValues(alpha: 0.3),
+                color: darkScheme.primary.withOpacity(0.3),
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(
-                color: darkScheme.primary.withValues(alpha: 0.28),
+                color: darkScheme.primary.withOpacity(0.28),
               ),
             ),
             focusedBorder: OutlineInputBorder(
@@ -308,7 +309,7 @@ class CampuslyApp extends StatelessWidget {
           theme: lightTheme,
           darkTheme: darkTheme,
           themeMode: mode,
-          home: const AuthWrapper(),
+          home: const SplashScreen(nextScreen: AuthWrapper()),
         );
       },
     );

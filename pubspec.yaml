@@ -28,6 +28,8 @@ dependencies:
   pdf: ^3.11.1
   http: ^1.2.1
   flutter_local_notifications: ^17.2.2
+  google_nav_bar: ^5.0.7
+  fl_chart: ^1.1.1
 
 dev_dependencies:
   flutter_test:
@@ -38,11 +40,14 @@ dev_dependencies:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/images/CAM.jpeg"
-  adaptive_icon_background: "#1A237E"
-  adaptive_icon_foreground: "assets/images/CAM.jpeg"
+  image_path: "assets/images/app_icon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/app_icon.png"
 
 flutter:
   uses-material-design: true
   assets:
     - assets/faculty_template.csv
+    - assets/images/
+    - assets/images/
+    - assets/images/

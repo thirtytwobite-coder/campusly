@@ -286,14 +286,22 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFF1D4ED8), Color(0xFF0EA5E9)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF1D4ED8).withOpacity(0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                )
+              ],
             ),
             child: _LeftPromo(theme: theme),
           ),
@@ -322,76 +330,57 @@ class _LeftPromo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            'Campusly',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        const SizedBox(height: 18),
-        Text(
-          'Your Campus,\nYour Stage.',
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w900,
-            color: Colors.white,
-            height: 1.05,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Discover events, run clubs, and create unforgettable student experiences.',
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: Colors.white.withOpacity(0.9),
-            height: 1.35,
-          ),
-        ),
-        const SizedBox(height: 20),
-        const _PromoPoint(text: 'Real-time approvals'),
-        const SizedBox(height: 8),
-        const _PromoPoint(text: 'Easy club coordination'),
-        const SizedBox(height: 8),
-        const _PromoPoint(text: 'Participation analytics'),
-      ],
-    );
-  }
-}
-
-class _PromoPoint extends StatelessWidget {
-  final String text;
-  const _PromoPoint({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white.withOpacity(0.18),
             shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
-          child: const Icon(Icons.check, size: 14, color: Colors.white),
-        ),
-        const SizedBox(width: 8),
+          child: const Icon(Icons.school_rounded, color: Colors.white, size: 52),
+        )
+            .animate(onPlay: (controller) => controller.repeat(reverse: true))
+            .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 2.seconds, curve: Curves.easeInOut)
+            .animate()
+            .fadeIn(duration: 800.ms)
+            .slideY(begin: -0.2, end: 0, curve: Curves.easeOutCubic),
+        const SizedBox(height: 28),
         Text(
-          text,
-          style: theme.textTheme.bodyMedium?.copyWith(
+          'Campusly',
+          style: theme.textTheme.headlineLarge?.copyWith(
             color: Colors.white,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
           ),
-        ),
+          textAlign: TextAlign.center,
+        )
+            .animate()
+            .fadeIn(duration: 600.ms, delay: 300.ms)
+            .slideY(begin: 0.2, end: 0, duration: 600.ms, curve: Curves.easeOutCirc),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Text(
+            'A simpler way to connect, discover events, and experience college life.',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: Colors.white.withOpacity(0.9),
+              fontWeight: FontWeight.w400,
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        )
+            .animate()
+            .fadeIn(duration: 600.ms, delay: 500.ms)
+            .slideY(begin: 0.2, end: 0, duration: 600.ms, curve: Curves.easeOutCirc),
       ],
     );
   }

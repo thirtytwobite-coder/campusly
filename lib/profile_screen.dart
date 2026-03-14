@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'change_password.dart';
 import 'login_screen.dart';
+import 'vibrant_background.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -22,6 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _yearController;
   late TextEditingController _semesterController;
   late TextEditingController _ktuIdController;
+  late TextEditingController _profilePicController;
 
   @override
   void initState() {
@@ -88,6 +90,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _yearController = TextEditingController(text: userData?['year'] ?? '');
     _semesterController = TextEditingController(text: userData?['semester'] ?? '');
     _ktuIdController = TextEditingController(text: userData?['ktuId'] ?? '');
+    _profilePicController = TextEditingController(text: userData?['profilePic'] ?? '');
   }
 
   Future<void> _saveChanges() async {
@@ -111,6 +114,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final updateData = {
         'name': _nameController.text.trim(),
         'phone': phone,
+        'profilePic': _profilePicController.text.trim(),
       };
 
       // Add role-specific fields
@@ -196,219 +200,466 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _yearController.dispose();
     _semesterController.dispose();
     _ktuIdController.dispose();
+    _profilePicController.dispose();
     super.dispose();
+  }
+
+  void _showLogoutConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+              await FirebaseAuth.instance.signOut();
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const UnifiedLoginScreen()),
+                  (route) => false,
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
         actions: [
-          if (!isEditing)
+          if (!isEditing && !isLoading && userData != null)
             IconButton(
-              icon: const Icon(Icons.edit),
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit Profile',
               onPressed: () {
                 setState(() {
                   isEditing = true;
                 });
               },
             ),
+          if (!isEditing && !isLoading)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: 'Settings',
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              onSelected: (value) {
+                if (value == 'password') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
+                  );
+                } else if (value == 'logout') {
+                  _showLogoutConfirmation();
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'password',
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), shape: BoxShape.circle),
+                        child: const Icon(Icons.lock_reset, color: Colors.blue, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text('Change Password'),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), shape: BoxShape.circle),
+                        child: const Icon(Icons.logout, color: Colors.red, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text('Logout', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : userData == null
-              ? const Center(child: Text('User data not found.'))
-              : Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: SingleChildScrollView(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const CircleAvatar(
-                                radius: 50,
-                                child: Icon(Icons.person, size: 50),
-                              ),
-                              const SizedBox(height: 24),
-                              if (isEditing)
-                                _buildEditableField(
-                                    _nameController, 'Name', Icons.person_outline)
-                              else
-                                _buildProfileInfoRow(
-                                    Icons.person_outline,
-                                    'Name',
-                                    userData?['name'] ?? 'N/A'),
-                              const SizedBox(height: 16),
-                              _buildProfileInfoRow(
-                                  Icons.email_outlined,
-                                  'Email',
-                                  userData?['email'] ?? 'N/A'),
-                              const SizedBox(height: 16),
-                              _buildProfileInfoRow(
-                                  Icons.school_outlined,
-                                  'College',
-                                  userData?['college'] ?? 'N/A'),
-                              const SizedBox(height: 16),
-                              _buildProfileInfoRow(
-                                  Icons.badge_outlined,
-                                  'Role',
-                                  userData?['displayRole'] ?? userData?['role'] ?? 'N/A'),
-                              const SizedBox(height: 16),
-                              if (isEditing)
-                                _buildEditableField(
-                                    _phoneController, 'Phone', Icons.phone_outlined,
-                                    keyboardType: TextInputType.phone,
-                                    inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)])
-                              else if (userData?['phone'] != null &&
-                                  (userData?['phone'] as String).isNotEmpty)
-                                _buildProfileInfoRow(
-                                    Icons.phone_outlined,
-                                    'Phone',
-                                    userData?['phone'] ?? 'N/A'),
-                              // Show additional fields based on role
-                              if (userData?['role'] == 'Student') ...[
-                                const SizedBox(height: 16),
-                                _buildProfileInfoRow(
-                                    Icons.business_outlined,
-                                    'Department',
-                                    userData?['department'] ?? 'N/A'),
-                                const SizedBox(height: 16),
-                                if (isEditing)
-                                  _buildEditableField(_yearController, 'Year',
-                                      Icons.calendar_today_outlined,
-                                      keyboardType: TextInputType.number,
-                                      inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)])
-                                else
-                                  _buildProfileInfoRow(
-                                      Icons.calendar_today_outlined,
-                                      'Year',
-                                      userData?['year'] ?? 'N/A'),
-                                const SizedBox(height: 16),
-                                if (isEditing)
-                                  _buildEditableField(_semesterController,
-                                      'Semester', Icons.format_list_numbered_outlined,
-                                      keyboardType: TextInputType.number,
-                                      inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)])
-                                else
-                                  _buildProfileInfoRow(
-                                      Icons.format_list_numbered_outlined,
-                                      'Semester',
-                                      userData?['semester'] ?? 'N/A'),
-                                const SizedBox(height: 16),
-                                if (isEditing)
-                                  _buildEditableField(_ktuIdController, 'KTU ID',
-                                      Icons.badge_outlined,
-                                      inputFormatters: [UpperCaseTextFormatter()])
-                                else
-                                  _buildProfileInfoRow(
-                                      Icons.badge_outlined,
-                                      'KTU ID',
-                                      userData?['ktuId'] ?? 'N/A'),
-                              ],
-                              
-                              const SizedBox(height: 32),
-                              const Divider(),
-                              const SizedBox(height: 16),
-                              
-                              if (isEditing) ...[
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed: () {
-                                          setState(() {
-                                            isEditing = false;
-                                            _initializeControllers();
-                                          });
-                                        },
-                                        child: const Text('Cancel'),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        onPressed: _saveChanges,
-                                        child: const Text('Save Changes'),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ] else ...[
-                                // Account Actions
-                                Column(
-                                  children: [
-                                    ListTile(
-                                      leading: const Icon(Icons.lock_reset, color: Colors.blue),
-                                      title: const Text('Change Password'),
-                                      trailing: const Icon(Icons.chevron_right),
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
-                                        );
-                                      },
-                                    ),
-                                    ListTile(
-                                      leading: const Icon(Icons.logout, color: Colors.red),
-                                      title: const Text('Logout', style: TextStyle(color: Colors.red)),
-                                      trailing: const Icon(Icons.chevron_right, color: Colors.red),
-                                      onTap: () async {
-                                        await FirebaseAuth.instance.signOut();
-                                        if (mounted) {
-                                          Navigator.pushAndRemoveUntil(
-                                            context,
-                                            MaterialPageRoute(builder: (context) => const UnifiedLoginScreen()),
-                                            (route) => false,
-                                          );
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
+      body: Stack(
+        children: [
+          const VibrantBackground(),
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : userData == null
+                  ? const Center(child: Text('User data not found.'))
+                  : RefreshIndicator(
+                      onRefresh: _fetchUserData,
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Column(
+                          children: [
+                            _buildHeader(theme),
+                            const SizedBox(height: 24),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              child: isEditing 
+                                  ? _buildEditForm(theme)
+                                  : _buildViewMode(theme),
+                            ),
+                            const SizedBox(height: 40),
+                          ],
                         ),
                       ),
                     ),
-                  ),
-                ),
+        ],
+      ),
     );
   }
 
-  Widget _buildProfileInfoRow(IconData icon, String label, String value) {
-    return Row(
+  Widget _buildHeader(ThemeData theme) {
+    String name = userData?['name'] ?? 'User';
+    String role = userData?['displayRole'] ?? userData?['role'] ?? 'Role';
+    String email = userData?['email'] ?? '';
+    String profilePicUrl = userData?['profilePic'] ?? '';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(bottom: 32, top: 16),
+      decoration: BoxDecoration(
+        color: theme.cardColor.withOpacity(0.85),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Hero(
+            tag: 'profile-avatar',
+            child: CircleAvatar(
+              radius: 50,
+              backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+              backgroundImage: profilePicUrl.isNotEmpty 
+                  ? NetworkImage(_convertGoogleDriveLink(profilePicUrl))
+                  : null,
+              child: profilePicUrl.isEmpty 
+                  ? Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    )
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            name,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            email,
+            style: TextStyle(
+              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              role.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.orange,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.1,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewMode(ThemeData theme) {
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: Theme.of(context).colorScheme.primary, size: 28),
-        const SizedBox(width: 20),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: Theme.of(context).textTheme.labelLarge),
-              const SizedBox(height: 4),
-              Text(value, style: Theme.of(context).textTheme.bodyLarge),
-            ],
-          ),
-        ),
+        _buildSectionHeader('Contact Information', Icons.contact_phone_outlined, theme),
+        _buildInfoCard([
+          _buildInfoRow(Icons.phone_outlined, 'Phone', userData?['phone']?.toString() ?? 'Not provided', theme),
+          _buildInfoRow(Icons.school_outlined, 'College', userData?['college']?.toString() ?? 'Not provided', theme, isLast: true),
+        ], theme),
+        
+        if (userData?['role'] == 'Student') ...[
+          const SizedBox(height: 24),
+          _buildSectionHeader('Academic Details', Icons.school_outlined, theme),
+          _buildInfoCard([
+            _buildInfoRow(Icons.business_outlined, 'Department', userData?['department']?.toString() ?? 'Not provided', theme),
+            _buildInfoRow(Icons.calendar_today_outlined, 'Year', userData?['year']?.toString() ?? 'Not provided', theme),
+            _buildInfoRow(Icons.format_list_numbered_outlined, 'Semester', userData?['semester']?.toString() ?? 'Not provided', theme),
+            _buildInfoRow(Icons.badge_outlined, 'KTU ID', userData?['ktuId']?.toString() ?? 'Not provided', theme, isLast: true),
+          ], theme),
+        ],
       ],
     );
   }
 
+  Widget _buildEditForm(ThemeData theme) {
+    return Card(
+      elevation: 0,
+      color: theme.cardColor.withOpacity(0.85),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.dividerColor),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.edit_note_outlined, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                const Text(
+                  'Edit Profile',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _buildEditableField(_nameController, 'Full Name', Icons.person_outline, theme),
+            const SizedBox(height: 16),
+            _buildEditableField(_profilePicController, 'Profile Picture URL', Icons.image_outlined, theme),
+            const SizedBox(height: 16),
+            _buildEditableField(
+              _phoneController, 
+              'Phone Number', 
+              Icons.phone_outlined,
+              theme,
+              keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly, 
+                LengthLimitingTextInputFormatter(10)
+              ],
+            ),
+            
+            if (userData?['role'] == 'Student') ...[
+              const SizedBox(height: 24),
+              const Text('Academic Details', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildEditableField(
+                      _yearController, 
+                      'Year',
+                      Icons.calendar_today_outlined,
+                      theme,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly, 
+                        LengthLimitingTextInputFormatter(1)
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildEditableField(
+                      _semesterController,
+                      'Semester', 
+                      Icons.format_list_numbered_outlined,
+                      theme,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly, 
+                        LengthLimitingTextInputFormatter(1)
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildEditableField(
+                _ktuIdController, 
+                'KTU ID',
+                Icons.badge_outlined,
+                theme,
+                inputFormatters: [UpperCaseTextFormatter()],
+              ),
+            ],
+            
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      setState(() {
+                        isEditing = false;
+                        _initializeControllers();
+                      });
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _saveChanges,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Save Changes'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, left: 4, top: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: theme.colorScheme.primary),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(List<Widget> children, ThemeData theme, {EdgeInsetsGeometry? padding}) {
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: theme.cardColor.withOpacity(0.85),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.dividerColor.withOpacity(0.3)),
+      ),
+      child: Padding(
+        padding: padding ?? const EdgeInsets.all(16.0),
+        child: Column(
+          children: children,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value, ThemeData theme, {bool isLast = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: theme.colorScheme.primary, size: 22),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    )),
+                    const SizedBox(height: 4),
+                    Text(
+                      value.isEmpty ? 'Not provided' : value, 
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (!isLast)
+            Padding(
+              padding: const EdgeInsets.only(top: 12.0, bottom: 8.0, left: 56.0),
+              child: Divider(height: 1, color: theme.dividerColor.withOpacity(0.2)),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildEditableField(
-      TextEditingController controller, String label, IconData icon,
+      TextEditingController controller, String label, IconData icon, ThemeData theme,
       {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters}) {
-    return TextField(
+    return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
@@ -416,10 +667,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         labelText: label,
         prefixIcon: Icon(icon),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: theme.dividerColor),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: theme.dividerColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: theme.colorScheme.primary),
         ),
         filled: true,
-        fillColor: Theme.of(context).inputDecorationTheme.fillColor,
+        fillColor: theme.cardColor.withOpacity(0.6),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }
@@ -434,3 +695,25 @@ class UpperCaseTextFormatter extends TextInputFormatter {
     );
   }
 }
+
+  String _convertGoogleDriveLink(String? link) {
+    if (link == null || link.isEmpty) return '';
+
+    if (link.contains('.jpg') || link.contains('.jpeg') || link.contains('.png') || link.contains('.gif') || link.contains('.webp')) {
+      return link;
+    }
+
+    if (link.contains('drive.google.com/uc?export=view')) {
+      return link;
+    }
+
+    final regex = RegExp(r'(?:drive\.google\.com/file/d/|id=)([a-zA-Z0-9-_]+)');
+    final match = regex.firstMatch(link);
+
+    if (match != null) {
+      final fileId = match.group(1);
+      return 'https://drive.google.com/uc?export=view&id=$fileId';
+    }
+
+    return link;
+  }

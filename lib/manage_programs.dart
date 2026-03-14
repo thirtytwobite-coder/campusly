@@ -104,6 +104,8 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     final prizeAmountController = TextEditingController();
     final posterLinkController = TextEditingController();
     final maxSeatsController = TextEditingController(text: "100"); // 🔹 Default
+    final registrationClosingDateController = TextEditingController();
+    final registrationClosingTimeController = TextEditingController();
     bool hasPrizePool = false;
     String visibility = 'college'; 
     String? category;
@@ -161,6 +163,29 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                 if (hasPrizePool) TextField(controller: prizeAmountController, decoration: const InputDecoration(labelText: 'Prize Amount', border: OutlineInputBorder(), prefixText: '₹ ')),
                 const SizedBox(height: 12),
                 const Divider(),
+                const Text('Registration Deadline', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: registrationClosingDateController,
+                  decoration: const InputDecoration(labelText: 'Closing Date (YYYY-MM-DD)', border: OutlineInputBorder()),
+                  onTap: () async {
+                    final picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2100));
+                    if (picked != null) registrationClosingDateController.text = DateFormat('yyyy-MM-dd').format(picked);
+                  },
+                  readOnly: true,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: registrationClosingTimeController,
+                  decoration: const InputDecoration(labelText: 'Closing Time (HH:MM)', border: OutlineInputBorder()),
+                  onTap: () async {
+                    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                    if (picked != null) registrationClosingTimeController.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+                  },
+                  readOnly: true,
+                ),
+                const SizedBox(height: 12),
+                const Divider(),
                 const Text('Event Visibility', style: TextStyle(fontWeight: FontWeight.bold)),
                 RadioListTile<String>(value: 'college', groupValue: visibility, title: const Text('College Only'), onChanged: (v) => setDialogState(() => visibility = v!)),
                 RadioListTile<String>(value: 'public', groupValue: visibility, title: const Text('Public'), onChanged: (v) => setDialogState(() => visibility = v!)),
@@ -172,7 +197,11 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
             ElevatedButton(
               onPressed: () {
                 if (nameController.text.isEmpty || descriptionController.text.isEmpty || category == null) return;
-                _addProgram(ctx, nameController.text, descriptionController.text, dateController.text, timeController.text, locationController.text, hasPrizePool, prizeAmountController.text, posterLinkController.text, visibility, category!, int.tryParse(maxSeatsController.text) ?? 100);
+                _addProgram(
+                  ctx, nameController.text, descriptionController.text, dateController.text, timeController.text, locationController.text, 
+                  hasPrizePool, prizeAmountController.text, posterLinkController.text, visibility, category!, int.tryParse(maxSeatsController.text) ?? 100,
+                  registrationClosingDateController.text, registrationClosingTimeController.text
+                );
               },
               child: const Text('Create'),
             ),
@@ -234,7 +263,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     );
   }
 
-  Future<void> _addProgram(BuildContext context, String name, String description, String date, String time, String location, bool hasPrize, String prize, String poster, String visibility, String category, int maxSeats) async {
+  Future<void> _addProgram(BuildContext context, String name, String description, String date, String time, String location, bool hasPrize, String prize, String poster, String visibility, String category, int maxSeats, String closingDate, String closingTime) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('student').doc(user?.uid).get();
@@ -257,6 +286,8 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
         'clubName': widget.clubName,
         'coordinatorId': user?.uid,
         'coordinatorName': coordinatorName,
+        'registrationClosingDate': closingDate.isNotEmpty ? closingDate : null,
+        'registrationClosingTime': closingTime.isNotEmpty ? closingTime : null,
         'createdAt': FieldValue.serverTimestamp(),
       });
       
@@ -267,6 +298,8 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
         'createdBy': user?.uid,
         'status': 'pending',
         'clubId': widget.clubId,
+        'registrationClosingDate': closingDate.isNotEmpty ? closingDate : null,
+        'registrationClosingTime': closingTime.isNotEmpty ? closingTime : null,
         'createdAt': FieldValue.serverTimestamp(),
       });
       Navigator.pop(context);

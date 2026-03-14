@@ -9,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:http/http.dart' as http;
+import 'feedback_screen.dart';
 
 class ParticipationHistoryScreen extends StatelessWidget {
   const ParticipationHistoryScreen({super.key});
@@ -184,6 +185,32 @@ class ParticipationHistoryScreen extends StatelessWidget {
                                     ),
                                 ],
                               ),
+                              if (eligible) ...[
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => FeedbackScreen(
+                                            registrationRef: regDoc.reference,
+                                            eventTitle: reg['eventTitle'] ?? 'Event',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.rate_review_outlined, size: 18),
+                                    label: const Text("Give Feedback"),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Theme.of(context).primaryColor,
+                                      side: BorderSide(color: Theme.of(context).primaryColor.withOpacity(0.5)),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),

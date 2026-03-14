@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -13,6 +14,8 @@ import 'club_coordinator_dashboard.dart';
 import 'vibrant_background.dart';
 import 'participation_history.dart';
 import 'notification_service.dart';
+import 'feedback_screen.dart';
+import 'package:google_nav_bar/google_nav_bar.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -29,14 +32,19 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   bool _isLoadingCollege = true;
   DateTime? _selectedDate;
   List<DocumentSnapshot> managedClubs = [];
+  double _pullOffset = 0.0;
+  bool _isRefreshing = false;
+  late ScrollController _scrollController;
   int _unreadNotifications = 0;
   bool _isInitialLoad = true;
+  bool _isNavbarVisible = true;
 
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
     _fetchDashboardData();
     _requestNotificationPermission();
     _listenForNotifications();
@@ -88,6 +96,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     if (mounted) setState(() => _isLoadingCollege = false);
   }
 
+  Future<void> _handleRefresh() async {
+    if (_isRefreshing) return;
+    setState(() => _isRefreshing = true);
+    
+    // Refresh dashboard data
+    await _fetchDashboardData();
+    
+    if (mounted) {
+      setState(() {
+        _isRefreshing = false;
+        _pullOffset = 0;
+      });
+    }
+  }
+
   void _listenForNotifications() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -105,8 +128,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           final eventCollege = (data?['college'] ?? '').toString();
           final visibility = (data?['visibility'] ?? 'public').toString().toLowerCase();
 
-          // Notification is now handled by Firebase Cloud Messaging (FCM) push notifications.
-          // The background and foreground push will automatically display the alert.
+          bool shouldNotify = visibility == 'public' || 
+                             (studentCollege != null && eventCollege.toLowerCase() == studentCollege!.toLowerCase());
+
+          if (shouldNotify) {
+            NotificationService.showNotification(
+              id: change.doc.id.hashCode,
+              title: 'New Event Live!',
+              body: '${data?['title']} has just started. Register now!',
+            );
+          }
         }
       }
     });
@@ -130,8 +161,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         if (change.type == DocumentChangeType.added) {
           final data = change.doc.data() as Map<String, dynamic>?;
           if (data != null) {
-          // We no longer trigger a local notification here because the FCM push 
-          // notification handles it (whether the app is background or foreground).
+            NotificationService.showNotification(
+              id: change.doc.id.hashCode,
+              title: data['title'] ?? 'New Request',
+              body: data['message'] ?? 'You have a new team invitation.',
+            );
           }
         }
       }
@@ -362,103 +396,207 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         ? "Campus Events"
         : _selectedIndex == 1
         ? "My College Events"
-        : "History";
+        : "Participation History";
 
     return Scaffold(
-      body: Stack(
-        children: [
-          const VibrantBackground(),
-          _isLoadingCollege
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
-                  children: [
-                    SafeArea(
-                      bottom: false,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                sectionTitle,
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            _headerIconButton(
-                              icon: Icons.notifications_none_rounded,
-                              tooltip: "Notifications",
-                              onTap: _showNotifications,
-                              badgeCount: _unreadNotifications,
-                            ),
-                            if (managedClubs.isNotEmpty)
-                              _headerIconButton(
-                                icon: Icons.admin_panel_settings_outlined,
-                                tooltip: "Switch to Coordinator View",
-                                onTap: _handleCoordinatorSwitch,
-                              ),
-                            if (_selectedIndex == 2)
-                              _headerIconButton(
-                                icon: Icons.emoji_events_outlined,
-                                tooltip: "My Awards",
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const ParticipationHistoryScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            _headerIconButton(
-                              icon: Icons.brightness_6,
-                              tooltip: "Toggle Theme",
-                              onTap: _toggleTheme,
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          // Handle Pull-to-Refresh 3D Logic
+          if (notification is ScrollUpdateNotification) {
+            if (notification.metrics.pixels < 0) {
+              setState(() {
+                _pullOffset = -notification.metrics.pixels;
+              });
+              if (_pullOffset > 120 && !_isRefreshing) {
+                _handleRefresh();
+              }
+            } else if (_pullOffset != 0 && !_isRefreshing) {
+              setState(() => _pullOffset = 0);
+            }
+          }
+          
+          // Handle Navbar Hiding Logic (Disabled as requested)
+          if (notification is UserScrollNotification) {
+            if (notification.metrics.axis != Axis.vertical) return false;
+            // Removed setState hiding logic
+          }
+          return false;
+        },
+        child: Stack(
+          children: [
+            const VibrantBackground(),
+            
+            // 3D Pull-to-Refresh Indicator
+            if (_pullOffset > 0 || _isRefreshing)
+              Positioned(
+                top: (_pullOffset * 0.4) - 40,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Opacity(
+                    opacity: (_pullOffset / 120).clamp(0, 1),
+                    child: Transform.scale(
+                      scale: (_pullOffset / 120).clamp(0.5, 1.2),
+                      child: Container(
+                        height: 100,
+                        width: 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withOpacity(0.1),
+                          boxShadow: [
+                            BoxShadow(
+                              color: theme.colorScheme.primary.withOpacity(0.1),
+                              blurRadius: 20,
+                              spreadRadius: 5,
                             ),
                           ],
                         ),
+                        child: _isRefreshing 
+                          ? Padding(
+                              padding: const EdgeInsets.all(25.0),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                              ).animate().rotate(),
+                            )
+                          : Image.asset(
+                              'assets/images/refresh_3d.png',
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) => 
+                                Icon(Icons.refresh_rounded, size: 50, color: theme.colorScheme.primary),
+                            ).animate(target: _pullOffset > 100 ? 1 : 0).shake(hz: 4),
                       ),
                     ),
-                    
-                    if (_selectedIndex != 2) ...[
-                      _buildTeamInvitesSection(),
-                      _buildSearchBar(),
-                      _buildCategoryChips(),
-                      const SizedBox(height: 8),
-                    ],
-
-                    Expanded(
-                      child: _selectedIndex == 2
-                          ? _buildRegisteredEventsList()
-                          : _buildEventsList(),
-                    ),
-                  ],
+                  ),
                 ),
-        ],
+              ),
+
+            _isLoadingCollege
+                ? const Center(child: CircularProgressIndicator())
+                : Column(
+                    children: [
+                      SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  sectionTitle,
+                                  style: theme.textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              _headerIconButton(
+                                icon: Icons.notifications_none_rounded,
+                                tooltip: "Notifications",
+                                onTap: _showNotifications,
+                                badgeCount: _unreadNotifications,
+                              ),
+                              if (managedClubs.isNotEmpty)
+                                _headerIconButton(
+                                  icon: Icons.admin_panel_settings_outlined,
+                                  tooltip: "Switch to Coordinator View",
+                                  onTap: _handleCoordinatorSwitch,
+                                ),
+                              if (_selectedIndex == 2)
+                                _headerIconButton(
+                                  icon: Icons.history,
+                                  tooltip: "Participation History",
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const ParticipationHistoryScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              _headerIconButton(
+                                icon: Icons.brightness_6,
+                                tooltip: "Toggle Theme",
+                                onTap: _toggleTheme,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      
+                      if (_selectedIndex != 2) ...[
+                        _buildTeamInvitesSection(),
+                        _buildSearchBar(),
+                        _buildCategoryChips(),
+                        const SizedBox(height: 8),
+                      ],
+  
+                      Expanded(
+                        child: _selectedIndex == 2
+                            ? _buildRegisteredEventsList()
+                            : _buildEventsList(),
+                      ),
+                    ],
+                  ),
+          ],
+        ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex > 2 ? 0 : _selectedIndex,
-        height: 72,
-        backgroundColor: theme.colorScheme.surface.withValues(alpha: 0.95),
-        indicatorColor: theme.colorScheme.primary.withValues(alpha: 0.16),
-        onDestinationSelected: (i) {
-          if (i == 3) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ProfileScreen()),
-            );
-            return;
-          }
-          setState(() => _selectedIndex = i);
-        },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.language), label: 'Public'),
-          NavigationDestination(icon: Icon(Icons.school), label: 'My College'),
-          NavigationDestination(icon: Icon(Icons.history), label: 'History'),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
-        ],
+      bottomNavigationBar: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        height: 80,
+        clipBehavior: Clip.hardEdge,
+        decoration: const BoxDecoration(),
+        child: Wrap(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                boxShadow: [
+                  BoxShadow(
+                    blurRadius: 20,
+                    color: Colors.black.withOpacity(.1),
+                  )
+                ],
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
+                  child: GNav(
+                    rippleColor: Colors.grey[300]!,
+                    hoverColor: Colors.grey[100]!,
+                    gap: 8,
+                    activeColor: theme.colorScheme.primary,
+                    iconSize: 24,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    duration: const Duration(milliseconds: 400),
+                    tabBackgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    tabs: const [
+                      GButton(icon: Icons.language, text: 'Public'),
+                      GButton(icon: Icons.school, text: 'My College'),
+                      GButton(icon: Icons.history, text: 'History'),
+                      GButton(icon: Icons.person, text: 'Profile'),
+                    ],
+                    selectedIndex: _selectedIndex > 3 ? 0 : _selectedIndex,
+                    onTabChange: (index) {
+                      if (index == 3) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                        );
+                        return;
+                      }
+                      setState(() {
+                        _selectedIndex = index;
+                      });
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -481,10 +619,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface.withValues(alpha: 0.85),
+              color: theme.colorScheme.surface.withOpacity(0.85),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                color: theme.colorScheme.outline.withOpacity(0.2),
               ),
             ),
             child: Stack(
@@ -647,6 +785,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         }
 
         return ListView.builder(
+          controller: _scrollController,
+          physics: const BouncingScrollPhysics(),
           itemCount: filteredDocs.length,
           padding: const EdgeInsets.only(bottom: 20),
           itemBuilder: (context, index) => _buildEventCard(filteredDocs[index]),
@@ -686,6 +826,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         final registrations = snapshot.data!.docs;
 
         return ListView.builder(
+          controller: _scrollController,
+          physics: const BouncingScrollPhysics(),
           itemCount: registrations.length,
           padding: const EdgeInsets.all(16),
           itemBuilder: (context, index) {
@@ -696,7 +838,43 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               future: FirebaseFirestore.instance.collection('events').doc(eventId).get(),
               builder: (context, eventSnap) {
                 if (!eventSnap.hasData || !eventSnap.data!.exists) return const SizedBox.shrink();
-                return _buildEventCard(eventSnap.data!, regData: regData);
+                
+                final eventData = eventSnap.data!.data() as Map<String, dynamic>? ?? {};
+                final bool isCompleted = eventData['status'] == 'completed';
+                final bool participated = regData['participated'] == true;
+
+                return Column(
+                  children: [
+                    _buildEventCard(eventSnap.data!),
+                    if (isCompleted || participated)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => FeedbackScreen(
+                                    registrationRef: registrations[index].reference,
+                                    eventTitle: regData['eventTitle'] ?? 'Event',
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.feedback_outlined),
+                            label: const Text("Share My Feedback"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.amber.shade700,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
               },
             );
           },
@@ -735,7 +913,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             ],
           ),
           filled: true,
-          fillColor: theme.colorScheme.surface.withValues(alpha: 0.92),
+          fillColor: theme.colorScheme.surface.withOpacity(0.92),
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
@@ -768,11 +946,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   : Theme.of(context).colorScheme.onSurface,
             ),
             selectedColor: themeNotifier.value == ThemeMode.light ? Theme.of(context).colorScheme.primary : Colors.indigoAccent,
-            backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.82),
+            backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.82),
             side: BorderSide(
               color: selectedCategory == categories[i]
                   ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.25),
+                  : Theme.of(context).colorScheme.outline.withOpacity(0.25),
             ),
           ),
         ),
@@ -780,27 +958,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  Widget _buildEventCard(DocumentSnapshot doc, {Map<String, dynamic>? regData}) {
+  Widget _buildEventCard(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     final prize = (data['prizeAmount'] ?? "").toString();
     final eventDate = data['date'] ?? "TBD";
     final posterLink = data['posterLink'] as String?;
     final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
-    final bool requiresVolunteers = (data['requiresVolunteers'] ?? false) == true;
-    final int volunteerCount = data['volunteerCount'] ?? 0;
-    final String? volunteerRole = data['volunteerRole']?.toString();
     final status = (data['status'] ?? 'approved').toString().toLowerCase();
-
-    final bool isVolunteerReg = regData?['registrationType']?.toString().toLowerCase() == 'volunteer';
-    final String? assignedTask = regData?['assignedTask']?.toString();
-
-    final int totalSeats = data['totalSeats'] ?? data['maxSeats'] ?? 0;
-    final int filledSeats = data['filledSeats'] ?? 0;
-    final int availableSeats = totalSeats > 0 ? ((totalSeats - filledSeats > 0) ? (totalSeats - filledSeats) : 0) : -1;
 
     Color statusInfoColor = Colors.orange.shade100;
     Color statusInfoText = Colors.orange.shade900;
-    String statusLabel = availableSeats == -1 ? "OPEN" : (availableSeats > 0 ? "SEATS: $availableSeats" : "FULL");
+    String statusLabel = "ONGOING";
 
     if (status == 'completed') {
       statusInfoColor = Colors.grey.shade300;
@@ -843,8 +1011,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     height: 42,
                     decoration: BoxDecoration(
                       color: (data['visibility'] == 'college')
-                          ? Colors.indigo.withValues(alpha: 0.12)
-                          : Colors.green.withValues(alpha: 0.12),
+                          ? Colors.indigo.withOpacity(0.12)
+                          : Colors.green.withOpacity(0.12),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -865,7 +1033,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         Text(
                           "${data['college'] ?? "General Event"} - $eventDate",
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -874,18 +1042,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           runSpacing: 6,
                           children: [
                             _eventTag(statusLabel, bgColor: statusInfoColor, fgColor: statusInfoText),
-                            if (isTeamEvent && !isVolunteerReg)
-                              _eventTag("Team • ${data['teamSize'] ?? 'N/A'}", bgColor: Colors.purple.withValues(alpha: 0.14), fgColor: Colors.purple.shade900),
-                            if (requiresVolunteers && volunteerCount > 0 && regData == null)
-                              _eventTag("Volunteers Needed: $volunteerCount", bgColor: Colors.green.withValues(alpha: 0.14), fgColor: Colors.green.shade900),
-                            if (isVolunteerReg)
-                              _eventTag(
-                                assignedTask?.isNotEmpty == true ? "Task: $assignedTask" : "Task: Pending", 
-                                bgColor: Colors.green.shade100, 
-                                fgColor: Colors.green.shade900,
-                              ),
+                            if (isTeamEvent)
+                              _eventTag("Team • ${data['teamSize'] ?? 'N/A'}", bgColor: Colors.purple.withOpacity(0.14), fgColor: Colors.purple.shade900),
                             if (prize.isNotEmpty && prize != "0")
-                              _eventTag("Prize Rs.$prize", bgColor: Colors.orange.withValues(alpha: 0.14), fgColor: Colors.orange.shade900),
+                              _eventTag("Prize Rs.$prize", bgColor: Colors.orange.withOpacity(0.14), fgColor: Colors.orange.shade900),
                           ],
                         ),
                       ],

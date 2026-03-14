@@ -4,13 +4,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'event_registrations_list.dart';
 import 'list_approval_screen.dart';
 
-class AnalyticsScreen extends StatefulWidget {
+class CertificatesScreen extends StatefulWidget {
   final String clubId;
   final String clubName;
   final String? coordinatorId;
   final bool isFaculty;
 
-  const AnalyticsScreen({
+  const CertificatesScreen({
     super.key,
     required this.clubId,
     required this.clubName,
@@ -19,10 +19,10 @@ class AnalyticsScreen extends StatefulWidget {
   });
 
   @override
-  State<AnalyticsScreen> createState() => _AnalyticsScreenState();
+  State<CertificatesScreen> createState() => _CertificatesScreenState();
 }
 
-class _AnalyticsScreenState extends State<AnalyticsScreen> {
+class _CertificatesScreenState extends State<CertificatesScreen> {
   Set<String> _myProgramIds = {};
   bool _isLoadingIds = true;
 
@@ -63,7 +63,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("${widget.clubName} Analytics"),
+        title: Text("${widget.clubName} Certificates & Winners"),
         actions: [
           // Show approval button only for faculty
           if (widget.isFaculty)

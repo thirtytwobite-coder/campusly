@@ -4,8 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_nav_bar/google_nav_bar.dart';
+import 'package:flutter/rendering.dart';
 
+import 'analytics_dashboard_screen.dart';
 import 'analytics_screen.dart';
+import 'certificates_screen.dart';
+import 'club_feedback_screen.dart';
 import 'main.dart';
 import 'manage_programs.dart';
 import 'profile_screen.dart';
@@ -34,6 +39,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   int _selectedIndex = 0;
   bool _loading = true;
   String searchQuery = '';
+  bool _isNavbarVisible = true;
 
   @override
   void initState() {
@@ -144,28 +150,67 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             ),
           ],
         ),
-        body: Stack(
-          children: [
-            const VibrantBackground(),
-            _loading
-                ? _buildLoadingState()
-                : clubId == null
-                ? const Center(child: Text("No club assigned"))
-                : _buildDashboardBody(),
-          ],
+        body: NotificationListener<UserScrollNotification>(
+          onNotification: (notification) {
+            // Navbar hiding disabled as requested
+            return false;
+          },
+          child: Stack(
+            children: [
+              const VibrantBackground(),
+              _loading
+                  ? _buildLoadingState()
+                  : clubId == null
+                  ? const Center(child: Text("No club assigned"))
+                  : _buildDashboardBody(),
+            ],
+          ),
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          currentIndex: _selectedIndex == 1 ? 0 : _selectedIndex,
-          onTap: _onItemTapped,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Home'),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.add_circle, color: Colors.blue, size: 30),
-              label: 'Add Program',
-            ),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-          ],
+        bottomNavigationBar: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: 80,
+          clipBehavior: Clip.hardEdge,
+          decoration: const BoxDecoration(),
+          child: Wrap(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  boxShadow: [
+                    BoxShadow(
+                      blurRadius: 20,
+                      color: Colors.black.withOpacity(.1),
+                    )
+                  ],
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
+                    child: GNav(
+                      rippleColor: Colors.grey[300]!,
+                      hoverColor: Colors.grey[100]!,
+                      gap: 8,
+                      activeColor: Colors.blue,
+                      iconSize: 24,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      duration: const Duration(milliseconds: 400),
+                      tabBackgroundColor: Colors.blue.withOpacity(0.1),
+                      color: Theme.of(context).iconTheme.color?.withOpacity(0.6) ?? Colors.grey,
+                      tabs: const [
+                        GButton(icon: Icons.dashboard, text: 'Home'),
+                        GButton(icon: Icons.add_circle, text: 'Add Program'),
+                        GButton(icon: Icons.person, text: 'Profile'),
+                      ],
+                      selectedIndex: _selectedIndex,
+                      onTabChange: (index) {
+                        _onItemTapped(index);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -231,16 +276,62 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                       "Analytics",
                       "View Stats",
                       Icons.bar_chart,
+                      Colors.blue,
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AnalyticsDashboardScreen(
+                              clubId: clubId!,
+                              clubName: clubName ?? 'Club',
+                              coordinatorId:
+                                  FirebaseAuth.instance.currentUser?.uid,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildQuickActionCard(
+                      "Certificates",
+                      "Issue & Winners",
+                      Icons.workspace_premium,
+                      Colors.orange,
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CertificatesScreen(
+                              clubId: clubId!,
+                              clubName: clubName ?? 'Club',
+                              coordinatorId:
+                                  FirebaseAuth.instance.currentUser?.uid,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildQuickActionCard(
+                      "Feedback",
+                      "Student Reviews",
+                      Icons.feedback_outlined,
                       Colors.green,
                       () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => AnalyticsScreen(
+                            builder: (_) => ClubFeedbackScreen(
                               clubId: clubId!,
                               clubName: clubName ?? 'Club',
-                              coordinatorId:
-                                  FirebaseAuth.instance.currentUser?.uid,
                             ),
                           ),
                         );

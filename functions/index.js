@@ -110,7 +110,7 @@ exports.notifyOnEventStatusChange = functions.firestore
       payload = {
         notification: {
           title: 'Event Approved',
-          body: `Your event '${after.title || ''}' has been approved.`,
+          body: `Your event '${after.title || ''}' has been approved and published.`,
         },
         data: {
           type: 'EVENT_APPROVED',
@@ -122,11 +122,11 @@ exports.notifyOnEventStatusChange = functions.firestore
       targetTokens = await getTokensByRole('STUDENT');
       payload = {
         notification: {
-          title: 'Event Registration Open',
-          body: `Registration for '${after.title || ''}' is now open. Register now!`,
+          title: 'Event Started!',
+          body: `The event '${after.title || ''}' has officially started. Check it out now!`,
         },
         data: {
-          type: 'EVENT_REGISTRATION_OPEN',
+          type: 'EVENT_STARTED',
           eventId: context.params.eventId,
         },
       };
@@ -140,6 +140,38 @@ exports.notifyOnEventStatusChange = functions.firestore
       }
     }
 
+    return null;
+  });
+
+// When a student receives a notification in their sub-collection (like a team invite),
+// send an actual FCM push notification to them.
+exports.notifyOnStudentNotification = functions.firestore
+  .document('student/{studentId}/notifications/{notifyId}')
+  .onCreate(async (snap, context) => {
+    const data = snap.data();
+    if (!data) return null;
+
+    const studentId = context.params.studentId;
+    const token = await getTokenByUid(studentId);
+    if (!token) return null;
+
+    const payload = {
+      notification: {
+        title: data.title || 'New Notification',
+        body: data.message || data.body || 'You have a new message.',
+      },
+      data: {
+        type: data.type || 'STUDENT_NOTIFICATION',
+        eventId: data.eventId || '',
+        regId: data.regId || '',
+      },
+    };
+
+    try {
+      await admin.messaging().sendToDevice(token, payload);
+    } catch (e) {
+      console.error('Error sending student notification FCM', e);
+    }
     return null;
   });
 
@@ -233,33 +265,7 @@ exports.sendPushOnEventApproved = functions.firestore
     return null;
   });
 
-exports.notifyOnStudentNotification = functions.firestore
-  .document('student/{uid}/notifications/{notifId}')
-  .onCreate(async (snap, context) => {
-    const data = snap.data() || {};
-    const uid = context.params.uid;
-    const token = await getTokenByUid(uid);
-    if (!token) return null;
 
-    const payload = {
-      notification: {
-        title: data.title || 'New Notification',
-        body: data.message || data.body || 'You have a new message.',
-      },
-      data: {
-        type: data.type || 'general',
-        eventId: data.eventId || '',
-        regId: data.regId || '',
-      },
-    };
-
-    try {
-      await admin.messaging().sendToDevice([token], payload);
-    } catch (e) {
-      console.error('FCM send failed for student notification', e);
-    }
-    return null;
-  });
 
 exports.notifyOnClubNotification = functions.firestore
   .document('clubs/{clubId}/notifications/{notifId}')

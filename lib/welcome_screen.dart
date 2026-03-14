@@ -24,33 +24,31 @@ class WelcomeScreen extends StatelessWidget {
                 children: [
                   _TopBadge(
                     isDark: isDark,
-                  ).animate().fadeIn().slideY(begin: -0.2, end: 0),
+                  ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.2, end: 0, curve: Curves.easeOutCubic),
                   const SizedBox(height: 24),
                   Text(
-                        'Make Campus Life\nMore Alive.',
+                        'Your College,\nMade Simple.',
                         style: theme.textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          height: 1.05,
+                          fontWeight: FontWeight.bold,
+                          height: 1.1,
                           color: theme.colorScheme.onSurface,
                         ),
                       )
                       .animate()
-                      .fadeIn(delay: 120.ms)
-                      .slideX(begin: -0.06, end: 0),
-                  const SizedBox(height: 10),
+                      .fadeIn(delay: 200.ms, duration: 600.ms)
+                      .slideX(begin: -0.1, end: 0, curve: Curves.easeOutCubic),
+                  const SizedBox(height: 12),
                   Text(
-                    'Host events, manage clubs, and track participation with one high-energy platform built for students.',
+                    'Just a little app to help you find events, join clubs, and connect with folks on campus.',
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      height: 1.35,
-                      color: theme.colorScheme.onSurface.withValues(
-                        alpha: 0.76,
-                      ),
+                      height: 1.4,
+                      color: theme.colorScheme.onSurface.withOpacity(0.8),
                     ),
-                  ).animate().fadeIn(delay: 220.ms),
-                  const SizedBox(height: 22),
+                  ).animate().fadeIn(delay: 400.ms, duration: 600.ms),
+                  const SizedBox(height: 28),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFF2563EB), Color(0xFF06B6D4)],
@@ -61,68 +59,68 @@ class WelcomeScreen extends StatelessWidget {
                       boxShadow: const [
                         BoxShadow(
                           color: Color(0x332563EB),
-                          blurRadius: 24,
-                          offset: Offset(0, 12),
+                          blurRadius: 20,
+                          offset: Offset(0, 10),
                         ),
                       ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Trending This Week',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.92),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Hackathon Sprint, Music Night, Startup Expo',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        Row(
+                          children: [
+                            const Icon(Icons.coffee_rounded, color: Colors.white, size: 28)
+                                .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                                .scale(begin: const Offset(1, 1), end: const Offset(1.15, 1.15), duration: 2.seconds, curve: Curves.easeInOut),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Stay in the loop',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          children: const [
-                            _Pill(text: '1500+ Students'),
-                            SizedBox(width: 8),
-                            _Pill(text: '42 Active Clubs'),
-                          ],
+                        Text(
+                          'See what\'s happening around campus without the noise.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.white.withOpacity(0.9),
+                            height: 1.3,
+                          ),
                         ),
                       ],
                     ),
-                  ).animate().fadeIn(delay: 320.ms).slideY(begin: 0.12, end: 0),
-                  const SizedBox(height: 16),
+                  ).animate().fadeIn(delay: 600.ms, duration: 600.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
+                  const SizedBox(height: 20),
                   const Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
+                    spacing: 12,
+                    runSpacing: 12,
                     children: [
                       _HighlightChip(
-                        icon: Icons.event_available_rounded,
-                        label: 'Live Event Feed',
+                        icon: Icons.search_rounded,
+                        label: 'Find Events',
                       ),
                       _HighlightChip(
-                        icon: Icons.groups_rounded,
-                        label: 'Club Collaboration',
+                        icon: Icons.people_alt_rounded,
+                        label: 'Meet Clubs',
                       ),
                       _HighlightChip(
-                        icon: Icons.workspace_premium_rounded,
-                        label: 'Smart Approvals',
+                        icon: Icons.chat_bubble_outline_rounded,
+                        label: 'Get Updates',
                       ),
                     ],
-                  ).animate().fadeIn(delay: 360.ms),
+                  ).animate().fadeIn(delay: 800.ms, duration: 600.ms),
                   const Spacer(),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: isDark
                           ? const Color(0xE6172233)
                           : const Color(0xEDFFFFFF),
-                      borderRadius: BorderRadius.circular(22),
+                      borderRadius: BorderRadius.circular(24),
                       border: Border.all(
                         color: isDark
                             ? Colors.white12
@@ -133,21 +131,19 @@ class WelcomeScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Ready to jump in?',
+                          'Ready to log in?',
                           style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Sign in with your college account and start organizing your next big event.',
+                          'Use your college account to hop right in.',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.72,
-                            ),
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
@@ -159,13 +155,19 @@ class WelcomeScreen extends StatelessWidget {
                                 ),
                               );
                             },
-                            icon: const Icon(Icons.rocket_launch_rounded),
-                            label: const Text('Enter Campusly'),
+                            icon: const Icon(Icons.login_rounded),
+                            label: const Text('Sign in'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              )
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ).animate().fadeIn(delay: 460.ms).slideY(begin: 0.15, end: 0),
+                  ).animate().fadeIn(delay: 1000.ms, duration: 600.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
                 ],
               ),
             ),
@@ -189,8 +191,8 @@ class _TopBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withValues(alpha: 0.08)
-            : Colors.white.withValues(alpha: 0.78),
+            ? Colors.white.withOpacity(0.08)
+            : Colors.white.withOpacity(0.78),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
           color: isDark ? Colors.white24 : const Color(0x220F172A),
@@ -200,15 +202,17 @@ class _TopBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.auto_awesome_rounded,
+            Icons.waving_hand_rounded,
             size: 18,
             color: theme.colorScheme.primary,
-          ),
+          )
+          .animate(onPlay: (controller) => controller.repeat(reverse: true))
+          .rotate(begin: -0.1, end: 0.1, duration: 1.seconds, curve: Curves.easeInOut),
           const SizedBox(width: 8),
           Text(
-            'Campusly Student Experience',
+            'Welcome to Campusly',
             style: theme.textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -227,7 +231,7 @@ class _Pill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
+        color: Colors.white.withOpacity(0.2),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -256,8 +260,8 @@ class _HighlightChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withValues(alpha: 0.07)
-            : Colors.white.withValues(alpha: 0.76),
+            ? Colors.white.withOpacity(0.07)
+            : Colors.white.withOpacity(0.76),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
           color: isDark ? Colors.white10 : const Color(0x220F172A),
