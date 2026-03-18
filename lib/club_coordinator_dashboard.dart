@@ -196,7 +196,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                       duration: const Duration(milliseconds: 400),
                       tabBackgroundColor: Colors.blue.withOpacity(0.1),
                       color: Theme.of(context).iconTheme.color?.withOpacity(0.6) ?? Colors.grey,
-                      tabs: const [
+                      tabs: [
                         GButton(icon: Icons.dashboard, text: 'Home'),
                         GButton(icon: Icons.add_circle, text: 'Add Program'),
                         GButton(icon: Icons.person, text: 'Profile'),
@@ -2018,7 +2018,10 @@ class ProgramCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
+      child: InkWell(
+        onTap: () => _showProgramDetails(context),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2125,6 +2128,7 @@ class ProgramCard extends StatelessWidget {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -2163,6 +2167,94 @@ class ProgramCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showProgramDetails(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: Text(programData['name'] ?? 'Event Details',
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (programData['posterLink'] != null && programData['posterLink'].toString().isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    programData['posterLink'],
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              Text(programData['description'] ?? 'No description available', style: const TextStyle(fontSize: 14)),
+              const SizedBox(height: 16),
+              _buildDetailRow(Icons.calendar_today, "Date", programData['date'] ?? 'TBD'),
+              _buildDetailRow(Icons.access_time, "Time", programData['time'] ?? 'TBD'),
+              _buildDetailRow(Icons.location_on, "Venue", programData['location'] ?? 'TBD'),
+              _buildDetailRow(Icons.category, "Category", programData['category'] ?? 'General'),
+              _buildDetailRow(Icons.visibility, "Visibility", programData['visibility']?.toString().toUpperCase() ?? 'COLLEGE'),
+              if (programData['eventMode'] != null)
+                _buildDetailRow(Icons.laptop, "Mode", programData['eventMode']),
+              if (programData['totalSeats'] != null)
+                _buildDetailRow(Icons.event_seat, "Capacity", programData['totalSeats'].toString()),
+              if (programData['hasPrizePool'] == true)
+                _buildDetailRow(Icons.emoji_events, "Prize", "₹${programData['prizeAmount'] ?? ''}"),
+              if (programData['requiresVolunteers'] == true) ...[
+                const Divider(),
+                const Text("Volunteer Details", style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                _buildDetailRow(Icons.people, "Needed", programData['volunteerCount']?.toString() ?? 'N/A'),
+                _buildDetailRow(Icons.assignment, "Role", programData['volunteerRole'] ?? 'N/A'),
+              ],
+              if (programData['isTeamEvent'] == true) ...[
+                const Divider(),
+                const Text("Team Event", style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                _buildDetailRow(Icons.group, "Team Size", programData['teamSize']?.toString() ?? 'N/A'),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: Colors.blueGrey),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(color: Colors.black87, fontSize: 13),
+                children: [
+                  TextSpan(text: "$label: ", style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: value),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

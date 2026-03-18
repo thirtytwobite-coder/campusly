@@ -458,7 +458,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                   duration: const Duration(milliseconds: 400),
                   tabBackgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                   color: Theme.of(context).iconTheme.color ?? Colors.grey,
-                  tabs: const [
+                  tabs: [
                     GButton(
                       icon: Icons.home,
                       text: 'Home',

@@ -252,7 +252,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                       duration: const Duration(milliseconds: 400),
                       tabBackgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
                       color: Theme.of(context).iconTheme.color?.withOpacity(0.6) ?? Colors.grey,
-                      tabs: const [
+                      tabs: [
                         GButton(icon: Icons.home, text: 'Home'),
                         GButton(icon: Icons.person, text: 'Profile'),
                       ],

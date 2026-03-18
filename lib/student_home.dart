@@ -572,7 +572,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     duration: const Duration(milliseconds: 400),
                     tabBackgroundColor: theme.colorScheme.primary.withOpacity(0.1),
                     color: theme.colorScheme.onSurface.withOpacity(0.6),
-                    tabs: const [
+                    tabs: [
                       GButton(icon: Icons.language, text: 'Public'),
                       GButton(icon: Icons.school, text: 'My College'),
                       GButton(icon: Icons.history, text: 'History'),
@@ -964,6 +964,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final eventDate = data['date'] ?? "TBD";
     final posterLink = data['posterLink'] as String?;
     final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
+    final bool requiresVolunteers = (data['requiresVolunteers'] ?? false) == true;
+    final int volunteerCount = data['volunteerCount'] ?? 0;
     final status = (data['status'] ?? 'approved').toString().toLowerCase();
 
     Color statusInfoColor = Colors.orange.shade100;
@@ -1044,6 +1046,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             _eventTag(statusLabel, bgColor: statusInfoColor, fgColor: statusInfoText),
                             if (isTeamEvent)
                               _eventTag("Team • ${data['teamSize'] ?? 'N/A'}", bgColor: Colors.purple.withOpacity(0.14), fgColor: Colors.purple.shade900),
+                            if (requiresVolunteers && volunteerCount > 0)
+                              _eventTag("Volunteers Needed: $volunteerCount", bgColor: Colors.green.withOpacity(0.14), fgColor: Colors.green.shade900),
                             if (prize.isNotEmpty && prize != "0")
                               _eventTag("Prize Rs.$prize", bgColor: Colors.orange.withOpacity(0.14), fgColor: Colors.orange.shade900),
                           ],

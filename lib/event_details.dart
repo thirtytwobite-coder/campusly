@@ -42,6 +42,9 @@ class EventDetailsScreen extends StatelessWidget {
               final String? imageUrl = data['posterLink'] ?? data['imageUrl'];
               final String eventMode = data['eventMode'] ?? 'TBD';
               final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
+              final bool requiresVolunteers = (data['requiresVolunteers'] ?? false) == true;
+              final int volunteerCount = data['volunteerCount'] ?? 0;
+              final String volunteerRole = data['volunteerRole']?.toString() ?? '';
 
               return SingleChildScrollView(
                 child: Column(
@@ -93,10 +96,40 @@ class EventDetailsScreen extends StatelessWidget {
                           
                           _buildDetailsGrid(theme, date, time, eventMode, venue, coordinatorName),
                           
-                          if (isTeamEvent) ...[
-                            const SizedBox(height: 32),
-                            _buildTeamSection(context, user?.uid, event.id, theme),
+                          if (requiresVolunteers) ...[
+                            const SizedBox(height: 24),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: Colors.green.withOpacity(0.3)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.volunteer_activism, color: Colors.green.shade700),
+                                      const SizedBox(width: 8),
+                                      Text("Volunteering (${volunteerCount} Needed)", 
+                                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: Colors.green.shade800)),
+                                    ],
+                                  ),
+                                  if (volunteerRole.isNotEmpty) ...[
+                                    const SizedBox(height: 12),
+                                    Text("Task Description:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade900, fontSize: 13)),
+                                    const SizedBox(height: 4),
+                                    Text(volunteerRole, style: TextStyle(color: Colors.green.shade800, height: 1.4)),
+                                  ]
+                                ],
+                              ),
+                            ).animate().fadeIn().slideY(begin: 0.1),
                           ],
+                          
+                          const SizedBox(height: 24),
+                          _buildParticipationDetails(context, user?.uid, event.id, theme, isTeamEvent),
 
                           const SizedBox(height: 140),
                         ],
@@ -158,7 +191,7 @@ class EventDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTeamSection(BuildContext context, String? userId, String eventId, ThemeData theme) {
+  Widget _buildParticipationDetails(BuildContext context, String? userId, String eventId, ThemeData theme, bool isTeamEvent) {
     if (userId == null) return const SizedBox.shrink();
 
     return StreamBuilder<QuerySnapshot>(
@@ -172,7 +205,55 @@ class EventDetailsScreen extends StatelessWidget {
         
         final regData = snapshot.data!.docs.first.data() as Map<String, dynamic>;
         final String? teamId = regData['teamId'];
+        final bool isVolunteer = regData['registrationType']?.toString().toLowerCase() == 'volunteer';
+        final String? assignedTask = regData['assignedTask']?.toString();
 
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isVolunteer) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.assignment, color: Colors.green),
+                        const SizedBox(width: 10),
+                        Text("Your Volunteer Task", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: Colors.green)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      assignedTask?.isNotEmpty == true ? assignedTask! : "Waiting for task assignment from coordinator...",
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: assignedTask?.isNotEmpty == true ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.6),
+                        fontStyle: assignedTask?.isNotEmpty == true ? FontStyle.normal : FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn().slideX(),
+              const SizedBox(height: 24),
+            ],
+
+            if (isTeamEvent && teamId != null) 
+              _buildTeamSectionInner(teamId, theme),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTeamSectionInner(String teamId, ThemeData theme) {
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -191,8 +272,7 @@ class EventDetailsScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              if (teamId != null)
-                StreamBuilder<QuerySnapshot>(
+              StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection('registrations')
                       .where('teamId', isEqualTo: teamId)
@@ -241,13 +321,9 @@ class EventDetailsScreen extends StatelessWidget {
                     );
                   },
                 )
-              else
-                const Center(child: Text("Loading team details...")),
             ],
           ),
         ).animate().fadeIn().slideX();
-      },
-    );
   }
 
   Widget _buildStatusBadge(String status) {
