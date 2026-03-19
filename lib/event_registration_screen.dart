@@ -26,6 +26,10 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
   late TextEditingController _semController;
   late TextEditingController _ktuIdController;
 
+  final List<Map<String, dynamic>> _selectedTeamMembers = [];
+  List<Map<String, dynamic>> _collegeStudents = [];
+  bool _isLoadingStudents = false;
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +62,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
             _semController.text = studentData?['semester']?.toString() ?? '';
             _ktuIdController.text = studentData?['ktuId'] ?? '';
           });
+          _fetchCollegeStudents();
         }
       } catch (e) {
         debugPrint("Error fetching student data: $e");
@@ -67,6 +72,33 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  Future<void> _fetchCollegeStudents() async {
+    if (studentData == null || studentData!['college'] == null) return;
+    final String college = studentData!['college'];
+    final user = FirebaseAuth.instance.currentUser;
+
+    setState(() => _isLoadingStudents = true);
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('student')
+          .where('college', isEqualTo: college)
+          .get();
+
+      if (mounted) {
+        setState(() {
+          _collegeStudents = snap.docs
+              .map((e) => {'id': e.id, ...e.data()})
+              .where((e) => e['id'] != user?.uid)
+              .toList();
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching students: $e");
+    } finally {
+      if (mounted) setState(() => _isLoadingStudents = false);
     }
   }
 
@@ -134,6 +166,8 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
 
       final bool requiresVolunteers = eventData['requiresVolunteers'] == true;
       final String regType = requiresVolunteers ? _registrationType : 'participant';
+      final bool isTeamEvent = eventData['isTeamEvent'] == true;
+      final int maxTeamSize = (eventData['teamSize'] ?? 1) is int ? eventData['teamSize'] : int.tryParse(eventData['teamSize']?.toString() ?? '1') ?? 1;
 
       // 1. Update Profile if changed
       await FirebaseFirestore.instance
@@ -142,6 +176,8 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
           .set(updatedData, SetOptions(merge: true));
 
       // 2. Register for Event
+      final String teamId = (isTeamEvent && regType == 'participant') ? "${widget.event.id}_${user.uid}" : "";
+
       await FirebaseFirestore.instance.collection('registrations').add({
         'userId': user.uid,
         'eventId': widget.event.id,
@@ -156,7 +192,49 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
         'college': studentData?['college'], // Added college field
         'registrationType': regType,
         'registeredAt': FieldValue.serverTimestamp(),
+        if (isTeamEvent && regType == 'participant') 'teamId': teamId,
+        if (isTeamEvent && regType == 'participant') 'isTeamLeader': true,
+        if (isTeamEvent && regType == 'participant') 'status': 'confirmed',
       });
+
+      // 3. Register added team members dynamically
+      if (isTeamEvent && regType == 'participant' && _selectedTeamMembers.isNotEmpty) {
+        for (var memberData in _selectedTeamMembers) {
+             final pendingRegRef = await FirebaseFirestore.instance.collection('registrations').add({
+               'userId': memberData['id'],
+               'eventId': widget.event.id,
+               'eventTitle': eventData['title'] ?? eventData['name'] ?? 'Untitled Event',
+               'studentName': memberData['name'] ?? 'Team Member',
+               'studentEmail': memberData['email'] ?? '',
+               'studentPhone': memberData['phone'] ?? '',
+               'department': memberData['department'] ?? '',
+               'year': memberData['year'] ?? '',
+               'semester': memberData['semester'] ?? '',
+               'ktuId': memberData['ktuId'] ?? '',
+               'college': memberData['college'] ?? '',
+               'registrationType': 'participant',
+               'registeredAt': FieldValue.serverTimestamp(),
+               'teamId': teamId,
+               'isTeamLeader': false,
+               'status': 'pending', 
+             });
+
+             await FirebaseFirestore.instance.collection('student').doc(memberData['id']).collection('notifications').add({
+               'type': 'team_invite',
+               'title': 'Team Invitation',
+               'message': '${updatedData['name']} invited you to join their team for ${eventData['title'] ?? 'an event'}.',
+               'eventId': widget.event.id,
+               'regId': pendingRegRef.id,
+               'read': false,
+               'timestamp': FieldValue.serverTimestamp(),
+             });
+
+             await FirebaseFirestore.instance
+                .collection('events')
+                .doc(widget.event.id)
+                .update({'filledSeats': FieldValue.increment(1)});
+        }
+      }
 
       // Increment filledSeats count
       await FirebaseFirestore.instance
@@ -253,6 +331,8 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
     final bool requiresVolunteers = eventData['requiresVolunteers'] == true;
     final String? volunteerRole = eventData['volunteerRole']?.toString();
     final String volunteerCount = (eventData['volunteerCount'] ?? '').toString();
+    final bool isTeamEvent = eventData['isTeamEvent'] == true;
+    final int maxTeamSize = (eventData['teamSize'] ?? 1) is int ? eventData['teamSize'] : int.tryParse(eventData['teamSize']?.toString() ?? '1') ?? 1;
 
     return Scaffold(
       appBar: AppBar(
@@ -302,6 +382,10 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
                     const SizedBox(height: 16),
                     _buildTextField(_ktuIdController, "KTU ID", Icons.badge_outlined,
                         inputFormatters: [UpperCaseTextFormatter()]),
+                    if (isTeamEvent && _registrationType == 'participant') ...[
+                      const SizedBox(height: 24),
+                      _buildTeamSection(maxTeamSize),
+                    ],
                     const SizedBox(height: 32),
                     SizedBox(
                       width: double.infinity,
@@ -317,6 +401,97 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  void _showAddMemberDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final availableStudents = _collegeStudents
+            .where((s) => !_selectedTeamMembers.any((m) => m['id'] == s['id']))
+            .toList();
+
+        return AlertDialog(
+          title: const Text("Select Team Member"),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 300,
+            child: availableStudents.isEmpty
+                ? const Center(child: Text("No more students available in your college."))
+                : ListView.builder(
+                    itemCount: availableStudents.length,
+                    itemBuilder: (context, index) {
+                      final s = availableStudents[index];
+                      return ListTile(
+                        leading: CircleAvatar(child: Text((s['name'] ?? '?')[0].toUpperCase())),
+                        title: Text(s['name'] ?? 'Unknown'),
+                        subtitle: Text(s['department'] ?? ''),
+                        onTap: () {
+                          setState(() {
+                            _selectedTeamMembers.add(s);
+                          });
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTeamSection(int maxTeamSize) {
+    if (maxTeamSize <= 1) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("Team Members (Max ${maxTeamSize - 1} more)", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            if (_selectedTeamMembers.length < maxTeamSize - 1 && !_isLoadingStudents)
+              TextButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text("Add Member"),
+                onPressed: _collegeStudents.isEmpty ? null : _showAddMemberDialog,
+              )
+          ],
+        ),
+        const SizedBox(height: 10),
+        const Text("Select teammates from your college. They will receive an invite to confirm. You do not need to fill all spots.", style: TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 10),
+        if (_isLoadingStudents)
+            const Center(child: CircularProgressIndicator()),
+        ...List.generate(_selectedTeamMembers.length, (index) {
+          final member = _selectedTeamMembers[index];
+          return Card(
+            elevation: 1,
+            margin: const EdgeInsets.only(bottom: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: ListTile(
+              leading: CircleAvatar(child: Text((member['name'] ?? '?')[0].toUpperCase())),
+              title: Text(member['name'] ?? 'Unknown'),
+              subtitle: Text(member['email'] ?? ''),
+              trailing: IconButton(
+                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                onPressed: () {
+                  setState(() {
+                    _selectedTeamMembers.removeAt(index);
+                  });
+                },
+              ),
+            ),
+          );
+        }),
+      ],
     );
   }
 
