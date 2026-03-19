@@ -351,6 +351,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                               final rank = _getRankByName(name);
                               final bool participated = data['participated'] ?? false;
                               final bool isWinner = rank != null;
+                              final bool isVolunteer = data['registrationType']?.toString().toLowerCase() == 'volunteer';
 
                               return Card(
                                 elevation: 2,
