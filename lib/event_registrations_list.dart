@@ -351,8 +351,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                               final rank = _getRankByName(name);
                               final bool participated = data['participated'] ?? false;
                               final bool isWinner = rank != null;
-                              final bool isVolunteer = data['registrationType']?.toString().toLowerCase() == 'volunteer';
-                              final String assignedTask = data['assignedTask'] as String? ?? '';
 
                               return Card(
                                 elevation: 2,
@@ -398,7 +396,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                                         ),
                                     ],
                                   ),
-                                  subtitle: Text(rank != null ? "Ranked Winner" : (isVolunteer ? "Volunteer" : (participated ? "Participated" : "Registered"))),
+                                  subtitle: Text(rank != null ? "Ranked Winner" : (participated ? "Participated" : "Registered")),
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -432,24 +430,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                                           const SizedBox(height: 8),
                                           _buildDetailRow(Icons.email_outlined, "Email", data['studentEmail'] ?? 'N/A'),
                                           const SizedBox(height: 16),
-                                          if (isVolunteer) ...[
-                                            _buildDetailRow(Icons.assignment, "Assigned Task", assignedTask.isEmpty ? "No task assigned" : assignedTask),
-                                            Align(
-                                              alignment: Alignment.centerRight,
-                                              child: TextButton.icon(
-                                                icon: const Icon(Icons.edit, size: 16),
-                                                label: Text(assignedTask.isEmpty ? "Assign Task" : "Edit Task"),
-                                                onPressed: () {
-                                                  _showAssignTaskDialog(
-                                                    sortedDocs[dataIndex].id, 
-                                                    name ?? 'Unknown', 
-                                                    assignedTask,
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
-                                          ],
                                           Row(children: [
                                             // Show buttons if participated or winner
                                             if (!participated && !isWinner)
@@ -579,39 +559,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
           },
         );
       }
-    );
-  }
-
-  void _showAssignTaskDialog(String registrationId, String studentName, String currentTask) {
-    final taskController = TextEditingController(text: currentTask);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text("Assign Task to $studentName"),
-        content: TextField(
-          controller: taskController,
-          decoration: const InputDecoration(
-            labelText: "Task Description",
-            hintText: "Enter the task for this volunteer",
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 3,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () {
-              FirebaseFirestore.instance
-                  .collection('registrations')
-                  .doc(registrationId)
-                  .update({'assignedTask': taskController.text.trim()});
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Task assigned seamlessly")));
-            },
-            child: const Text("Save"),
-          ),
-        ],
-      ),
     );
   }
 
