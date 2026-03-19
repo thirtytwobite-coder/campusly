@@ -2288,41 +2288,49 @@ class ProgramCard extends StatelessWidget {
               if (programData['posterLink'] != null && programData['posterLink'].toString().isNotEmpty) ...[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    programData['posterLink'],
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                  ),
+                  child: (programData['posterLink'] != null && programData['posterLink'].toString().startsWith('data:image')) 
+                    ? Image.memory(
+                        base64Decode(programData['posterLink'].toString().split(',').last),
+                        height: 150,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      )
+                    : Image.network(
+                        programData['posterLink'],
+                        height: 150,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      ),
                 ),
                 const SizedBox(height: 12),
               ],
               Text(programData['description'] ?? 'No description available', style: const TextStyle(fontSize: 14)),
               const SizedBox(height: 16),
-              _buildDetailRow(Icons.calendar_today, "Date", programData['date'] ?? 'TBD'),
-              _buildDetailRow(Icons.access_time, "Time", programData['time'] ?? 'TBD'),
-              _buildDetailRow(Icons.location_on, "Venue", programData['location'] ?? 'TBD'),
-              _buildDetailRow(Icons.category, "Category", programData['category'] ?? 'General'),
-              _buildDetailRow(Icons.visibility, "Visibility", programData['visibility']?.toString().toUpperCase() ?? 'COLLEGE'),
+              _buildDetailRow(ctx, Icons.calendar_today, "Date", programData['date'] ?? 'TBD'),
+              _buildDetailRow(ctx, Icons.access_time, "Time", programData['time'] ?? 'TBD'),
+              _buildDetailRow(ctx, Icons.location_on, "Venue", programData['location'] ?? 'TBD'),
+              _buildDetailRow(ctx, Icons.category, "Category", programData['category'] ?? 'General'),
+              _buildDetailRow(ctx, Icons.visibility, "Visibility", programData['visibility']?.toString().toUpperCase() ?? 'COLLEGE'),
               if (programData['eventMode'] != null)
-                _buildDetailRow(Icons.laptop, "Mode", programData['eventMode']),
+                _buildDetailRow(ctx, Icons.laptop, "Mode", programData['eventMode']),
               if (programData['totalSeats'] != null)
-                _buildDetailRow(Icons.event_seat, "Capacity", programData['totalSeats'].toString()),
+                _buildDetailRow(ctx, Icons.event_seat, "Capacity", programData['totalSeats'].toString()),
               if (programData['hasPrizePool'] == true)
-                _buildDetailRow(Icons.emoji_events, "Prize", "₹${programData['prizeAmount'] ?? ''}"),
+                _buildDetailRow(ctx, Icons.emoji_events, "Prize", "₹${programData['prizeAmount'] ?? ''}"),
               if (programData['requiresVolunteers'] == true) ...[
                 const Divider(),
                 const Text("Volunteer Details", style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                _buildDetailRow(Icons.people, "Needed", programData['volunteerCount']?.toString() ?? 'N/A'),
-                _buildDetailRow(Icons.assignment, "Role", programData['volunteerRole'] ?? 'N/A'),
+                _buildDetailRow(ctx, Icons.people, "Needed", programData['volunteerCount']?.toString() ?? 'N/A'),
+                _buildDetailRow(ctx, Icons.assignment, "Role", programData['volunteerRole'] ?? 'N/A'),
               ],
               if (programData['isTeamEvent'] == true) ...[
                 const Divider(),
                 const Text("Team Event", style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                _buildDetailRow(Icons.group, "Team Size", programData['teamSize']?.toString() ?? 'N/A'),
+                _buildDetailRow(ctx, Icons.group, "Team Size", programData['teamSize']?.toString() ?? 'N/A'),
               ],
             ],
           ),
@@ -2337,7 +2345,7 @@ class ProgramCard extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value) {
+  Widget _buildDetailRow(BuildContext context, IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
@@ -2348,7 +2356,7 @@ class ProgramCard extends StatelessWidget {
           Expanded(
             child: RichText(
               text: TextSpan(
-                style: const TextStyle(color: Colors.black87, fontSize: 13),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
                 children: [
                   TextSpan(text: "$label: ", style: const TextStyle(fontWeight: FontWeight.bold)),
                   TextSpan(text: value),

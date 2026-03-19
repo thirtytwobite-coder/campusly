@@ -226,10 +226,15 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
           }
 
           final colleges = snapshot.data!.docs
-              .map((doc) => doc['college'] as String?)
-              .where((college) => college != null)
+              .map((doc) => doc['college'])
+              .whereType<String>()
               .toSet()
               .toList();
+
+          // Ensure the currently selected college is still valid, otherwise reset it.
+          final selectedCollege = colleges.contains(_selectedCollege)
+              ? _selectedCollege
+              : null;
 
           return DropdownButtonFormField<String>(
             isExpanded: true,
@@ -237,11 +242,11 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
               labelText: 'College',
               prefixIcon: Icon(Icons.school),
             ),
-            value: _selectedCollege,
+            value: selectedCollege,
             items: colleges.map((college) {
               return DropdownMenuItem<String>(
                 value: college,
-                child: Text(college ?? '--', overflow: TextOverflow.ellipsis),
+                child: Text(college, overflow: TextOverflow.ellipsis),
               );
             }).toList(),
             onChanged: (value) {
