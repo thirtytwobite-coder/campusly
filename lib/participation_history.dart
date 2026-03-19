@@ -43,7 +43,7 @@ class ParticipationHistoryScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.emoji_events_outlined, size: 80, color: Colors.grey[300]),
+                  Icon(Icons.stars_rounded, size: 80, color: Colors.grey[300]),
                   const SizedBox(height: 16),
                   Text(
                     "No achievements yet",
@@ -59,43 +59,49 @@ class ParticipationHistoryScreen extends StatelessWidget {
             ).animate().fadeIn(duration: 500.ms);
           }
 
-          final registrations = snapshot.data!.docs;
+          final allRegistrations = snapshot.data!.docs;
 
-          return ListView.builder(
-            itemCount: registrations.length,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            itemBuilder: (context, index) {
-              final regDoc = registrations[index];
-              final reg = regDoc.data() as Map<String, dynamic>;
-              final eventId = reg['eventId'];
-              
-              return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance.collection('events').doc(eventId).get(),
-                builder: (context, eventSnap) {
-                  if (!eventSnap.hasData) {
-                    return Container(
-                      height: 100,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.grey[900] : Colors.white,
-                        borderRadius: BorderRadius.circular(20),
+          return FutureBuilder<List<Map<String, dynamic>>>(
+            future: _filterEligibleRegistrations(allRegistrations),
+            builder: (context, eligibleSnapshot) {
+              if (eligibleSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final eligibleRegs = eligibleSnapshot.data ?? [];
+
+              if (eligibleRegs.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.stars_rounded, size: 80, color: Colors.grey[300]),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "No participation record found",
+                        style: TextStyle(fontSize: 18, color: Colors.grey, fontWeight: FontWeight.w600),
                       ),
-                    );
-                  }
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Only events you participated in or won will appear here.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(duration: 500.ms);
+              }
 
-                  final eventData = eventSnap.data?.data() as Map<String, dynamic>? ?? {};
-                  final bool isApproved = eventData['certsApproved'] == true;
-                  final bool didParticipate = reg['participated'] == true;
-                  final winners = eventData['manualWinners'] as Map<String, dynamic>? ?? {};
-                  
-                  String? userRank;
-                  winners.forEach((key, value) {
-                    if (value.toString().trim().toLowerCase() == reg['studentName']?.toString().toLowerCase().trim()) {
-                      userRank = key;
-                    }
-                  });
-
-                  final bool eligible = didParticipate || userRank != null;
+              return ListView.builder(
+                itemCount: eligibleRegs.length,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                itemBuilder: (context, index) {
+                  final data = eligibleRegs[index];
+                  final reg = data['reg'];
+                  final eventData = data['eventData'];
+                  final userRank = data['userRank'];
+                  final isApproved = data['isApproved'];
+                  final regDoc = data['regDoc'];
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 16),
@@ -113,7 +119,7 @@ class ParticipationHistoryScreen extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(24),
                       child: InkWell(
-                        onTap: (isApproved && eligible)
+                        onTap: isApproved
                             ? () => _generateUserCertificate(context, reg, eventData, userRank)
                             : null,
                         child: Padding(
@@ -131,7 +137,7 @@ class ParticipationHistoryScreen extends StatelessWidget {
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(
-                                      userRank != null ? Icons.workspace_premium : Icons.event_available, 
+                                      userRank != null ? Icons.military_tech : Icons.stars, 
                                       color: userRank != null ? Colors.orange : Theme.of(context).primaryColor,
                                       size: 28,
                                     ),
@@ -153,10 +159,8 @@ class ParticipationHistoryScreen extends StatelessWidget {
                                       ],
                                     ),
                                   ),
-                                  if (isApproved && eligible)
+                                  if (isApproved)
                                     const Icon(Icons.download_for_offline_rounded, color: Colors.green, size: 32)
-                                  else if (isApproved && !eligible)
-                                    Icon(Icons.info_outline_rounded, color: Colors.red[300], size: 24)
                                   else
                                     Icon(Icons.lock_clock_rounded, color: Colors.orange[300], size: 24),
                                 ],
@@ -168,49 +172,40 @@ class ParticipationHistoryScreen extends StatelessWidget {
                                   _statusBadge(
                                     userRank != null 
                                       ? "WINNER ($userRank)" 
-                                      : (didParticipate ? "PARTICIPANT" : "REGISTERED"),
-                                    userRank != null 
-                                      ? Colors.orange 
-                                      : (didParticipate ? Colors.green : Colors.blue)
+                                      : "PARTICIPANT",
+                                    userRank != null ? Colors.orange : Colors.green
                                   ),
-                                  if (!isApproved && eligible)
+                                  if (!isApproved)
                                     Text(
                                       "Pending Verification",
                                       style: TextStyle(fontSize: 11, color: Colors.orange[700], fontWeight: FontWeight.w600, fontStyle: FontStyle.italic),
                                     ),
-                                  if (isApproved && !eligible)
-                                    Text(
-                                      "No Participation Record",
-                                      style: TextStyle(fontSize: 11, color: Colors.red[700], fontWeight: FontWeight.w600),
-                                    ),
                                 ],
                               ),
-                              if (eligible) ...[
-                                const SizedBox(height: 16),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => FeedbackScreen(
-                                            registrationRef: regDoc.reference,
-                                            eventTitle: reg['eventTitle'] ?? 'Event',
-                                          ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => FeedbackScreen(
+                                          registrationRef: regDoc.reference,
+                                          eventTitle: reg['eventTitle'] ?? 'Event',
                                         ),
-                                      );
-                                    },
-                                    icon: const Icon(Icons.rate_review_outlined, size: 18),
-                                    label: const Text("Give Feedback"),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: Theme.of(context).primaryColor,
-                                      side: BorderSide(color: Theme.of(context).primaryColor.withOpacity(0.5)),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.rate_review_outlined, size: 18),
+                                  label: const Text("Give Feedback"),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Theme.of(context).primaryColor,
+                                    side: BorderSide(color: Theme.of(context).primaryColor.withOpacity(0.5)),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   ),
                                 ),
-                              ],
+                              ),
                             ],
                           ),
                         ),
@@ -219,11 +214,46 @@ class ParticipationHistoryScreen extends StatelessWidget {
                   ).animate().fadeIn(duration: 400.ms, delay: (50 * index).ms).slideY(begin: 0.1);
                 },
               );
-            },
+            }
           );
         },
       ),
     );
+  }
+
+  Future<List<Map<String, dynamic>>> _filterEligibleRegistrations(List<QueryDocumentSnapshot> registrations) async {
+    List<Map<String, dynamic>> eligibleList = [];
+    
+    for (var regDoc in registrations) {
+      final reg = regDoc.data() as Map<String, dynamic>;
+      final eventId = reg['eventId'];
+      
+      final eventSnap = await FirebaseFirestore.instance.collection('events').doc(eventId).get();
+      if (!eventSnap.exists) continue;
+
+      final eventData = eventSnap.data() as Map<String, dynamic>? ?? {};
+      final bool didParticipate = reg['participated'] == true;
+      final winners = eventData['manualWinners'] as Map<String, dynamic>? ?? {};
+      
+      String? userRank;
+      winners.forEach((key, value) {
+        if (value.toString().trim().toLowerCase() == reg['studentName']?.toString().toLowerCase().trim()) {
+          userRank = key;
+        }
+      });
+
+      if (didParticipate || userRank != null) {
+        eligibleList.add({
+          'reg': reg,
+          'eventData': eventData,
+          'userRank': userRank,
+          'didParticipate': didParticipate,
+          'isApproved': eventData['certsApproved'] == true,
+          'regDoc': regDoc,
+        });
+      }
+    }
+    return eligibleList;
   }
 
   Widget _statusBadge(String text, Color color) {

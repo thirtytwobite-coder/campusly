@@ -202,7 +202,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
         actions: [
           IconButton(
             icon: const Icon(Icons.emoji_events_outlined),
-            tooltip: "Announce Winners",
+            tooltip: _certsApproved ? "View Winners" : "Announce Winners",
             onPressed: isCompleted ? () => _showWinnersDialog() : () {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Event must be COMPLETED to set winners")));
             },
@@ -330,7 +330,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                                     children: [
                                       Checkbox(
                                         value: allParticipated,
-                                        onChanged: isCompleted ? (val) {
+                                        onChanged: (isCompleted && !_certsApproved) ? (val) {
                                           if (val != null) {
                                             _markAllParticipated(docs, val);
                                           }
@@ -372,6 +372,13 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                                           )
                                         else
                                           const SizedBox(width: 48, child: Icon(Icons.stars, color: Colors.orange)),
+                                      ] else ...[
+                                        if (isWinner)
+                                          const SizedBox(width: 48, child: Icon(Icons.stars, color: Colors.orange))
+                                        else if (participated)
+                                          const SizedBox(width: 48, child: Icon(Icons.check_circle, color: Colors.green, size: 20))
+                                        else
+                                          const SizedBox(width: 48),
                                       ],
                                       CircleAvatar(
                                         backgroundColor: rank != null ? Colors.orange : Theme.of(context).primaryColor.withOpacity(0.1),
@@ -562,47 +569,124 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
     );
   }
 
-  void _showWinnersDialog() {
-    final w1 = TextEditingController(text: _manualWinners['1st']);
-    final w2 = TextEditingController(text: _manualWinners['2nd']);
-    final w3 = TextEditingController(text: _manualWinners['3rd']);
-
+  void _showWinnersDialog() async {
+    // Show loading indicator
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Announce Winners"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: w1, decoration: const InputDecoration(labelText: "1st Place Name", prefixIcon: Icon(Icons.workspace_premium, color: Colors.amber))),
-            TextField(controller: w2, decoration: const InputDecoration(labelText: "2nd Place Name", prefixIcon: Icon(Icons.workspace_premium, color: Colors.grey))),
-            TextField(controller: w3, decoration: const InputDecoration(labelText: "3rd Place Name", prefixIcon: Icon(Icons.workspace_premium, color: Colors.brown))),
-          ],
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('registrations')
+          .where('eventId', isEqualTo: widget.eventId)
+          .where('participated', isEqualTo: true)
+          .get();
+      
+      if (!mounted) return;
+      Navigator.pop(context); // Remove loading indicator
+
+      final participants = snap.docs
+          .map((d) => (d.data() as Map<String, dynamic>)['studentName']?.toString() ?? '')
+          .where((n) => n.isNotEmpty)
+          .toSet()
+          .toList();
+      participants.sort();
+
+      String? s1 = _manualWinners['1st'];
+      String? s2 = _manualWinners['2nd'];
+      String? s3 = _manualWinners['3rd'];
+
+      showDialog(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text(_certsApproved ? "Winners List (Locked)" : "Announce Winners"),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IgnorePointer(
+                    ignoring: _certsApproved,
+                    child: Opacity(
+                      opacity: _certsApproved ? 0.7 : 1.0,
+                      child: Column(
+                        children: [
+                          _buildWinnerDropdown("1st Place", Colors.amber, participants, s1, (val) => setDialogState(() => s1 = val)),
+                          const SizedBox(height: 12),
+                          _buildWinnerDropdown("2nd Place", Colors.grey, participants, s2, (val) => setDialogState(() => s2 = val)),
+                          const SizedBox(height: 12),
+                          _buildWinnerDropdown("3rd Place", Colors.brown, participants, s3, (val) => setDialogState(() => s3 = val)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_certsApproved)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 16.0),
+                      child: Text(
+                        "Winners list is locked after verification.",
+                        style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: Text(_certsApproved ? "Close" : "Cancel")),
+              if (!_certsApproved)
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _manualWinners['1st'] = s1 ?? '';
+                      _manualWinners['2nd'] = s2 ?? '';
+                      _manualWinners['3rd'] = s3 ?? '';
+                    });
+                    _saveManualWinners();
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text("Save"),
+                ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _generateWinnerCertificates();
+                },
+                child: const Text("Generate Winner Certs"),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _manualWinners['1st'] = w1.text.trim();
-                _manualWinners['2nd'] = w2.text.trim();
-                _manualWinners['3rd'] = w3.text.trim();
-              });
-              _saveManualWinners();
-              Navigator.pop(ctx);
-            },
-            child: const Text("Save"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _generateWinnerCertificates();
-            },
-            child: const Text("Generate Winner Certs"),
-          ),
-        ],
+      );
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error fetching participants: $e")));
+      }
+    }
+  }
+
+  Widget _buildWinnerDropdown(String label, Color iconColor, List<String> options, String? currentValue, Function(String?) onChanged) {
+    // Ensure currentValue is in options or is an empty string
+    String? value = (currentValue != null && options.contains(currentValue)) ? currentValue : null;
+    
+    return DropdownButtonFormField<String>(
+      value: value,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(Icons.workspace_premium, color: iconColor),
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
+      items: [
+        const DropdownMenuItem<String>(value: null, child: Text("None")),
+        ...options.map((name) => DropdownMenuItem<String>(value: name, child: Text(name))),
+      ],
+      onChanged: onChanged,
     );
   }
 
@@ -613,10 +697,10 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
         length: 2,
         child: AlertDialog(
           title: const Text("Design Templates"),
-          content: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: MediaQuery.of(context).size.height * 0.7,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
                 const TabBar(
                   tabs: [Tab(text: "Participant"), Tab(text: "Winners")],
@@ -624,7 +708,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                   unselectedLabelColor: Colors.grey,
                 ),
                 const SizedBox(height: 10),
-                Flexible(
+                Expanded(
                   child: TabBarView(
                     children: [
                       _buildTemplateForm(_certSettings, (val) => setState(() => _certSettings = val)),
@@ -651,14 +735,14 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
   }
 
   Widget _buildTemplateForm(Map<String, dynamic> settings, Function(Map<String, dynamic>) onUpdate) {
-    final titleCtrl = TextEditingController(text: settings['title']);
-    final subtitleCtrl = TextEditingController(text: settings['subtitle']);
-    final bodyCtrl = TextEditingController(text: settings['body']);
-    final sig1NameCtrl = TextEditingController(text: settings['signatory1Name']);
-    final sig1TitleCtrl = TextEditingController(text: settings['signatory1Title']);
-    final sig2NameCtrl = TextEditingController(text: settings['signatory2Name']);
-    final sig2TitleCtrl = TextEditingController(text: settings['signatory2Title']);
-    final bgUrlCtrl = TextEditingController(text: settings['bgUrl']);
+    final titleCtrl = TextEditingController(text: settings['title'] ?? '');
+    final subtitleCtrl = TextEditingController(text: settings['subtitle'] ?? '');
+    final bodyCtrl = TextEditingController(text: settings['body'] ?? '');
+    final sig1NameCtrl = TextEditingController(text: settings['signatory1Name'] ?? '');
+    final sig1TitleCtrl = TextEditingController(text: settings['signatory1Title'] ?? '');
+    final sig2NameCtrl = TextEditingController(text: settings['signatory2Name'] ?? '');
+    final sig2TitleCtrl = TextEditingController(text: settings['signatory2Title'] ?? '');
+    final bgUrlCtrl = TextEditingController(text: settings['bgUrl'] ?? '');
     bool useLogo = settings['useLogo'] ?? true;
 
     return SingleChildScrollView(
