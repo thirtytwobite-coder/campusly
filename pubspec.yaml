@@ -30,6 +30,8 @@ dependencies:
   flutter_local_notifications: ^17.2.2
   google_nav_bar: ^5.0.7
   fl_chart: ^1.1.1
+  liquid_pull_to_refresh: ^3.0.1
+  image_picker: ^1.2.1
 
 dev_dependencies:
   flutter_test:
