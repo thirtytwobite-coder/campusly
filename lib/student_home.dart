@@ -437,11 +437,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                     );
                                   },
                                 ),
-                              _headerIconButton(
-                                icon: Icons.brightness_6,
-                                tooltip: "Toggle Theme",
-                                onTap: _toggleTheme,
-                              ),
                             ],
                           ),
                         ),
@@ -1047,9 +1042,4 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  void _toggleTheme() async {
-    themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
-  }
 }

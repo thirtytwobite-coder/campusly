@@ -391,19 +391,6 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
           appBar: AppBar(
             title: Text(widget.collegeName),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.brightness_6),
-                onPressed: () async {
-                  themeNotifier.value = themeNotifier.value == ThemeMode.light
-                      ? ThemeMode.dark
-                      : ThemeMode.light;
-                  SharedPreferences prefs =
-                      await SharedPreferences.getInstance();
-                  prefs.setBool(
-                      'isDarkMode', themeNotifier.value == ThemeMode.dark);
-                },
-              ),
-
             ],
           ),
           body: GridView.count(

@@ -39,8 +39,15 @@ void main() async {
   });
 
   final prefs = await SharedPreferences.getInstance();
-  final isDarkMode = prefs.getBool('isDarkMode') ?? false;
-  themeNotifier.value = isDarkMode ? ThemeMode.dark : ThemeMode.light;
+  final themeStr = prefs.getString('themeMode') ?? 'system';
+  
+  if (themeStr == 'dark') {
+    themeNotifier.value = ThemeMode.dark;
+  } else if (themeStr == 'light') {
+    themeNotifier.value = ThemeMode.light;
+  } else {
+    themeNotifier.value = ThemeMode.system;
+  }
 
   runApp(const CampuslyApp());
 }

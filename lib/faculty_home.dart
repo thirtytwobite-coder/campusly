@@ -109,19 +109,6 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
         appBar: AppBar(
           title: const Text("FACULTY DASHBOARD"),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.brightness_6),
-              onPressed: () async {
-                themeNotifier.value = themeNotifier.value == ThemeMode.light
-                    ? ThemeMode.dark
-                    : ThemeMode.light;
-                SharedPreferences prefs = await SharedPreferences.getInstance();
-                prefs.setBool(
-                  'isDarkMode',
-                  themeNotifier.value == ThemeMode.dark,
-                );
-              },
-            ),
           ],
         ),
         body: NotificationListener<UserScrollNotification>(

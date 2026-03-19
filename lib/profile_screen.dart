@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'main.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
@@ -261,6 +263,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
+  void _showThemeSelectionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Theme Select'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildThemeOption(ThemeMode.light, 'Light', Icons.wb_sunny_outlined),
+            _buildThemeOption(ThemeMode.dark, 'Dark', Icons.nightlight_round_outlined),
+            _buildThemeOption(ThemeMode.system, 'System Default', Icons.brightness_auto_outlined),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThemeOption(ThemeMode mode, String title, IconData icon) {
+    return ListTile(
+      leading: Icon(icon, color: themeNotifier.value == mode ? Theme.of(context).primaryColor : null),
+      title: Text(title, style: TextStyle(fontWeight: themeNotifier.value == mode ? FontWeight.bold : FontWeight.normal)),
+      trailing: themeNotifier.value == mode ? Icon(Icons.check_circle, color: Theme.of(context).primaryColor) : null,
+      onTap: () async {
+        themeNotifier.value = mode;
+        final prefs = await SharedPreferences.getInstance();
+        String themeStr = 'system';
+        if (mode == ThemeMode.light) themeStr = 'light';
+        if (mode == ThemeMode.dark) themeStr = 'dark';
+        await prefs.setString('themeMode', themeStr);
+        if (mounted) Navigator.pop(context);
+      },
+    );
+  }
+
   void _showLogoutConfirmation() {
     showDialog(
       context: context,
@@ -328,6 +371,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     context,
                     MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
                   );
+                } else if (value == 'theme') {
+                  _showThemeSelectionDialog();
                 } else if (value == 'logout') {
                   _showLogoutConfirmation();
                 }
@@ -344,6 +389,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(width: 12),
                       const Text('Change Password'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'theme',
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), shape: BoxShape.circle),
+                        child: const Icon(Icons.brightness_medium, color: Colors.orange, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text('Theme Select'),
                     ],
                   ),
                 ),
