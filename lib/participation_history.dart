@@ -43,7 +43,7 @@ class ParticipationHistoryScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.stars_rounded, size: 80, color: Colors.grey[300]),
+                  Icon(Icons.emoji_events_outlined, size: 80, color: Colors.grey[300]),
                   const SizedBox(height: 16),
                   Text(
                     "No achievements yet",
@@ -75,7 +75,7 @@ class ParticipationHistoryScreen extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.stars_rounded, size: 80, color: Colors.grey[300]),
+                      Icon(Icons.emoji_events_outlined, size: 80, color: Colors.grey[300]),
                       const SizedBox(height: 16),
                       const Text(
                         "No participation record found",
@@ -100,6 +100,7 @@ class ParticipationHistoryScreen extends StatelessWidget {
                   final reg = data['reg'];
                   final eventData = data['eventData'];
                   final userRank = data['userRank'];
+                  final didParticipate = data['didParticipate'];
                   final isApproved = data['isApproved'];
                   final regDoc = data['regDoc'];
 
@@ -137,7 +138,7 @@ class ParticipationHistoryScreen extends StatelessWidget {
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(
-                                      userRank != null ? Icons.military_tech : Icons.stars, 
+                                      userRank != null ? Icons.workspace_premium : Icons.event_available, 
                                       color: userRank != null ? Colors.orange : Theme.of(context).primaryColor,
                                       size: 28,
                                     ),
@@ -232,6 +233,7 @@ class ParticipationHistoryScreen extends StatelessWidget {
       if (!eventSnap.exists) continue;
 
       final eventData = eventSnap.data() as Map<String, dynamic>? ?? {};
+      final bool isApproved = eventData['certsApproved'] == true;
       final bool didParticipate = reg['participated'] == true;
       final winners = eventData['manualWinners'] as Map<String, dynamic>? ?? {};
       
@@ -248,7 +250,7 @@ class ParticipationHistoryScreen extends StatelessWidget {
           'eventData': eventData,
           'userRank': userRank,
           'didParticipate': didParticipate,
-          'isApproved': eventData['certsApproved'] == true,
+          'isApproved': isApproved,
           'regDoc': regDoc,
         });
       }
