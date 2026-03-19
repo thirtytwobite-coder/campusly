@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
@@ -797,6 +799,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     bool isTeamEvent = false;
     final teamSizeController = TextEditingController();
 
+    bool isUploadingPoster = false;
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -806,13 +810,61 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: posterLinkController,
-                  decoration: const InputDecoration(
-                    labelText: 'Poster Link',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.image),
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: isUploadingPoster ? null : () async {
+                          final picker = ImagePicker();
+                          final pickedFile = await picker.pickImage(
+                            source: ImageSource.gallery, 
+                            imageQuality: 50,
+                            maxWidth: 800,
+                          );
+                          if (pickedFile == null) return;
+                          
+                          setDialogState(() {
+                            isUploadingPoster = true;
+                          });
+                          
+                          try {
+                            final bytes = await pickedFile.readAsBytes();
+                            if (bytes.isNotEmpty) {
+                              final base64String = base64Encode(bytes);
+                              posterLinkController.text = 'data:image/jpeg;base64,$base64String';
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Poster successfully attached!'), backgroundColor: Colors.green),
+                                );
+                              }
+                            }
+                          } catch(e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Failed to read poster: $e'), backgroundColor: Colors.red),
+                              );
+                            }
+                          } finally {
+                            setDialogState(() {
+                              isUploadingPoster = false;
+                            });
+                          }
+                        },
+                        icon: isUploadingPoster 
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.image),
+                        label: Text(
+                          isUploadingPoster 
+                            ? 'Processing...' 
+                            : (posterLinkController.text.isNotEmpty ? 'Poster Attached ✅ (Tap to change)' : 'Attach Poster Image')
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -1463,6 +1515,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       text: (data['teamSize'] ?? '').toString(),
     );
 
+    bool isUploadingPoster = false;
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -1472,13 +1526,61 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: posterLinkController,
-                  decoration: const InputDecoration(
-                    labelText: 'Poster Link (Google Drive)',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.image),
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: isUploadingPoster ? null : () async {
+                          final picker = ImagePicker();
+                          final pickedFile = await picker.pickImage(
+                            source: ImageSource.gallery, 
+                            imageQuality: 50,
+                            maxWidth: 800,
+                          );
+                          if (pickedFile == null) return;
+                          
+                          setDialogState(() {
+                            isUploadingPoster = true;
+                          });
+                          
+                          try {
+                            final bytes = await pickedFile.readAsBytes();
+                            if (bytes.isNotEmpty) {
+                              final base64String = base64Encode(bytes);
+                              posterLinkController.text = 'data:image/jpeg;base64,$base64String';
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Poster successfully attached!'), backgroundColor: Colors.green),
+                                );
+                              }
+                            }
+                          } catch(e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Failed to read poster: $e'), backgroundColor: Colors.red),
+                              );
+                            }
+                          } finally {
+                            setDialogState(() {
+                              isUploadingPoster = false;
+                            });
+                          }
+                        },
+                        icon: isUploadingPoster 
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.image),
+                        label: Text(
+                          isUploadingPoster 
+                            ? 'Processing...' 
+                            : (posterLinkController.text.isNotEmpty ? 'Poster Attached ✅ (Tap to change)' : 'Attach Poster Image')
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 TextField(

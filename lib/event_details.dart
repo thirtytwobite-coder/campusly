@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'dart:convert';
 import 'event_registration_screen.dart';
 import 'vibrant_background.dart';
 
@@ -40,7 +41,7 @@ class EventDetailsScreen extends StatelessWidget {
               final String time = data['time'] ?? 'TBD';
               final String coordinatorName = data['coordinatorName'] ?? 'TBD';
               final String? imageUrl = data['posterLink'] ?? data['imageUrl'];
-              final String eventMode = data['eventMode'] ?? 'TBD';
+              final String eventMode = data['eventMode'] ?? data['mode'] ?? 'Offline';
               final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
               final bool requiresVolunteers = (data['requiresVolunteers'] ?? false) == true;
               final int volunteerCount = data['volunteerCount'] ?? 0;
@@ -94,7 +95,23 @@ class EventDetailsScreen extends StatelessWidget {
                           
                           const SizedBox(height: 24),
                           
-                          _buildDetailsGrid(theme, date, time, eventMode, venue, coordinatorName),
+                          if (data['eventMode'] != null || data['mode'] != null || data['programId'] == null || data['clubId'] == null)
+                            _buildDetailsGrid(theme, date, time, eventMode, venue, coordinatorName)
+                          else
+                            FutureBuilder<DocumentSnapshot>(
+                              future: FirebaseFirestore.instance.collection('clubs').doc(data['clubId']).collection('programs').doc(data['programId']).get(),
+                              builder: (context, snap) {
+                                String realMode = eventMode;
+                                if (snap.hasData && snap.data!.exists) {
+                                  final pData = snap.data!.data() as Map<String, dynamic>? ?? {};
+                                  if (pData['eventMode'] != null) {
+                                    realMode = pData['eventMode'];
+                                    FirebaseFirestore.instance.collection('events').doc(event.id).update({'eventMode': realMode});
+                                  }
+                                }
+                                return _buildDetailsGrid(theme, date, time, realMode, venue, coordinatorName);
+                              },
+                            ),
                           
                           if (requiresVolunteers) ...[
                             const SizedBox(height: 24),
@@ -356,7 +373,9 @@ class EventDetailsScreen extends StatelessWidget {
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
         child: url != null && url.isNotEmpty
-            ? Image.network(url, fit: BoxFit.cover, errorBuilder: (c, e, s) => const Icon(Icons.broken_image, size: 80, color: Colors.grey))
+            ? (url.startsWith('data:image') 
+                ? Image.memory(base64Decode(url.split(',').last), fit: BoxFit.cover, errorBuilder: (c, e, s) => const Icon(Icons.broken_image, size: 80, color: Colors.grey))
+                : Image.network(url, fit: BoxFit.cover, errorBuilder: (c, e, s) => const Icon(Icons.broken_image, size: 80, color: Colors.grey)))
             : const Icon(Icons.image_outlined, size: 80, color: Colors.grey),
       ),
     ).animate().fadeIn().scale(begin: const Offset(1.1, 1.1));
