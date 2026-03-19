@@ -190,22 +190,27 @@ class ParticipationHistoryScreen extends StatelessWidget {
                                 SizedBox(
                                   width: double.infinity,
                                   child: OutlinedButton.icon(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => FeedbackScreen(
-                                            registrationRef: regDoc.reference,
-                                            eventTitle: reg['eventTitle'] ?? 'Event',
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    icon: const Icon(Icons.rate_review_outlined, size: 18),
-                                    label: const Text("Give Feedback"),
+                                    onPressed: reg['rating'] != null 
+                                      ? null 
+                                      : () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => FeedbackScreen(
+                                                registrationRef: regDoc.reference,
+                                                eventTitle: reg['eventTitle'] ?? 'Event',
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                    icon: Icon(
+                                      reg['rating'] != null ? Icons.check_circle_outline : Icons.rate_review_outlined, 
+                                      size: 18
+                                    ),
+                                    label: Text(reg['rating'] != null ? "Feedback Submitted" : "Give Feedback"),
                                     style: OutlinedButton.styleFrom(
-                                      foregroundColor: Theme.of(context).primaryColor,
-                                      side: BorderSide(color: Theme.of(context).primaryColor.withOpacity(0.5)),
+                                      foregroundColor: reg['rating'] != null ? Colors.green : Theme.of(context).primaryColor,
+                                      side: BorderSide(color: (reg['rating'] != null ? Colors.green : Theme.of(context).primaryColor).withOpacity(0.5)),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                     ),
                                   ),

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'dart:convert';
 
 class EditClubDetailsScreen extends StatefulWidget {
   final String clubId;
@@ -200,12 +201,14 @@ class _EditClubDetailsScreenState extends State<EditClubDetailsScreen> {
                                   leading: CircleAvatar(
                                     backgroundImage: (member['image'] != null && 
                                                      member['image'].toString().isNotEmpty && 
-                                                     member['image'].toString().startsWith('http'))
-                                        ? NetworkImage(member['image'])
+                                                     (member['image'].toString().startsWith('http') || member['image'].toString().startsWith('data:image')))
+                                        ? (member['image'].toString().startsWith('data:image') 
+                                            ? MemoryImage(base64Decode(member['image'].toString().split(',').last)) as ImageProvider
+                                            : NetworkImage(member['image']))
                                         : null,
                                     child: (member['image'] == null || 
                                             member['image'].toString().isEmpty || 
-                                            !member['image'].toString().startsWith('http')) 
+                                            (!member['image'].toString().startsWith('http') && !member['image'].toString().startsWith('data:image'))) 
                                         ? const Icon(Icons.person) 
                                         : null,
                                   ),
@@ -245,17 +248,26 @@ class _EditClubDetailsScreenState extends State<EditClubDetailsScreen> {
                                 children: [
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
-                                    child: (imageUrl.startsWith('http'))
-                                        ? Image.network(
-                                            imageUrl, 
-                                            fit: BoxFit.cover, 
-                                            width: double.infinity, 
-                                            height: double.infinity,
-                                            errorBuilder: (context, error, stackTrace) => Container(
-                                              color: Colors.grey[200],
-                                              child: const Icon(Icons.broken_image, color: Colors.grey),
-                                            ),
-                                          )
+                                    child: (imageUrl.startsWith('http') || imageUrl.startsWith('data:image'))
+                                        ? (imageUrl.startsWith('data:image') ? Image.memory(
+                                              base64Decode(imageUrl.split(',').last), 
+                                              fit: BoxFit.cover, 
+                                              width: double.infinity, 
+                                              height: double.infinity,
+                                              errorBuilder: (context, error, stackTrace) => Container(
+                                                color: Colors.grey[200],
+                                                child: const Icon(Icons.broken_image, color: Colors.grey),
+                                              ),
+                                            ) : Image.network(
+                                              imageUrl, 
+                                              fit: BoxFit.cover, 
+                                              width: double.infinity, 
+                                              height: double.infinity,
+                                              errorBuilder: (context, error, stackTrace) => Container(
+                                                color: Colors.grey[200],
+                                                child: const Icon(Icons.broken_image, color: Colors.grey),
+                                              ),
+                                            ))
                                         : Container(
                                             color: Colors.grey[200],
                                             child: const Icon(Icons.link_off, color: Colors.grey),

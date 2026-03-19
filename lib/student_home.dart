@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,6 +17,7 @@ import 'participation_history.dart';
 import 'notification_service.dart';
 import 'feedback_screen.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
+import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -32,8 +34,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   bool _isLoadingCollege = true;
   DateTime? _selectedDate;
   List<DocumentSnapshot> managedClubs = [];
-  double _pullOffset = 0.0;
-  bool _isRefreshing = false;
   late ScrollController _scrollController;
   int _unreadNotifications = 0;
   bool _isInitialLoad = true;
@@ -97,18 +97,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   }
 
   Future<void> _handleRefresh() async {
-    if (_isRefreshing) return;
-    setState(() => _isRefreshing = true);
-    
     // Refresh dashboard data
     await _fetchDashboardData();
-    
-    if (mounted) {
-      setState(() {
-        _isRefreshing = false;
-        _pullOffset = 0;
-      });
-    }
   }
 
   void _listenForNotifications() {
@@ -399,81 +389,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         : "Participation History";
 
     return Scaffold(
-      body: NotificationListener<ScrollNotification>(
-        onNotification: (notification) {
-          // Handle Pull-to-Refresh 3D Logic
-          if (notification is ScrollUpdateNotification) {
-            if (notification.metrics.pixels < 0) {
-              setState(() {
-                _pullOffset = -notification.metrics.pixels;
-              });
-              if (_pullOffset > 120 && !_isRefreshing) {
-                _handleRefresh();
-              }
-            } else if (_pullOffset != 0 && !_isRefreshing) {
-              setState(() => _pullOffset = 0);
-            }
-          }
-          
-          // Handle Navbar Hiding Logic (Disabled as requested)
-          if (notification is UserScrollNotification) {
-            if (notification.metrics.axis != Axis.vertical) return false;
-            // Removed setState hiding logic
-          }
-          return false;
-        },
-        child: Stack(
-          children: [
-            const VibrantBackground(),
-            
-            // 3D Pull-to-Refresh Indicator
-            if (_pullOffset > 0 || _isRefreshing)
-              Positioned(
-                top: (_pullOffset * 0.4) - 40,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Opacity(
-                    opacity: (_pullOffset / 120).clamp(0, 1),
-                    child: Transform.scale(
-                      scale: (_pullOffset / 120).clamp(0.5, 1.2),
-                      child: Container(
-                        height: 100,
-                        width: 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.1),
-                          boxShadow: [
-                            BoxShadow(
-                              color: theme.colorScheme.primary.withOpacity(0.1),
-                              blurRadius: 20,
-                              spreadRadius: 5,
-                            ),
-                          ],
-                        ),
-                        child: _isRefreshing 
-                          ? Padding(
-                              padding: const EdgeInsets.all(25.0),
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
-                              ).animate().rotate(),
-                            )
-                          : Image.asset(
-                              'assets/images/refresh_3d.png',
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) => 
-                                Icon(Icons.refresh_rounded, size: 50, color: theme.colorScheme.primary),
-                            ).animate(target: _pullOffset > 100 ? 1 : 0).shake(hz: 4),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+      body: Stack(
+        children: [
+          const VibrantBackground(),
 
-            _isLoadingCollege
-                ? const Center(child: CircularProgressIndicator())
-                : Column(
+          _isLoadingCollege
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
                     children: [
                       SafeArea(
                         bottom: false,
@@ -539,8 +461,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       ),
                     ],
                   ),
-          ],
-        ),
+        ],
       ),
       bottomNavigationBar: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -770,26 +691,46 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         }).toList();
 
         if (filteredDocs.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Text(
-                _selectedIndex == 1
-                    ? "No live events found for $studentCollege.\nEvents appear once they are started by the coordinator."
-                    : "No live public events available.",
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey),
-              ),
+          return LiquidPullToRefresh(
+            onRefresh: _handleRefresh,
+            color: Theme.of(context).colorScheme.primary,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            showChildOpacityTransition: false,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.5,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(
+                        _selectedIndex == 1
+                            ? "No live events found for $studentCollege.\nEvents appear once they are started by the coordinator."
+                            : "No live public events available.",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         }
 
-        return ListView.builder(
-          controller: _scrollController,
-          physics: const BouncingScrollPhysics(),
-          itemCount: filteredDocs.length,
-          padding: const EdgeInsets.only(bottom: 20),
-          itemBuilder: (context, index) => _buildEventCard(filteredDocs[index]),
+        return LiquidPullToRefresh(
+          onRefresh: _handleRefresh,
+          color: Theme.of(context).colorScheme.primary,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          showChildOpacityTransition: false,
+          child: ListView.builder(
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: filteredDocs.length,
+            padding: const EdgeInsets.only(bottom: 20),
+            itemBuilder: (context, index) => _buildEventCard(filteredDocs[index]),
+          ),
         );
       },
     );
@@ -811,13 +752,25 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+          return LiquidPullToRefresh(
+            onRefresh: _handleRefresh,
+            color: Theme.of(context).colorScheme.primary,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            showChildOpacityTransition: false,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               children: [
-                Icon(Icons.assignment_late_outlined, size: 60, color: Colors.grey),
-                SizedBox(height: 16),
-                Text("No registered events found.", style: TextStyle(color: Colors.grey)),
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.5,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.assignment_late_outlined, size: 60, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      const Text("No registered events found.", style: TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                ),
               ],
             ),
           );
@@ -825,14 +778,19 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
         final registrations = snapshot.data!.docs;
 
-        return ListView.builder(
-          controller: _scrollController,
-          physics: const BouncingScrollPhysics(),
-          itemCount: registrations.length,
-          padding: const EdgeInsets.all(16),
-          itemBuilder: (context, index) {
-            final regData = registrations[index].data() as Map<String, dynamic>;
-            final eventId = regData['eventId'];
+        return LiquidPullToRefresh(
+          onRefresh: _handleRefresh,
+          color: Theme.of(context).colorScheme.primary,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          showChildOpacityTransition: false,
+          child: ListView.builder(
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: registrations.length,
+            padding: const EdgeInsets.all(16),
+            itemBuilder: (context, index) {
+              final regData = registrations[index].data() as Map<String, dynamic>;
+              final eventId = regData['eventId'];
 
             return FutureBuilder<DocumentSnapshot>(
               future: FirebaseFirestore.instance.collection('events').doc(eventId).get(),
@@ -852,21 +810,25 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         child: SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => FeedbackScreen(
-                                    registrationRef: registrations[index].reference,
-                                    eventTitle: regData['eventTitle'] ?? 'Event',
-                                  ),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.feedback_outlined),
-                            label: const Text("Share My Feedback"),
+                            onPressed: regData['rating'] != null 
+                              ? null 
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => FeedbackScreen(
+                                        registrationRef: registrations[index].reference,
+                                        eventTitle: regData['eventTitle'] ?? 'Event',
+                                      ),
+                                    ),
+                                  );
+                                },
+                            icon: Icon(
+                              regData['rating'] != null ? Icons.check_circle_outline : Icons.feedback_outlined
+                            ),
+                            label: Text(regData['rating'] != null ? "Feedback Submitted" : "Share My Feedback"),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.amber.shade700,
+                              backgroundColor: regData['rating'] != null ? Colors.grey.shade400 : Colors.amber.shade700,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
@@ -878,6 +840,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               },
             );
           },
+        ),
         );
       },
     );
@@ -991,7 +954,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (posterLink != null && posterLink.isNotEmpty)
-              Image.network(
+              posterLink.startsWith('data:image') ? Image.memory(
+                base64Decode(posterLink.split(',').last),
+                width: double.infinity,
+                height: 170,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 170,
+                  width: double.infinity,
+                  color: Colors.grey[200],
+                  child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                ),
+              ) : Image.network(
                 posterLink,
                 width: double.infinity,
                 height: 170,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 
 class ProgramApprovalScreen extends StatefulWidget {
   final String clubId;
@@ -430,7 +431,16 @@ class _ApprovalCard extends StatelessWidget {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
+                  child: data['posterLink'].toString().startsWith('data:image') ? Image.memory(
+                    base64Decode(data['posterLink'].toString().split(',').last),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(
+                        child: Icon(Icons.broken_image, color: Colors.grey, size: 40),
+                      );
+                    },
+                  ) : Image.network(
                     _convertGoogleDriveLink(data['posterLink']),
                     fit: BoxFit.cover,
                     width: double.infinity,

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
 import 'event_details.dart';
 
 class ClubProfileScreen extends StatelessWidget {
@@ -84,7 +85,18 @@ class ClubProfileScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(15),
                               child: Container(
                                 color: Colors.grey[100],
-                                child: Image.network(
+                                child: imageUrl.startsWith('data:image') ? Image.memory(
+                                  base64Decode(imageUrl.split(',').last),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.image_not_supported_outlined, color: Colors.grey[400], size: 30),
+                                      const SizedBox(height: 4),
+                                      Text("No Image", style: TextStyle(color: Colors.grey[400], fontSize: 10)),
+                                    ],
+                                  ),
+                                ) : Image.network(
                                   imageUrl,
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) => Column(
@@ -126,8 +138,12 @@ class ClubProfileScreen extends StatelessWidget {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            if (logo != null && logo.isNotEmpty && logo.startsWith('http'))
-              Image.network(
+            if (logo != null && logo.isNotEmpty && (logo.startsWith('http') || logo.startsWith('data:image')))
+              logo.startsWith('data:image') ? Image.memory(
+                base64Decode(logo.split(',').last),
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => _buildDefaultHeaderBackground(),
+              ) : Image.network(
                 logo,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => _buildDefaultHeaderBackground(),
@@ -182,12 +198,14 @@ class ClubProfileScreen extends StatelessWidget {
             backgroundColor: Colors.indigo.withOpacity(0.1),
             backgroundImage: (member['image'] != null && 
                              member['image'].toString().isNotEmpty && 
-                             member['image'].toString().startsWith('http')) 
-                ? NetworkImage(member['image']) 
+                             (member['image'].toString().startsWith('http') || member['image'].toString().startsWith('data:image'))) 
+                ? (member['image'].toString().startsWith('data:image')
+                    ? MemoryImage(base64Decode(member['image'].toString().split(',').last)) as ImageProvider
+                    : NetworkImage(member['image']))
                 : null,
             child: (member['image'] == null || 
                     member['image'].toString().isEmpty || 
-                    !member['image'].toString().startsWith('http')) 
+                    (!member['image'].toString().startsWith('http') && !member['image'].toString().startsWith('data:image'))) 
                 ? const Icon(Icons.person, size: 40, color: Colors.indigo) 
                 : null,
           ),
@@ -249,8 +267,19 @@ class ClubProfileScreen extends StatelessWidget {
             return ListTile(
               leading: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: (poster != null && poster.isNotEmpty && poster.startsWith('http'))
-                    ? Image.network(
+                child: (poster != null && poster.isNotEmpty && (poster.startsWith('http') || poster.startsWith('data:image')))
+                    ? (poster.startsWith('data:image') ? Image.memory(
+                        base64Decode(poster.split(',').last),
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 50,
+                          height: 50,
+                          color: Colors.indigo.withOpacity(0.1),
+                          child: const Icon(Icons.event, color: Colors.indigo),
+                        ),
+                      ) : Image.network(
                         poster,
                         width: 50,
                         height: 50,
@@ -261,7 +290,7 @@ class ClubProfileScreen extends StatelessWidget {
                           color: Colors.indigo.withOpacity(0.1),
                           child: const Icon(Icons.event, color: Colors.indigo),
                         ),
-                      )
+                      ))
                     : Container(
                         width: 50,
                         height: 50,
