@@ -180,6 +180,11 @@ class CampuslyApp extends StatelessWidget {
           error: Color(0xFFF87171),
         );
 
+        final darkTextTheme = textTheme.apply(
+          bodyColor: Colors.white,
+          displayColor: Colors.white,
+        );
+
         final lightTheme = ThemeData(
           useMaterial3: true,
           brightness: Brightness.light,
@@ -247,7 +252,7 @@ class CampuslyApp extends StatelessWidget {
           colorScheme: darkScheme,
           scaffoldBackgroundColor: const Color(0xFF0B1220),
           pageTransitionsTheme: pageTransitionsTheme,
-          textTheme: textTheme,
+          textTheme: darkTextTheme,
           appBarTheme: AppBarTheme(
             backgroundColor: Colors.transparent,
             foregroundColor: darkScheme.onSurface,

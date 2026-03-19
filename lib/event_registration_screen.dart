@@ -167,7 +167,10 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
       final bool requiresVolunteers = eventData['requiresVolunteers'] == true;
       final String regType = requiresVolunteers ? _registrationType : 'participant';
       final bool isTeamEvent = eventData['isTeamEvent'] == true;
-      final int maxTeamSize = (eventData['teamSize'] ?? 1) is int ? eventData['teamSize'] : int.tryParse(eventData['teamSize']?.toString() ?? '1') ?? 1;
+      final dynamic teamSizeRaw = eventData['teamSize'];
+      final int maxTeamSize = (teamSizeRaw is int)
+          ? teamSizeRaw
+          : int.tryParse(teamSizeRaw?.toString() ?? '') ?? 1;
 
       // 1. Update Profile if changed
       await FirebaseFirestore.instance
@@ -332,7 +335,10 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
     final String? volunteerRole = eventData['volunteerRole']?.toString();
     final String volunteerCount = (eventData['volunteerCount'] ?? '').toString();
     final bool isTeamEvent = eventData['isTeamEvent'] == true;
-    final int maxTeamSize = (eventData['teamSize'] ?? 1) is int ? eventData['teamSize'] : int.tryParse(eventData['teamSize']?.toString() ?? '1') ?? 1;
+    final dynamic teamSizeRaw = eventData['teamSize'];
+    final int maxTeamSize = (teamSizeRaw is int)
+        ? teamSizeRaw
+        : int.tryParse(teamSizeRaw?.toString() ?? '') ?? 1;
 
     return Scaffold(
       appBar: AppBar(
