@@ -396,6 +396,12 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                                           decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(4)),
                                           child: Text(rank, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                                         ),
+                                      if (isVolunteer && rank == null)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(4)),
+                                          child: const Text('VOLUNTEER', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                        ),
                                     ],
                                   ),
                                   subtitle: Text(rank != null ? "Ranked Winner" : (isVolunteer ? "Volunteer" : (participated ? "Participated" : "Registered"))),
