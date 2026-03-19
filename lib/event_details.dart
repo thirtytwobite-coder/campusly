@@ -40,7 +40,7 @@ class EventDetailsScreen extends StatelessWidget {
               final String time = data['time'] ?? 'TBD';
               final String coordinatorName = data['coordinatorName'] ?? 'TBD';
               final String? imageUrl = data['posterLink'] ?? data['imageUrl'];
-              final String eventMode = data['eventMode'] ?? 'TBD';
+              final String eventMode = data['eventMode'] ?? data['mode'] ?? 'Offline';
               final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
               final bool requiresVolunteers = (data['requiresVolunteers'] ?? false) == true;
               final int volunteerCount = data['volunteerCount'] ?? 0;
@@ -94,7 +94,23 @@ class EventDetailsScreen extends StatelessWidget {
                           
                           const SizedBox(height: 24),
                           
-                          _buildDetailsGrid(theme, date, time, eventMode, venue, coordinatorName),
+                          if (data['eventMode'] != null || data['mode'] != null || data['programId'] == null || data['clubId'] == null)
+                            _buildDetailsGrid(theme, date, time, eventMode, venue, coordinatorName)
+                          else
+                            FutureBuilder<DocumentSnapshot>(
+                              future: FirebaseFirestore.instance.collection('clubs').doc(data['clubId']).collection('programs').doc(data['programId']).get(),
+                              builder: (context, snap) {
+                                String realMode = eventMode;
+                                if (snap.hasData && snap.data!.exists) {
+                                  final pData = snap.data!.data() as Map<String, dynamic>? ?? {};
+                                  if (pData['eventMode'] != null) {
+                                    realMode = pData['eventMode'];
+                                    FirebaseFirestore.instance.collection('events').doc(event.id).update({'eventMode': realMode});
+                                  }
+                                }
+                                return _buildDetailsGrid(theme, date, time, realMode, venue, coordinatorName);
+                              },
+                            ),
                           
                           if (requiresVolunteers) ...[
                             const SizedBox(height: 24),

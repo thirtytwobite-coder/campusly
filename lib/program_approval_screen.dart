@@ -261,6 +261,7 @@ class _ApprovalCard extends StatelessWidget {
           'clubId': clubId,
           'programId': programId,
           'category': data['category'] ?? 'Technical',
+          'eventMode': data['eventMode'] ?? 'Online',
           'status': 'approved',
           'maxSeats': 100,
           'filledSeats': 0,
