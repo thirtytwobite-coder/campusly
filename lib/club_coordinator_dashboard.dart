@@ -257,11 +257,11 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 ).textTheme.titleMedium?.copyWith(color: Colors.green),
               ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.4),
               Text(
-                    userName ?? "Coordinator",
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )
+                userName ?? "Coordinator",
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              )
                   .animate()
                   .fadeIn(duration: 600.ms, delay: 200.ms)
                   .slideX(begin: -0.2),
@@ -279,7 +279,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                       "View Stats",
                       Icons.bar_chart,
                       Colors.blue,
-                      () {
+                          () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -287,7 +287,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                               clubId: clubId!,
                               clubName: clubName ?? 'Club',
                               coordinatorId:
-                                  FirebaseAuth.instance.currentUser?.uid,
+                              FirebaseAuth.instance.currentUser?.uid,
                             ),
                           ),
                         );
@@ -301,7 +301,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                       "Issue & Winners",
                       Icons.workspace_premium,
                       Colors.orange,
-                      () {
+                          () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -309,7 +309,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                               clubId: clubId!,
                               clubName: clubName ?? 'Club',
                               coordinatorId:
-                                  FirebaseAuth.instance.currentUser?.uid,
+                              FirebaseAuth.instance.currentUser?.uid,
                             ),
                           ),
                         );
@@ -327,7 +327,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                       "Student Reviews",
                       Icons.feedback_outlined,
                       Colors.green,
-                      () {
+                          () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -347,7 +347,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                       "Logo & Signatures",
                       Icons.brush_outlined,
                       Colors.purple,
-                      () => _showBrandingDialog(clubData),
+                          () => _showBrandingDialog(clubData),
                     ),
                   ),
                 ],
@@ -459,7 +459,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                     itemBuilder: (context, index) {
                       final programDoc = docs[index];
                       final programData =
-                          programDoc.data() as Map<String, dynamic>;
+                      programDoc.data() as Map<String, dynamic>;
 
                       return ProgramCard(
                         programId: programDoc.id,
@@ -521,12 +521,12 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   Widget _buildQuickActionCard(
-    String title,
-    String subtitle,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
+      String title,
+      String subtitle,
+      IconData icon,
+      Color color,
+      VoidCallback onTap,
+      ) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(15),
@@ -620,11 +620,11 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   .collection('clubs')
                   .doc(clubId)
                   .update({
-                    'profilePic': logoController.text.trim(),
-                    'signatureUrl': signatureController.text.trim(),
-                    'facultySignatureUrl': facultySignatureController.text
-                        .trim(),
-                  });
+                'profilePic': logoController.text.trim(),
+                'signatureUrl': signatureController.text.trim(),
+                'facultySignatureUrl': facultySignatureController.text
+                    .trim(),
+              });
               if (mounted) {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -681,13 +681,13 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
               icon: Icons.edit_note,
               title: "1. Basic Info",
               description:
-                  "Provide event name, category, and a clear description.",
+              "Provide event name, category, and a clear description.",
             ),
             _buildStep(
               icon: Icons.calendar_month,
               title: "2. Schedule",
               description:
-                  "Pick a date and time that doesn't conflict with other events.",
+              "Pick a date and time that doesn't conflict with other events.",
             ),
             _buildStep(
               icon: Icons.location_on_outlined,
@@ -698,13 +698,13 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
               icon: Icons.visibility_outlined,
               title: "4. Scope",
               description:
-                  "Choose if the event is 'College Only' or open to the 'Public'.",
+              "Choose if the event is 'College Only' or open to the 'Public'.",
             ),
             _buildStep(
               icon: Icons.send_rounded,
               title: "5. Faculty Review",
               description:
-                  "Once proposed, faculty will review and notify you of the status.",
+              "Once proposed, faculty will review and notify you of the status.",
             ),
             const SizedBox(height: 32),
             SizedBox(
@@ -817,16 +817,16 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                         onPressed: isUploadingPoster ? null : () async {
                           final picker = ImagePicker();
                           final pickedFile = await picker.pickImage(
-                            source: ImageSource.gallery, 
+                            source: ImageSource.gallery,
                             imageQuality: 50,
                             maxWidth: 800,
                           );
                           if (pickedFile == null) return;
-                          
+
                           setDialogState(() {
                             isUploadingPoster = true;
                           });
-                          
+
                           try {
                             final bytes = await pickedFile.readAsBytes();
                             if (bytes.isNotEmpty) {
@@ -850,13 +850,13 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                             });
                           }
                         },
-                        icon: isUploadingPoster 
+                        icon: isUploadingPoster
                             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                             : const Icon(Icons.image),
                         label: Text(
-                          isUploadingPoster 
-                            ? 'Processing...' 
-                            : (posterLinkController.text.isNotEmpty ? 'Poster Attached ✅ (Tap to change)' : 'Attach Poster Image')
+                            isUploadingPoster
+                                ? 'Processing...'
+                                : (posterLinkController.text.isNotEmpty ? 'Poster Attached ✅ (Tap to change)' : 'Attach Poster Image')
                         ),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -902,18 +902,18 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                     border: OutlineInputBorder(),
                   ),
                   items:
-                      [
-                            'Technical',
-                            'Cultural',
-                            'Sports',
-                            'Academic',
-                            'Social',
-                            'Other',
-                          ]
-                          .map(
-                            (l) => DropdownMenuItem(value: l, child: Text(l)),
-                          )
-                          .toList(),
+                  [
+                    'Technical',
+                    'Cultural',
+                    'Sports',
+                    'Academic',
+                    'Social',
+                    'Other',
+                  ]
+                      .map(
+                        (l) => DropdownMenuItem(value: l, child: Text(l)),
+                  )
+                      .toList(),
                   onChanged: (v) => setDialogState(() => category = v),
                 ),
                 const SizedBox(height: 12),
@@ -962,7 +962,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                     );
                     if (t != null)
                       timeController.text =
-                          '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+                      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
                   },
                   readOnly: true,
                 ),
@@ -1004,7 +1004,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                         title: const Text('Require Volunteers'),
                         contentPadding: EdgeInsets.zero,
                         onChanged: (v) => setDialogStateInner(
-                          () => requiresVolunteers = v ?? false,
+                              () => requiresVolunteers = v ?? false,
                         ),
                       ),
                       if (requiresVolunteers) ...[
@@ -1115,25 +1115,25 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   void _handlePropose(
-    BuildContext ctx,
-    String name,
-    String desc,
-    String date,
-    String time,
-    String loc,
-    bool hasPrize,
-    String prize,
-    String poster,
-    String vis,
-    String? cat,
-    String? mode,
-    bool requiresVolunteers,
-    String volunteerCount,
-    String volunteerRole,
-    bool isTeamEvent,
-    String teamSize,
-    String totalSeats,
-  ) async {
+      BuildContext ctx,
+      String name,
+      String desc,
+      String date,
+      String time,
+      String loc,
+      bool hasPrize,
+      String prize,
+      String poster,
+      String vis,
+      String? cat,
+      String? mode,
+      bool requiresVolunteers,
+      String volunteerCount,
+      String volunteerRole,
+      bool isTeamEvent,
+      String teamSize,
+      String totalSeats,
+      ) async {
     if (name.trim().isEmpty ||
         desc.trim().isEmpty ||
         date.trim().isEmpty ||
@@ -1193,45 +1193,45 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
           .doc(clubId!)
           .collection('programs')
           .add({
-            'name': name.trim(),
-            'description': desc.trim(),
-            'date': date,
-            'time': time,
-            'location': loc.trim(),
-            'posterLink': _convertGoogleDriveLink(poster.trim()),
-            'hasPrizePool': hasPrize,
-            'prizeAmount': prize,
-            'visibility': vis,
-            'college': coll,
-            'category': cat,
-            'eventMode': mode,
-            'status': 'pending',
-            'clubId': clubId,
-            'clubName': clubName,
-            'coordinatorId': user?.uid,
-            'coordinatorName': nameStr,
-            'coordinatorEmail': user?.email,
-            // volunteer details
-            'requiresVolunteers': requiresVolunteers,
-            'volunteerCount': volunteerCount.isNotEmpty
-                ? int.tryParse(volunteerCount) ?? 0
-                : null,
-            'volunteerRole': volunteerRole.isNotEmpty
-                ? volunteerRole.trim()
-                : null,
-            // seat details
-            'totalSeats': int.tryParse(totalSeats.trim()) ?? 0,
-            'filledSeats': 0, // Need to track filled seats from the beginning
-            // team event details
-            'isTeamEvent': isTeamEvent,
-            'teamSize': isTeamEvent ? int.tryParse(teamSize.trim()) ?? 0 : null,
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-      
+        'name': name.trim(),
+        'description': desc.trim(),
+        'date': date,
+        'time': time,
+        'location': loc.trim(),
+        'posterLink': _convertGoogleDriveLink(poster.trim()),
+        'hasPrizePool': hasPrize,
+        'prizeAmount': prize,
+        'visibility': vis,
+        'college': coll,
+        'category': cat,
+        'eventMode': mode,
+        'status': 'pending',
+        'clubId': clubId,
+        'clubName': clubName,
+        'coordinatorId': user?.uid,
+        'coordinatorName': nameStr,
+        'coordinatorEmail': user?.email,
+        // volunteer details
+        'requiresVolunteers': requiresVolunteers,
+        'volunteerCount': volunteerCount.isNotEmpty
+            ? int.tryParse(volunteerCount) ?? 0
+            : null,
+        'volunteerRole': volunteerRole.isNotEmpty
+            ? volunteerRole.trim()
+            : null,
+        // seat details
+        'totalSeats': int.tryParse(totalSeats.trim()) ?? 0,
+        'filledSeats': 0, // Need to track filled seats from the beginning
+        // team event details
+        'isTeamEvent': isTeamEvent,
+        'teamSize': isTeamEvent ? int.tryParse(teamSize.trim()) ?? 0 : null,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
       // Close proposal dialog
       if (mounted) Navigator.pop(ctx);
-      
+
       // Navigate to Home or Stay on Home (Coordinator Dashboard)
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1334,10 +1334,10 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             .collection('programs')
             .doc(pId)
             .update({
-              'status': s,
-              'updatedAt': FieldValue.serverTimestamp(),
-              'requestedStatus': FieldValue.delete(),
-            });
+          'status': s,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'requestedStatus': FieldValue.delete(),
+        });
 
         // 2. Update Global Event
         final eventQuery = await FirebaseFirestore.instance
@@ -1363,10 +1363,10 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             .collection('programs')
             .doc(pId)
             .update({
-              'status': 'pending',
-              'requestedStatus': s,
-              'updatedAt': FieldValue.serverTimestamp(),
-            });
+          'status': 'pending',
+          'requestedStatus': s,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Status change to $s requested.')),
         );
@@ -1480,10 +1480,10 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   void _showEditProgramDialog(
-    BuildContext context,
-    String pId,
-    Map<String, dynamic> data,
-  ) {
+      BuildContext context,
+      String pId,
+      Map<String, dynamic> data,
+      ) {
     final nameController = TextEditingController(text: data['name']);
     final descriptionController = TextEditingController(
       text: data['description'],
@@ -1533,16 +1533,16 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                         onPressed: isUploadingPoster ? null : () async {
                           final picker = ImagePicker();
                           final pickedFile = await picker.pickImage(
-                            source: ImageSource.gallery, 
+                            source: ImageSource.gallery,
                             imageQuality: 50,
                             maxWidth: 800,
                           );
                           if (pickedFile == null) return;
-                          
+
                           setDialogState(() {
                             isUploadingPoster = true;
                           });
-                          
+
                           try {
                             final bytes = await pickedFile.readAsBytes();
                             if (bytes.isNotEmpty) {
@@ -1566,13 +1566,13 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                             });
                           }
                         },
-                        icon: isUploadingPoster 
+                        icon: isUploadingPoster
                             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                             : const Icon(Icons.image),
                         label: Text(
-                          isUploadingPoster 
-                            ? 'Processing...' 
-                            : (posterLinkController.text.isNotEmpty ? 'Poster Attached ✅ (Tap to change)' : 'Attach Poster Image')
+                            isUploadingPoster
+                                ? 'Processing...'
+                                : (posterLinkController.text.isNotEmpty ? 'Poster Attached ✅ (Tap to change)' : 'Attach Poster Image')
                         ),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1608,21 +1608,21 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                     border: OutlineInputBorder(),
                   ),
                   items:
-                      [
-                            'Technical',
-                            'Cultural',
-                            'Sports',
-                            'Academic',
-                            'Social',
-                            'Other',
-                          ]
-                          .map(
-                            (label) => DropdownMenuItem(
-                              value: label,
-                              child: Text(label),
-                            ),
-                          )
-                          .toList(),
+                  [
+                    'Technical',
+                    'Cultural',
+                    'Sports',
+                    'Academic',
+                    'Social',
+                    'Other',
+                  ]
+                      .map(
+                        (label) => DropdownMenuItem(
+                      value: label,
+                      child: Text(label),
+                    ),
+                  )
+                      .toList(),
                   onChanged: (value) {
                     setDialogState(() {
                       category = value;
@@ -1640,8 +1640,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   items: ['Online', 'Offline']
                       .map(
                         (label) =>
-                            DropdownMenuItem(value: label, child: Text(label)),
-                      )
+                        DropdownMenuItem(value: label, child: Text(label)),
+                  )
                       .toList(),
                   onChanged: (value) {
                     setDialogState(() {
@@ -1685,7 +1685,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                     );
                     if (pickedTime != null) {
                       timeController.text =
-                          '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
+                      '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
                     }
                   },
                   readOnly: true,
@@ -1890,14 +1890,14 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   String? _validateProgramForm(
-    String name,
-    String desc,
-    String date,
-    String time,
-    String loc,
-    String? category,
-    String? mode,
-  ) {
+      String name,
+      String desc,
+      String date,
+      String time,
+      String loc,
+      String? category,
+      String? mode,
+      ) {
     if (name.trim().isEmpty) return 'Program name cannot be empty';
     if (desc.trim().isEmpty) return 'Description cannot be empty';
     if (date.trim().isEmpty) return 'Date cannot be empty';
@@ -1914,25 +1914,25 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   Future<void> _updateProgram(
-    BuildContext context,
-    String programId,
-    String name,
-    String description,
-    String date,
-    String time,
-    String location,
-    String posterLink,
-    String visibility,
-    bool hasPrizePool,
-    String prizeAmount,
-    String category,
-    String eventMode,
-    bool requiresVolunteers,
-    String volunteerCount,
-    String volunteerRole,
-    bool isTeamEvent,
-    String teamSize,
-  ) async {
+      BuildContext context,
+      String programId,
+      String name,
+      String description,
+      String date,
+      String time,
+      String location,
+      String posterLink,
+      String visibility,
+      bool hasPrizePool,
+      String prizeAmount,
+      String category,
+      String eventMode,
+      bool requiresVolunteers,
+      String volunteerCount,
+      String volunteerRole,
+      bool isTeamEvent,
+      String teamSize,
+      ) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -1950,33 +1950,33 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
           .collection('programs')
           .doc(programId)
           .update({
-            'name': name.trim(),
-            'description': description.trim(),
-            'date': date,
-            'time': time,
-            'location': location.trim(),
-            'posterLink': posterLink.isNotEmpty ? posterLink.trim() : null,
-            'visibility': visibility,
-            'hasPrizePool': hasPrizePool,
-            'prizeAmount': hasPrizePool && prizeAmount.isNotEmpty
-                ? prizeAmount.trim()
-                : null,
-            'category': category,
-            'eventMode': eventMode,
-            // volunteer fields
-            'requiresVolunteers': requiresVolunteers,
-            'volunteerCount': volunteerCount.isNotEmpty
-                ? int.tryParse(volunteerCount) ?? 0
-                : null,
-            'volunteerRole': volunteerRole.isNotEmpty
-                ? volunteerRole.trim()
-                : null,
-            // team event fields
-            'isTeamEvent': isTeamEvent,
-            'teamSize': isTeamEvent ? int.tryParse(teamSize.trim()) ?? 0 : null,
-            'status': 'pending', // Reset status on edit
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
+        'name': name.trim(),
+        'description': description.trim(),
+        'date': date,
+        'time': time,
+        'location': location.trim(),
+        'posterLink': posterLink.isNotEmpty ? posterLink.trim() : null,
+        'visibility': visibility,
+        'hasPrizePool': hasPrizePool,
+        'prizeAmount': hasPrizePool && prizeAmount.isNotEmpty
+            ? prizeAmount.trim()
+            : null,
+        'category': category,
+        'eventMode': eventMode,
+        // volunteer fields
+        'requiresVolunteers': requiresVolunteers,
+        'volunteerCount': volunteerCount.isNotEmpty
+            ? int.tryParse(volunteerCount) ?? 0
+            : null,
+        'volunteerRole': volunteerRole.isNotEmpty
+            ? volunteerRole.trim()
+            : null,
+        // team event fields
+        'isTeamEvent': isTeamEvent,
+        'teamSize': isTeamEvent ? int.tryParse(teamSize.trim()) ?? 0 : null,
+        'status': 'pending', // Reset status on edit
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
       // keep the corresponding global event document in sync as well
       final eventQuery = await FirebaseFirestore.instance
           .collection('events')
@@ -2124,123 +2124,123 @@ class ProgramCard extends StatelessWidget {
         onTap: () => _showProgramDetails(context),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(statusIcon, size: 14, color: statusColor),
-                      const SizedBox(width: 4),
-                      Text(
-                        status.toUpperCase(),
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(statusIcon, size: 14, color: statusColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          status.toUpperCase(),
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const Spacer(),
-                if (status == 'pending' || status == 'rejected')
+                  const Spacer(),
+                  if (status == 'pending' || status == 'rejected')
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 18, color: Colors.blue),
+                      onPressed: onEdit,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  const SizedBox(width: 8),
                   IconButton(
-                    icon: const Icon(Icons.edit, size: 18, color: Colors.blue),
-                    onPressed: onEdit,
+                    icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                    onPressed: onDelete,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                  onPressed: onDelete,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              programData['name'] ?? 'Untitled Event',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "${programData['category'] ?? 'General'} • ${programData['date'] ?? 'TBD'}",
-              style: TextStyle(color: Colors.grey[600], fontSize: 13),
-            ),
-            if (isApproved) ...[
-              const Divider(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _statusActionButton(
-                    context,
-                    label: "Start",
-                    icon: Icons.play_arrow,
-                    active: status == 'approved',
-                    onTap: () => onStatusChange('ongoing'),
-                  ),
-                  _statusActionButton(
-                    context,
-                    label: "Finish",
-                    icon: Icons.done_all,
-                    active: status == 'ongoing',
-                    onTap: () => onStatusChange('completed'),
-                  ),
                 ],
               ),
-            ],
-            if (isCompleted) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    // Navigate to EventRegistrationsListScreen
-                    Navigator.push(
+              const SizedBox(height: 8),
+              Text(
+                programData['name'] ?? 'Untitled Event',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "${programData['category'] ?? 'General'} • ${programData['date'] ?? 'TBD'}",
+                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              ),
+              if (isApproved) ...[
+                const Divider(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _statusActionButton(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => EventRegistrationsListScreen(
-                          eventId: programId, // Or actual global event ID if needed
-                          eventName: programData['name'] ?? 'Event',
+                      label: "Start",
+                      icon: Icons.play_arrow,
+                      active: status == 'approved',
+                      onTap: () => onStatusChange('ongoing'),
+                    ),
+                    _statusActionButton(
+                      context,
+                      label: "Finish",
+                      icon: Icons.done_all,
+                      active: status == 'ongoing',
+                      onTap: () => onStatusChange('completed'),
+                    ),
+                  ],
+                ),
+              ],
+              if (isCompleted) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      // Navigate to EventRegistrationsListScreen
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EventRegistrationsListScreen(
+                            eventId: programId, // Or actual global event ID if needed
+                            eventName: programData['name'] ?? 'Event',
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.emoji_events_outlined),
-                  label: const Text("Manage Winners & Certificates"),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.orange,
-                    side: const BorderSide(color: Colors.orange),
+                      );
+                    },
+                    icon: const Icon(Icons.emoji_events_outlined),
+                    label: const Text("Manage Winners & Certificates"),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.orange,
+                      side: const BorderSide(color: Colors.orange),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
-      ),
       ),
     );
   }
 
   Widget _statusActionButton(
-    BuildContext context, {
-    required String label,
-    required IconData icon,
-    required bool active,
-    required VoidCallback onTap,
-  }) {
+      BuildContext context, {
+        required String label,
+        required IconData icon,
+        required bool active,
+        required VoidCallback onTap,
+      }) {
     return InkWell(
       onTap: active ? onTap : null,
       borderRadius: BorderRadius.circular(8),
@@ -2288,21 +2288,21 @@ class ProgramCard extends StatelessWidget {
               if (programData['posterLink'] != null && programData['posterLink'].toString().isNotEmpty) ...[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: (programData['posterLink'] != null && programData['posterLink'].toString().startsWith('data:image')) 
-                    ? Image.memory(
-                        base64Decode(programData['posterLink'].toString().split(',').last),
-                        height: 150,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                      )
-                    : Image.network(
-                        programData['posterLink'],
-                        height: 150,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                      ),
+                  child: (programData['posterLink'] != null && programData['posterLink'].toString().startsWith('data:image'))
+                      ? Image.memory(
+                    base64Decode(programData['posterLink'].toString().split(',').last),
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  )
+                      : Image.network(
+                    programData['posterLink'],
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
