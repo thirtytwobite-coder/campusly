@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'vibrant_background.dart';
 
 class EventRegistrationsListScreen extends StatefulWidget {
   final String eventId;
@@ -261,7 +262,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
       return Scaffold(
         backgroundColor: Colors.grey[50],
         appBar: AppBar(
-          title: Text(widget.eventName, style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+          title: const Text("Registrations", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.5)),
           elevation: 0,
           backgroundColor: theme.primaryColor,
           foregroundColor: Colors.white,
@@ -273,9 +274,9 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
     final bool isCompleted = _eventStatus == 'completed';
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: Text(widget.eventName, style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+        title: const Text("Registrations", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.5)),
         elevation: 0,
         backgroundColor: theme.primaryColor,
         foregroundColor: Colors.white,
@@ -293,87 +294,92 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
             ),
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('registrations')
-            .where('eventId', isEqualTo: widget.eventId)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
-          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+      body: Stack(
+        children: [
+          const VibrantBackground(),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('registrations')
+                .where('eventId', isEqualTo: widget.eventId)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
 
-          final docs = snapshot.data?.docs ?? [];
-          final winners = docs.where((d) => _getRankByName((d.data() as Map<String, dynamic>)['studentName']) != null).toList();
-          final participants = docs.where((d) => _getRankByName((d.data() as Map<String, dynamic>)['studentName']) == null).toList();
+              final docs = snapshot.data?.docs ?? [];
+              final winners = docs.where((d) => _getRankByName((d.data() as Map<String, dynamic>)['studentName']) != null).toList();
+              final participants = docs.where((d) => _getRankByName((d.data() as Map<String, dynamic>)['studentName']) == null).toList();
 
-          winners.sort((a, b) {
-            final aRank = _getRankByName((a.data() as Map<String, dynamic>)['studentName']) ?? 'zzz';
-            final bRank = _getRankByName((b.data() as Map<String, dynamic>)['studentName']) ?? 'zzz';
-            return aRank.compareTo(bRank);
-          });
+              winners.sort((a, b) {
+                final aRank = _getRankByName((a.data() as Map<String, dynamic>)['studentName']) ?? 'zzz';
+                final bRank = _getRankByName((b.data() as Map<String, dynamic>)['studentName']) ?? 'zzz';
+                return aRank.compareTo(bRank);
+              });
 
-          participants.sort((a, b) {
-            final aName = (a.data() as Map<String, dynamic>)['studentName']?.toString() ?? '';
-            final bName = (b.data() as Map<String, dynamic>)['studentName']?.toString() ?? '';
-            return aName.compareTo(bName);
-          });
+              participants.sort((a, b) {
+                final aName = (a.data() as Map<String, dynamic>)['studentName']?.toString() ?? '';
+                final bName = (b.data() as Map<String, dynamic>)['studentName']?.toString() ?? '';
+                return aName.compareTo(bName);
+              });
 
-          return Column(
-            children: [
-              _buildStatsHeader(winners.length, participants.length),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-                  physics: const BouncingScrollPhysics(),
-                  children: [
-                    _buildSectionHeader(
-                      "Event Winners", 
-                      Icons.emoji_events_rounded, 
-                      Colors.orange.shade700, 
-                      action: !widget.isFacultyView && isCompleted ? () => _showWinnersDialog() : null,
-                      showGenerateAll: winners.isNotEmpty
-                    ),
-                    if (winners.isEmpty)
-                      _buildEmptyState("No winners announced yet", "Tap 'Set Winners' to assign ranks")
-                    else ...[
-                      ...winners.map((doc) => _buildStudentCard(doc, isWinner: true, isCompleted: isCompleted)),
-                    ],
-                    
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32),
-                      child: Row(
-                        children: [
-                          Expanded(child: Divider()),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Icon(Icons.people_alt_rounded, color: Colors.grey, size: 20),
-                          ),
-                          Expanded(child: Divider()),
+              return Column(
+                children: [
+                  _buildStatsHeader(winners.length, participants.length),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+                      physics: const BouncingScrollPhysics(),
+                      children: [
+                        _buildSectionHeader(
+                          "Event Winners", 
+                          Icons.emoji_events_rounded, 
+                          Colors.orange.shade700, 
+                          action: !widget.isFacultyView && isCompleted ? () => _showWinnersDialog() : null,
+                          showGenerateAll: winners.isNotEmpty
+                        ),
+                        if (winners.isEmpty)
+                          _buildEmptyState("No winners announced yet", "Tap 'Set Winners' to assign ranks")
+                        else ...[
+                          ...winners.map((doc) => _buildStudentCard(doc, isWinner: true, isCompleted: isCompleted)),
                         ],
-                      ),
-                    ),
+                        
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32),
+                          child: Row(
+                            children: [
+                              Expanded(child: Divider()),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                child: Icon(Icons.people_alt_rounded, color: Colors.grey, size: 20),
+                              ),
+                              Expanded(child: Divider()),
+                            ],
+                          ),
+                        ),
 
-                    _buildSectionHeader(
-                      "General Participants", 
-                      Icons.groups_rounded, 
-                      theme.primaryColor,
-                      showGenerateAll: participants.isNotEmpty
+                        _buildSectionHeader(
+                          "General Participants", 
+                          Icons.groups_rounded, 
+                          theme.primaryColor,
+                          showGenerateAll: participants.isNotEmpty
+                        ),
+                        if (participants.isEmpty)
+                          _buildEmptyState("No participants registered", "Wait for students to sign up")
+                        else ...[
+                          if (!widget.isFacultyView && !_certsApproved)
+                            _buildBulkActionRow(participants, isCompleted, docs),
+                          const SizedBox(height: 12),
+                          ...participants.map((doc) => _buildStudentCard(doc, isWinner: false, isCompleted: isCompleted)),
+                        ],
+                      ],
                     ),
-                    if (participants.isEmpty)
-                      _buildEmptyState("No participants registered", "Wait for students to sign up")
-                    else ...[
-                      if (!widget.isFacultyView && !_certsApproved)
-                        _buildBulkActionRow(participants, isCompleted, docs),
-                      const SizedBox(height: 12),
-                      ...participants.map((doc) => _buildStudentCard(doc, isWinner: false, isCompleted: isCompleted)),
-                    ],
-                  ],
-                ),
-              ),
-              if (isCompleted) _buildVerificationFooter(),
-            ],
-          );
-        },
+                  ),
+                  if (isCompleted) _buildVerificationFooter(),
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -393,12 +399,27 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
           BoxShadow(color: theme.primaryColor.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
         children: [
-          _buildStatItem("Winners", winnersCount.toString(), Colors.orange.shade300),
-          Container(width: 1, height: 40, color: Colors.white.withOpacity(0.2)),
-          _buildStatItem("Total Registrations", (winnersCount + participantsCount).toString(), Colors.white),
+          Text(
+            widget.eventName,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1.0,
+            ),
+          ).animate().fadeIn(duration: 800.ms).scale(begin: const Offset(0.8, 0.8), curve: Curves.elasticOut).shimmer(duration: 2.seconds, color: Colors.white24),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatItem("Winners", winnersCount.toString(), Colors.orange.shade300).animate().fadeIn(delay: 400.ms).slideX(begin: -0.2),
+              Container(width: 1, height: 40, color: Colors.white.withOpacity(0.2)),
+              _buildStatItem("Total Registrations", (winnersCount + participantsCount).toString(), Colors.white).animate().fadeIn(delay: 400.ms).slideX(begin: 0.2),
+            ],
+          ),
         ],
       ),
     );

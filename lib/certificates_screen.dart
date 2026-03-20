@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'event_registrations_list.dart';
 import 'list_approval_screen.dart';
+import 'vibrant_background.dart';
 
 class CertificatesScreen extends StatefulWidget {
   final String clubId;
@@ -15,7 +16,7 @@ class CertificatesScreen extends StatefulWidget {
     required this.clubId,
     required this.clubName,
     this.coordinatorId,
-    this.isFaculty = false, // Added isFaculty parameter
+    this.isFaculty = false,
   });
 
   @override
@@ -34,7 +35,6 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
   }
 
   Future<void> _fetchMyProgramIds() async {
-    // If it's a faculty member, they don't need to filter by their own programs
     if (widget.isFaculty || widget.coordinatorId == null) {
       setState(() => _isLoadingIds = false);
       return;
@@ -62,11 +62,14 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text("${widget.clubName} Certificates & Winners"),
+        title: Text("${widget.clubName} Certificates"),
+        elevation: 0,
+        backgroundColor: theme.primaryColor,
+        foregroundColor: Colors.white,
         actions: [
-          // Show approval button only for faculty
           if (widget.isFaculty)
             IconButton(
               icon: const Icon(Icons.playlist_add_check),
@@ -85,130 +88,153 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
             )
         ],
       ),
-      body: _isLoadingIds
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: TextField(
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value.toLowerCase();
-                      });
-                    },
-                    decoration: InputDecoration(
-                      hintText: "Search event by name...",
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.withOpacity(0.1),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('events')
-                        .where('clubId', isEqualTo: widget.clubId)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      }
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      final allEvents = snapshot.data?.docs ?? [];
-
-                      var events = allEvents.where((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        // If it's a coordinator, filter by their programs. Faculty sees all.
-                        if (widget.coordinatorId != null && !widget.isFaculty) {
-                          final pId = data['programId'];
-                          if (!_myProgramIds.contains(pId)) return false;
-                        }
-                        
-                        final title = (data['title'] ?? '').toString().toLowerCase();
-                        return title.contains(_searchQuery);
-                      }).toList();
-
-                      events.sort((a, b) {
-                        final dateA = (a.data() as Map<String, dynamic>)['date'] ?? '';
-                        final dateB = (b.data() as Map<String, dynamic>)['date'] ?? '';
-                        return dateB.compareTo(dateA);
-                      });
-
-                      if (events.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                _searchQuery.isEmpty ? Icons.analytics_outlined : Icons.search_off,
-                                size: 80, 
-                                color: Colors.grey
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                _searchQuery.isEmpty ? "No published events found." : "No events match your search.",
-                                style: const TextStyle(fontSize: 18, color: Colors.grey)
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      return ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: events.length,
-                        itemBuilder: (context, index) {
-                          final event = events[index];
-                          final data = event.data() as Map<String, dynamic>;
-
-                          final title = data['title'] ?? 'Untitled Event';
-                          final date = data['date'] ?? 'N/A';
-
-                          return Card(
-                            elevation: 3,
-                            clipBehavior: Clip.antiAlias,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                            margin: const EdgeInsets.only(bottom: 16),
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => EventRegistrationsListScreen(
-                                      eventId: event.id,
-                                      eventName: title,
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                                    const SizedBox(height: 6),
-                                    Text("Date: $date"),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ).animate().fadeIn().slideY(begin: 0.1, delay: (50 * index).ms);
+      body: Stack(
+        children: [
+          const VibrantBackground(),
+          _isLoadingIds
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: TextField(
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value.toLowerCase();
+                          });
                         },
-                      );
-                    },
-                  ),
+                        decoration: InputDecoration(
+                          hintText: "Search events...",
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.withOpacity(0.1),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('events')
+                            .where('clubId', isEqualTo: widget.clubId)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+                          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+
+                          final allEvents = snapshot.data?.docs ?? [];
+                          var events = allEvents.where((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            if (widget.coordinatorId != null && !widget.isFaculty) {
+                              final pId = data['programId'];
+                              if (!_myProgramIds.contains(pId)) return false;
+                            }
+                            final title = (data['title'] ?? '').toString().toLowerCase();
+                            return title.contains(_searchQuery);
+                          }).toList();
+
+                          events.sort((a, b) {
+                            final dateA = (a.data() as Map<String, dynamic>)['date'] ?? '';
+                            final dateB = (b.data() as Map<String, dynamic>)['date'] ?? '';
+                            return dateB.compareTo(dateA);
+                          });
+
+                          if (events.isEmpty) {
+                            return Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.event_busy, size: 80, color: Colors.grey[300]),
+                                  const SizedBox(height: 16),
+                                  Text("No events found", style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+                                ],
+                              ),
+                            );
+                          }
+
+                          return GridView.builder(
+                            padding: const EdgeInsets.all(16),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 0.85,
+                            ),
+                            itemCount: events.length,
+                            itemBuilder: (context, index) {
+                              final event = events[index];
+                              final data = event.data() as Map<String, dynamic>;
+                              final title = data['title'] ?? 'Untitled Event';
+                              final date = data['date'] ?? 'N/A';
+
+                              return _buildCertificateGridItem(event.id, title, date, index);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+        ],
+      ),
     );
+  }
+
+  Widget _buildCertificateGridItem(String eventId, String title, String date, int index) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EventRegistrationsListScreen(
+              eventId: eventId,
+              eventName: title,
+            ),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5)),
+          ],
+          border: Border.all(color: theme.primaryColor.withOpacity(0.05)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.primaryColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.workspace_premium_rounded, color: theme.primaryColor, size: 28),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              date,
+              style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(delay: (50 * index).ms).scale(begin: const Offset(0.9, 0.9));
   }
 }

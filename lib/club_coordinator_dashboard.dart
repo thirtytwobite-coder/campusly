@@ -71,7 +71,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     }
   }
 
-  // 🔹 Fetch coordinator club
   Future<void> _fetchClubInfo() async {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -100,7 +99,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     }
   }
 
-  // 🔹 Bottom navigation
   void _onItemTapped(int index) async {
     if (index == _selectedIndex) return;
 
@@ -118,6 +116,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) async {
@@ -126,10 +126,13 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         if (exit && mounted) Navigator.pop(context);
       },
       child: Scaffold(
+        backgroundColor: isDark ? Colors.black : Colors.white,
         appBar: AppBar(
           title: Text(clubName ?? 'Coordinator Dashboard'),
+          backgroundColor: isDark ? Colors.black : Theme.of(context).primaryColor,
+          foregroundColor: Colors.white,
+          elevation: 0,
           actions: [
-            // 🔹 DIRECT student switch icon (from old file)
             IconButton(
               tooltip: "Switch to Student View",
               icon: const Icon(Icons.person_pin_circle),
@@ -140,21 +143,19 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 );
               },
             ),
-
             IconButton(
               tooltip: "Notifications",
               icon: const Icon(Icons.notifications),
               onPressed: _showNotifications,
             ),
             IconButton(
-              icon: const Icon(Icons.brightness_6),
+              icon: Icon(isDark ? Icons.brightness_7 : Icons.brightness_6),
               onPressed: _toggleTheme,
             ),
           ],
         ),
         body: NotificationListener<UserScrollNotification>(
           onNotification: (notification) {
-            // Navbar hiding disabled as requested
             return false;
           },
           child: Stack(
@@ -177,11 +178,11 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
+                  color: isDark ? const Color(0xFF1E1E1E) : Theme.of(context).cardColor,
                   boxShadow: [
                     BoxShadow(
                       blurRadius: 20,
-                      color: Colors.black.withOpacity(.1),
+                      color: Colors.black.withOpacity(isDark ? 0.3 : .1),
                     )
                   ],
                 ),
@@ -189,15 +190,15 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
                     child: GNav(
-                      rippleColor: Colors.grey[300]!,
-                      hoverColor: Colors.grey[100]!,
+                      rippleColor: isDark ? Colors.white10 : Colors.grey[300]!,
+                      hoverColor: isDark ? Colors.white24 : Colors.grey[100]!,
                       gap: 8,
                       activeColor: Colors.blue,
                       iconSize: 24,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       duration: const Duration(milliseconds: 400),
                       tabBackgroundColor: Colors.blue.withOpacity(0.1),
-                      color: Theme.of(context).iconTheme.color?.withOpacity(0.6) ?? Colors.grey,
+                      color: isDark ? Colors.white60 : Theme.of(context).iconTheme.color?.withOpacity(0.6) ?? Colors.grey,
                       tabs: [
                         GButton(icon: Icons.dashboard, text: 'Home'),
                         GButton(icon: Icons.add_circle, text: 'Add Program'),
@@ -232,6 +233,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   Widget _buildDashboardBody() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('clubs')
@@ -252,14 +255,17 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             children: [
               Text(
                 "Welcome Back,",
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(color: Colors.green),
+                style: TextStyle(
+                  color: isDark ? Colors.greenAccent : Colors.green,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
               ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.4),
               Text(
                 userName ?? "Coordinator",
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black,
                 ),
               )
                   .animate()
@@ -355,22 +361,28 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
 
               const SizedBox(height: 30),
 
-              const Text(
+              Text(
                 "Events",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 18,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
               ),
               const SizedBox(height: 15),
 
               TextField(
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
                 decoration: InputDecoration(
                   hintText: 'Search events...',
-                  prefixIcon: const Icon(Icons.search),
+                  hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.grey),
+                  prefixIcon: Icon(Icons.search, color: isDark ? Colors.white54 : Colors.grey),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
                     borderSide: BorderSide.none,
                   ),
                   filled: true,
-                  fillColor: Colors.grey.withOpacity(0.1),
+                  fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.1),
                 ),
                 onChanged: (value) {
                   setState(() {
@@ -452,9 +464,15 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                     );
                   }
 
-                  return ListView.builder(
+                  return GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 0.75,
+                    ),
                     itemCount: docs.length,
                     itemBuilder: (context, index) {
                       final programDoc = docs[index];
@@ -486,9 +504,15 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   Widget _clubDescriptionCard(String description) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      elevation: isDark ? 0 : 2,
+      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+        side: isDark ? BorderSide(color: Colors.white.withOpacity(0.1)) : BorderSide.none,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -497,9 +521,13 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   "Club Description",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 18,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
@@ -507,12 +535,15 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 ),
               ],
             ),
-            const Divider(),
+            Divider(color: isDark ? Colors.white12 : Colors.grey[300]),
             Text(
               description,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(height: 1.5),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                height: 1.5,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
             ),
           ],
         ),
@@ -527,15 +558,17 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       Color color,
       VoidCallback onTap,
       ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(15),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: isDark ? color.withOpacity(0.05) : color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withOpacity(isDark ? 0.2 : 0.3)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -544,11 +577,18 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             const SizedBox(height: 8),
             Text(
               title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              style: TextStyle(
+                fontWeight: FontWeight.bold, 
+                fontSize: 14,
+                color: isDark ? Colors.white : Colors.black,
+              ),
             ),
             Text(
               subtitle,
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 10, 
+                color: isDark ? Colors.white54 : Colors.grey,
+              ),
             ),
           ],
         ),
@@ -557,55 +597,30 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   void _showBrandingDialog(Map<String, dynamic> clubData) {
-    final logoController = TextEditingController(
-      text: clubData['profilePic'] ?? '',
-    );
-    final signatureController = TextEditingController(
-      text: clubData['signatureUrl'] ?? '',
-    );
-    final facultySignatureController = TextEditingController(
-      text: clubData['facultySignatureUrl'] ?? '',
-    );
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final logoController = TextEditingController(text: clubData['profilePic'] ?? '');
+    final signatureController = TextEditingController(text: clubData['signatureUrl'] ?? '');
+    final facultySignatureController = TextEditingController(text: clubData['facultySignatureUrl'] ?? '');
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Club Branding Settings"),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        title: Text("Club Branding Settings", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 "These settings will be applied to all your club certificates.",
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.grey),
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: logoController,
-                decoration: const InputDecoration(
-                  labelText: "Club Logo URL",
-                  hintText: "Paste image or Drive link",
-                  border: OutlineInputBorder(),
-                ),
-              ),
+              _buildBrandingField(logoController, "Club Logo URL", isDark),
               const SizedBox(height: 12),
-              TextField(
-                controller: signatureController,
-                decoration: const InputDecoration(
-                  labelText: "Coordinator Signature URL",
-                  hintText: "Paste signature image link",
-                  border: OutlineInputBorder(),
-                ),
-              ),
+              _buildBrandingField(signatureController, "Coordinator Signature URL", isDark),
               const SizedBox(height: 12),
-              TextField(
-                controller: facultySignatureController,
-                decoration: const InputDecoration(
-                  labelText: "Faculty Signature URL",
-                  hintText: "Paste faculty signature link",
-                  border: OutlineInputBorder(),
-                ),
-              ),
+              _buildBrandingField(facultySignatureController, "Faculty Signature URL", isDark),
             ],
           ),
         ),
@@ -622,15 +637,12 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   .update({
                 'profilePic': logoController.text.trim(),
                 'signatureUrl': signatureController.text.trim(),
-                'facultySignatureUrl': facultySignatureController.text
-                    .trim(),
+                'facultySignatureUrl': facultySignatureController.text.trim(),
               });
               if (mounted) {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Branding updated successfully!"),
-                  ),
+                  const SnackBar(content: Text("Branding updated successfully!")),
                 );
               }
             },
@@ -641,15 +653,32 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     );
   }
 
+  Widget _buildBrandingField(TextEditingController controller, String label, bool isDark) {
+    return TextField(
+      controller: controller,
+      style: TextStyle(color: isDark ? Colors.white : Colors.black),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+        hintText: "Paste image link",
+        hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.black26),
+        border: const OutlineInputBorder(),
+        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.black26)),
+      ),
+    );
+  }
+
   void _showAddProgramProcedure(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
         ),
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -661,50 +690,55 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: isDark ? Colors.white12 : Colors.grey[300],
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               "Program Proposal Procedure",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 22, 
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black,
+              ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               "Follow these steps to submit a new event for approval.",
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: isDark ? Colors.white54 : Colors.grey),
             ),
             const SizedBox(height: 24),
             _buildStep(
               icon: Icons.edit_note,
               title: "1. Basic Info",
-              description:
-              "Provide event name, category, and a clear description.",
+              description: "Provide event name, category, and a clear description.",
+              isDark: isDark,
             ),
             _buildStep(
               icon: Icons.calendar_month,
               title: "2. Schedule",
-              description:
-              "Pick a date and time that doesn't conflict with other events.",
+              description: "Pick a date and time that doesn't conflict with other events.",
+              isDark: isDark,
             ),
             _buildStep(
               icon: Icons.location_on_outlined,
               title: "3. Venue",
               description: "Specify the exact location/venue for the event.",
+              isDark: isDark,
             ),
             _buildStep(
               icon: Icons.visibility_outlined,
               title: "4. Scope",
-              description:
-              "Choose if the event is 'College Only' or open to the 'Public'.",
+              description: "Choose if the event is 'College Only' or open to the 'Public'.",
+              isDark: isDark,
             ),
             _buildStep(
               icon: Icons.send_rounded,
               title: "5. Faculty Review",
-              description:
-              "Once proposed, faculty will review and notify you of the status.",
+              description: "Once proposed, faculty will review and notify you of the status.",
+              isDark: isDark,
             ),
             const SizedBox(height: 32),
             SizedBox(
@@ -739,6 +773,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     required IconData icon,
     required String title,
     required String description,
+    bool isDark = false,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
@@ -748,7 +783,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.blue[50],
+              color: isDark ? Colors.blue.withOpacity(0.1) : Colors.blue[50],
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: Colors.blue, size: 20),
@@ -760,15 +795,19 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   description,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  style: TextStyle(
+                    fontSize: 13, 
+                    color: isDark ? Colors.white60 : Colors.grey[700],
+                  ),
                 ),
               ],
             ),
@@ -779,6 +818,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   void _showAddProgramDialog(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
     final dateController = TextEditingController();
@@ -791,11 +831,9 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     String visibility = 'college';
     String? category;
     String? eventMode;
-    // volunteer fields
     bool requiresVolunteers = false;
     final volunteerCountController = TextEditingController();
     final volunteerRoleController = TextEditingController();
-    // team event fields
     bool isTeamEvent = false;
     final teamSizeController = TextEditingController();
 
@@ -805,7 +843,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('New Program Proposal'),
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          title: Text('New Program Proposal', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -867,117 +906,66 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Program Name *',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                _buildProposalField(nameController, 'Program Name *', isDark),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description *',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
-                ),
+                _buildProposalField(descriptionController, 'Description *', isDark, maxLines: 3),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: totalSeatsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Total Seats (Capacity) *',
-                    border: OutlineInputBorder(),
-                    hintText: 'e.g., 100',
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
+                _buildProposalField(totalSeatsController, 'Total Seats (Capacity) *', isDark, keyboardType: TextInputType.number),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                  dropdownColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
                   value: category,
-                  hint: const Text('Select Category'),
-                  decoration: const InputDecoration(
+                  hint: Text('Select Category', style: TextStyle(color: isDark ? Colors.white54 : Colors.grey)),
+                  decoration: InputDecoration(
                     labelText: 'Category *',
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+                    border: const OutlineInputBorder(),
                   ),
-                  items:
-                  [
-                    'Technical',
-                    'Cultural',
-                    'Sports',
-                    'Academic',
-                    'Social',
-                    'Other',
-                  ]
-                      .map(
-                        (l) => DropdownMenuItem(value: l, child: Text(l)),
-                  )
+                  items: ['Technical', 'Cultural', 'Sports', 'Academic', 'Social', 'Other']
+                      .map((l) => DropdownMenuItem(value: l, child: Text(l, style: TextStyle(color: isDark ? Colors.white : Colors.black))))
                       .toList(),
                   onChanged: (v) => setDialogState(() => category = v),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                  dropdownColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
                   value: eventMode,
-                  hint: const Text('Select Event Mode'),
-                  decoration: const InputDecoration(
+                  hint: Text('Select Event Mode', style: TextStyle(color: isDark ? Colors.white54 : Colors.grey)),
+                  decoration: InputDecoration(
                     labelText: 'Event Mode *',
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+                    border: const OutlineInputBorder(),
                   ),
                   items: ['Online', 'Offline']
-                      .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                      .map((m) => DropdownMenuItem(value: m, child: Text(m, style: TextStyle(color: isDark ? Colors.white : Colors.black))))
                       .toList(),
                   onChanged: (v) => setDialogState(() => eventMode = v),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: dateController,
-                  decoration: const InputDecoration(
-                    labelText: 'Date (YYYY-MM-DD) *',
-                    border: OutlineInputBorder(),
-                  ),
-                  onTap: () async {
+                _buildProposalField(dateController, 'Date (YYYY-MM-DD) *', isDark, readOnly: true, onTap: () async {
                     final d = await showDatePicker(
                       context: context,
                       initialDate: DateTime.now(),
                       firstDate: DateTime(2020),
                       lastDate: DateTime(2100),
                     );
-                    if (d != null)
-                      dateController.text = DateFormat('yyyy-MM-dd').format(d);
-                  },
-                  readOnly: true,
-                ),
+                    if (d != null) dateController.text = DateFormat('yyyy-MM-dd').format(d);
+                }),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: timeController,
-                  decoration: const InputDecoration(
-                    labelText: 'Time (HH:MM) *',
-                    border: OutlineInputBorder(),
-                  ),
-                  onTap: () async {
+                _buildProposalField(timeController, 'Time (HH:MM) *', isDark, readOnly: true, onTap: () async {
                     final t = await showTimePicker(
                       context: context,
                       initialTime: TimeOfDay.now(),
                     );
                     if (t != null)
-                      timeController.text =
-                      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-                  },
-                  readOnly: true,
-                ),
+                      timeController.text = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+                }),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: locationController,
-                  decoration: const InputDecoration(
-                    labelText: 'Venue *',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                _buildProposalField(locationController, 'Venue *', isDark),
                 const SizedBox(height: 12),
                 CheckboxListTile(
                   value: hasPrizePool,
-                  title: const Text('Prize Pool'),
+                  title: Text('Prize Pool', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
                   contentPadding: EdgeInsets.zero,
                   onChanged: (v) => setDialogState(() {
                     hasPrizePool = v ?? false;
@@ -985,97 +973,46 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   }),
                 ),
                 if (hasPrizePool)
-                  TextField(
-                    controller: prizeAmountController,
-                    decoration: const InputDecoration(
-                      labelText: 'Prize Amount',
-                      prefixText: '₹ ',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
+                  _buildProposalField(prizeAmountController, 'Prize Amount', isDark, prefixText: '₹ ', keyboardType: TextInputType.number),
                 const SizedBox(height: 12),
-                // Volunteer option for programs
-                StatefulBuilder(
-                  builder: (context, setDialogStateInner) => Column(
-                    children: [
-                      CheckboxListTile(
-                        value: requiresVolunteers,
-                        title: const Text('Require Volunteers'),
-                        contentPadding: EdgeInsets.zero,
-                        onChanged: (v) => setDialogStateInner(
-                              () => requiresVolunteers = v ?? false,
-                        ),
-                      ),
-                      if (requiresVolunteers) ...[
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: volunteerCountController,
-                          decoration: const InputDecoration(
-                            labelText: 'Number of Volunteers',
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: volunteerRoleController,
-                          decoration: const InputDecoration(
-                            labelText: 'Volunteer Role / Instructions',
-                            border: OutlineInputBorder(),
-                          ),
-                          maxLines: 2,
-                        ),
-                      ],
-                    ],
-                  ),
+                CheckboxListTile(
+                  value: requiresVolunteers,
+                  title: Text('Require Volunteers', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                  contentPadding: EdgeInsets.zero,
+                  onChanged: (v) => setDialogState(() => requiresVolunteers = v ?? false),
                 ),
+                if (requiresVolunteers) ...[
+                  const SizedBox(height: 8),
+                  _buildProposalField(volunteerCountController, 'Number of Volunteers', isDark, keyboardType: TextInputType.number),
+                  const SizedBox(height: 8),
+                  _buildProposalField(volunteerRoleController, 'Volunteer Role / Instructions', isDark, maxLines: 2),
+                ],
                 const SizedBox(height: 12),
-                StatefulBuilder(
-                  builder: (context, setDialogStateInner) => Column(
-                    children: [
-                      CheckboxListTile(
-                        value: isTeamEvent,
-                        title: const Text('Team Event'),
-                        subtitle: const Text(
-                          'Students must register as a team',
-                        ),
-                        contentPadding: EdgeInsets.zero,
-                        onChanged: (v) =>
-                            setDialogStateInner(() => isTeamEvent = v ?? false),
-                      ),
-                      if (isTeamEvent) ...[
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: teamSizeController,
-                          decoration: const InputDecoration(
-                            labelText: 'Team Size',
-                            hintText: 'e.g. 3, 4, 5',
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ],
-                    ],
-                  ),
+                CheckboxListTile(
+                  value: isTeamEvent,
+                  title: Text('Team Event', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                  subtitle: Text('Students must register as a team', style: TextStyle(color: isDark ? Colors.white54 : Colors.grey)),
+                  contentPadding: EdgeInsets.zero,
+                  onChanged: (v) => setDialogState(() => isTeamEvent = v ?? false),
                 ),
+                if (isTeamEvent) ...[
+                  const SizedBox(height: 8),
+                  _buildProposalField(teamSizeController, 'Team Size', isDark, keyboardType: TextInputType.number),
+                ],
                 const SizedBox(height: 16),
-                const Divider(),
-                const Text(
-                  'Visibility',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+                Divider(color: isDark ? Colors.white12 : Colors.grey[300]),
+                Text('Visibility', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
                 RadioListTile<String>(
                   value: 'college',
                   groupValue: visibility,
                   onChanged: (v) => setDialogState(() => visibility = v!),
-                  title: const Text('College Only'),
+                  title: Text('College Only', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
                 ),
                 RadioListTile<String>(
                   value: 'public',
                   groupValue: visibility,
                   onChanged: (v) => setDialogState(() => visibility = v!),
-                  title: const Text('Public'),
+                  title: Text('Public', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
                 ),
               ],
             ),
@@ -1110,6 +1047,25 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildProposalField(TextEditingController controller, String label, bool isDark, {int maxLines = 1, bool readOnly = false, VoidCallback? onTap, TextInputType? keyboardType, String? prefixText}) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      readOnly: readOnly,
+      onTap: onTap,
+      keyboardType: keyboardType,
+      style: TextStyle(color: isDark ? Colors.white : Colors.black),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+        prefixText: prefixText,
+        prefixStyle: TextStyle(color: isDark ? Colors.white : Colors.black),
+        border: const OutlineInputBorder(),
+        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.black26)),
       ),
     );
   }
@@ -1187,7 +1143,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       final coll =
           (uDoc.data() as Map<String, dynamic>?)?['college'] ?? 'Unknown';
 
-      // show loading state if needed, though Navigator.pop happens immediately after Firestore call
       await FirebaseFirestore.instance
           .collection('clubs')
           .doc(clubId!)
@@ -1211,7 +1166,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         'coordinatorId': user?.uid,
         'coordinatorName': nameStr,
         'coordinatorEmail': user?.email,
-        // volunteer details
         'requiresVolunteers': requiresVolunteers,
         'volunteerCount': volunteerCount.isNotEmpty
             ? int.tryParse(volunteerCount) ?? 0
@@ -1219,20 +1173,16 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         'volunteerRole': volunteerRole.isNotEmpty
             ? volunteerRole.trim()
             : null,
-        // seat details
         'totalSeats': int.tryParse(totalSeats.trim()) ?? 0,
-        'filledSeats': 0, // Need to track filled seats from the beginning
-        // team event details
+        'filledSeats': 0,
         'isTeamEvent': isTeamEvent,
         'teamSize': isTeamEvent ? int.tryParse(teamSize.trim()) ?? 0 : null,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // Close proposal dialog
       if (mounted) Navigator.pop(ctx);
 
-      // Navigate to Home or Stay on Home (Coordinator Dashboard)
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Program proposed successfully!')),
@@ -1274,10 +1224,13 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   void _showNotifications() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Notifications"),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        title: Text("Notifications", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
         content: SizedBox(
           width: double.maxFinite,
           height: 400,
@@ -1291,21 +1244,21 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
               if (snapshot.connectionState == ConnectionState.waiting)
                 return const Center(child: CircularProgressIndicator());
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
-                return const Center(child: Text("No notifications"));
+                return Center(child: Text("No notifications", style: TextStyle(color: isDark ? Colors.white54 : Colors.grey)));
               final docs = snapshot.data!.docs;
               return ListView.separated(
                 itemCount: docs.length,
-                separatorBuilder: (_, __) => const Divider(),
+                separatorBuilder: (_, __) => Divider(color: isDark ? Colors.white12 : Colors.grey[300]),
                 itemBuilder: (context, index) {
                   final data = docs[index].data() as Map<String, dynamic>;
                   return ListTile(
                     title: Text(
                       data['title'] ?? 'Notification',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
                     ),
-                    subtitle: Text(data['message'] ?? ''),
+                    subtitle: Text(data['message'] ?? '', style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
                     trailing: IconButton(
-                      icon: const Icon(Icons.delete, size: 20),
+                      icon: Icon(Icons.delete, size: 20, color: isDark ? Colors.white54 : Colors.grey),
                       onPressed: () => docs[index].reference.delete(),
                     ),
                   );
@@ -1327,7 +1280,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   void _requestStatusChange(String pId, String s) async {
     try {
       if (['ongoing', 'completed', 'cancelled'].contains(s)) {
-        // 1. Update local Club Program directly
         await FirebaseFirestore.instance
             .collection('clubs')
             .doc(clubId!)
@@ -1339,7 +1291,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
           'requestedStatus': FieldValue.delete(),
         });
 
-        // 2. Update Global Event
         final eventQuery = await FirebaseFirestore.instance
             .collection('events')
             .where('programId', isEqualTo: pId)
@@ -1356,7 +1307,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
           context,
         ).showSnackBar(SnackBar(content: Text('Event marked as $s')));
       } else {
-        // Fallback for other statuses (request approval)
         await FirebaseFirestore.instance
             .collection('clubs')
             .doc(clubId!)
@@ -1379,14 +1329,12 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   void _confirmDelete(BuildContext context, String pId) async {
-    // 🔹 1. Check registrations for the PROGRAM ID (local club programs)
     final progRegs = await FirebaseFirestore.instance
         .collection('registrations')
         .where('eventId', isEqualTo: pId)
         .limit(1)
         .get();
 
-    // 🔹 2. Check registrations for the GLOBAL EVENT ID (linked via programId)
     final globalEventQuery = await FirebaseFirestore.instance
         .collection('events')
         .where('programId', isEqualTo: pId)
@@ -1440,7 +1388,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
           TextButton(
             onPressed: () async {
               try {
-                // 1. Delete local program
                 await FirebaseFirestore.instance
                     .collection('clubs')
                     .doc(clubId!)
@@ -1448,7 +1395,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                     .doc(pId)
                     .delete();
 
-                // 2. Delete global event(s)
                 final globalEvents = await FirebaseFirestore.instance
                     .collection('events')
                     .where('programId', isEqualTo: pId)
@@ -1484,36 +1430,23 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       String pId,
       Map<String, dynamic> data,
       ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final nameController = TextEditingController(text: data['name']);
-    final descriptionController = TextEditingController(
-      text: data['description'],
-    );
+    final descriptionController = TextEditingController(text: data['description']);
     final dateController = TextEditingController(text: data['date']);
     final locationController = TextEditingController(text: data['location']);
     final timeController = TextEditingController(text: data['time']);
-    final posterLinkController = TextEditingController(
-      text: data['posterLink'] ?? '',
-    );
-    final prizeAmountController = TextEditingController(
-      text: data['prizeAmount'] ?? '',
-    );
+    final posterLinkController = TextEditingController(text: data['posterLink'] ?? '');
+    final prizeAmountController = TextEditingController(text: data['prizeAmount'] ?? '');
     String visibility = data['visibility'] ?? 'college';
     bool hasPrizePool = data['hasPrizePool'] ?? false;
     String? category = data['category'];
     String? eventMode = data['eventMode'];
-    // volunteer fields (pre-fill from program data)
     bool requiresVolunteers = data['requiresVolunteers'] ?? false;
-    final volunteerCountController = TextEditingController(
-      text: (data['volunteerCount'] ?? '').toString(),
-    );
-    final volunteerRoleController = TextEditingController(
-      text: data['volunteerRole'] ?? '',
-    );
-    // team fields
+    final volunteerCountController = TextEditingController(text: (data['volunteerCount'] ?? '').toString());
+    final volunteerRoleController = TextEditingController(text: data['volunteerRole'] ?? '');
     bool isTeamEvent = data['isTeamEvent'] ?? false;
-    final teamSizeController = TextEditingController(
-      text: (data['teamSize'] ?? '').toString(),
-    );
+    final teamSizeController = TextEditingController(text: (data['teamSize'] ?? '').toString());
 
     bool isUploadingPoster = false;
 
@@ -1521,7 +1454,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Edit Program'),
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          title: Text('Edit Program', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1583,248 +1517,122 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Program Name *',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                _buildProposalField(nameController, 'Program Name *', isDark),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description *',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
-                ),
+                _buildProposalField(descriptionController, 'Description *', isDark, maxLines: 3),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                  dropdownColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
                   value: category,
-                  hint: const Text('Select Category'),
-                  decoration: const InputDecoration(
+                  hint: Text('Select Category', style: TextStyle(color: isDark ? Colors.white54 : Colors.grey)),
+                  decoration: InputDecoration(
                     labelText: 'Category *',
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+                    border: const OutlineInputBorder(),
                   ),
-                  items:
-                  [
-                    'Technical',
-                    'Cultural',
-                    'Sports',
-                    'Academic',
-                    'Social',
-                    'Other',
-                  ]
-                      .map(
-                        (label) => DropdownMenuItem(
-                      value: label,
-                      child: Text(label),
-                    ),
-                  )
+                  items: ['Technical', 'Cultural', 'Sports', 'Academic', 'Social', 'Other']
+                      .map((label) => DropdownMenuItem(value: label, child: Text(label, style: TextStyle(color: isDark ? Colors.white : Colors.black))))
                       .toList(),
-                  onChanged: (value) {
-                    setDialogState(() {
-                      category = value;
-                    });
-                  },
+                  onChanged: (value) => setDialogState(() => category = value),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                  dropdownColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
                   value: eventMode,
-                  hint: const Text('Select Event Mode'),
-                  decoration: const InputDecoration(
+                  hint: Text('Select Event Mode', style: TextStyle(color: isDark ? Colors.white54 : Colors.grey)),
+                  decoration: InputDecoration(
                     labelText: 'Event Mode *',
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+                    border: const OutlineInputBorder(),
                   ),
                   items: ['Online', 'Offline']
-                      .map(
-                        (label) =>
-                        DropdownMenuItem(value: label, child: Text(label)),
-                  )
+                      .map((label) => DropdownMenuItem(value: label, child: Text(label, style: TextStyle(color: isDark ? Colors.white : Colors.black))))
                       .toList(),
-                  onChanged: (value) {
-                    setDialogState(() {
-                      eventMode = value;
-                    });
-                  },
+                  onChanged: (value) => setDialogState(() => eventMode = value),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: dateController,
-                  decoration: const InputDecoration(
-                    labelText: 'Date (YYYY-MM-DD) *',
-                    border: OutlineInputBorder(),
-                  ),
-                  onTap: () async {
+                _buildProposalField(dateController, 'Date (YYYY-MM-DD) *', isDark, readOnly: true, onTap: () async {
                     final pickedDate = await showDatePicker(
                       context: context,
                       initialDate: DateTime.now(),
                       firstDate: DateTime(2020),
                       lastDate: DateTime(2100),
                     );
-                    if (pickedDate != null) {
-                      dateController.text = DateFormat(
-                        'yyyy-MM-dd',
-                      ).format(pickedDate);
-                    }
-                  },
-                  readOnly: true,
-                ),
+                    if (pickedDate != null) dateController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+                }),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: timeController,
-                  decoration: const InputDecoration(
-                    labelText: 'Time (HH:MM) *',
-                    border: OutlineInputBorder(),
-                  ),
-                  onTap: () async {
+                _buildProposalField(timeController, 'Time (HH:MM) *', isDark, readOnly: true, onTap: () async {
                     final pickedTime = await showTimePicker(
                       context: context,
                       initialTime: TimeOfDay.now(),
                     );
-                    if (pickedTime != null) {
-                      timeController.text =
-                      '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
-                    }
-                  },
-                  readOnly: true,
-                ),
+                    if (pickedTime != null)
+                      timeController.text = '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
+                }),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: locationController,
-                  decoration: const InputDecoration(
-                    labelText: 'Venue *',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                _buildProposalField(locationController, 'Venue *', isDark),
                 const SizedBox(height: 12),
                 CheckboxListTile(
                   value: hasPrizePool,
+                  title: Text('Prize Pool Available', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                  subtitle: Text('Does this program have prize rewards?', style: TextStyle(color: isDark ? Colors.white54 : Colors.grey)),
+                  contentPadding: EdgeInsets.zero,
                   onChanged: (value) {
                     setDialogState(() {
                       hasPrizePool = value ?? false;
-                      if (!hasPrizePool) {
-                        prizeAmountController.clear();
-                      }
+                      if (!hasPrizePool) prizeAmountController.clear();
                     });
                   },
-                  title: const Text('Prize Pool Available'),
-                  subtitle: const Text('Does this program have prize rewards?'),
-                  contentPadding: EdgeInsets.zero,
                 ),
                 if (hasPrizePool) ...[
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: prizeAmountController,
-                    decoration: const InputDecoration(
-                      labelText: 'Prize Amount',
-                      hintText: 'e.g., 5000, 10000',
-                      border: OutlineInputBorder(),
-                      prefixText: '₹ ',
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
+                  _buildProposalField(prizeAmountController, 'Prize Amount', isDark, prefixText: '₹ ', keyboardType: TextInputType.number),
                 ],
                 const SizedBox(height: 16),
-                // Volunteer settings (editable)
-                StatefulBuilder(
-                  builder: (context, setInner) => Column(
-                    children: [
-                      CheckboxListTile(
-                        value: requiresVolunteers,
-                        title: const Text('Require Volunteers'),
-                        contentPadding: EdgeInsets.zero,
-                        onChanged: (v) =>
-                            setInner(() => requiresVolunteers = v ?? false),
-                      ),
-                      if (requiresVolunteers) ...[
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: volunteerCountController,
-                          decoration: const InputDecoration(
-                            labelText: 'Number of Volunteers',
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: volunteerRoleController,
-                          decoration: const InputDecoration(
-                            labelText: 'Volunteer Role / Instructions',
-                            border: OutlineInputBorder(),
-                          ),
-                          maxLines: 2,
-                        ),
-                      ],
-                    ],
-                  ),
+                CheckboxListTile(
+                  value: requiresVolunteers,
+                  title: Text('Require Volunteers', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                  contentPadding: EdgeInsets.zero,
+                  onChanged: (v) => setDialogState(() => requiresVolunteers = v ?? false),
                 ),
+                if (requiresVolunteers) ...[
+                  const SizedBox(height: 8),
+                  _buildProposalField(volunteerCountController, 'Number of Volunteers', isDark, keyboardType: TextInputType.number),
+                  const SizedBox(height: 8),
+                  _buildProposalField(volunteerRoleController, 'Volunteer Role / Instructions', isDark, maxLines: 2),
+                ],
                 const SizedBox(height: 12),
-                StatefulBuilder(
-                  builder: (context, setInner) => Column(
-                    children: [
-                      CheckboxListTile(
-                        value: isTeamEvent,
-                        title: const Text('Team Event'),
-                        subtitle: const Text(
-                          'Students must register as a team',
-                        ),
-                        contentPadding: EdgeInsets.zero,
-                        onChanged: (v) =>
-                            setInner(() => isTeamEvent = v ?? false),
-                      ),
-                      if (isTeamEvent) ...[
-                        const SizedBox(height: 8),
-                        TextField(
-                          controller: teamSizeController,
-                          decoration: const InputDecoration(
-                            labelText: 'Team Size',
-                            hintText: 'e.g. 3, 4, 5',
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ],
-                    ],
-                  ),
+                CheckboxListTile(
+                  value: isTeamEvent,
+                  title: Text('Team Event', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                  subtitle: Text('Students must register as a team', style: TextStyle(color: isDark ? Colors.white54 : Colors.grey)),
+                  contentPadding: EdgeInsets.zero,
+                  onChanged: (v) => setDialogState(() => isTeamEvent = v ?? false),
                 ),
+                if (isTeamEvent) ...[
+                  const SizedBox(height: 8),
+                  _buildProposalField(teamSizeController, 'Team Size', isDark, keyboardType: TextInputType.number),
+                ],
                 const Divider(),
                 const SizedBox(height: 8),
-                const Text(
-                  'Event Visibility',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
+                Text('Event Visibility', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: isDark ? Colors.white : Colors.black)),
                 const SizedBox(height: 12),
                 Column(
                   children: [
                     RadioListTile<String>(
                       value: 'college',
                       groupValue: visibility,
-                      onChanged: (value) {
-                        setDialogState(() {
-                          visibility = value!;
-                        });
-                      },
-                      title: const Text('College Only'),
-                      subtitle: const Text(
-                        'Only students from this college can participate',
-                      ),
+                      onChanged: (value) => setDialogState(() => visibility = value!),
+                      title: Text('College Only', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                      subtitle: Text('Only students from this college can participate', style: TextStyle(color: isDark ? Colors.white54 : Colors.grey)),
                       contentPadding: EdgeInsets.zero,
                     ),
                     RadioListTile<String>(
                       value: 'public',
                       groupValue: visibility,
-                      onChanged: (value) {
-                        setDialogState(() {
-                          visibility = value!;
-                        });
-                      },
-                      title: const Text('Public'),
-                      subtitle: const Text(
-                        'Students from other colleges can also participate',
-                      ),
+                      onChanged: (value) => setDialogState(() => visibility = value!),
+                      title: Text('Public', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                      subtitle: Text('Students from other colleges can also participate', style: TextStyle(color: isDark ? Colors.white54 : Colors.grey)),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ],
@@ -1854,9 +1662,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 );
 
                 if (validationError != null) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(validationError)));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(validationError)));
                   return;
                 }
 
@@ -1963,7 +1769,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             : null,
         'category': category,
         'eventMode': eventMode,
-        // volunteer fields
         'requiresVolunteers': requiresVolunteers,
         'volunteerCount': volunteerCount.isNotEmpty
             ? int.tryParse(volunteerCount) ?? 0
@@ -1971,13 +1776,11 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         'volunteerRole': volunteerRole.isNotEmpty
             ? volunteerRole.trim()
             : null,
-        // team event fields
         'isTeamEvent': isTeamEvent,
         'teamSize': isTeamEvent ? int.tryParse(teamSize.trim()) ?? 0 : null,
-        'status': 'pending', // Reset status on edit
+        'status': 'pending',
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      // keep the corresponding global event document in sync as well
       final eventQuery = await FirebaseFirestore.instance
           .collection('events')
           .where('programId', isEqualTo: programId)
@@ -2012,17 +1815,22 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   Future<void> _showEditDescriptionDialog(String current) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final controller = TextEditingController(text: current);
     return showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Edit Club Description"),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        title: Text("Edit Club Description", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
         content: TextField(
           controller: controller,
           maxLines: 4,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
+          style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.black26)),
             hintText: "Describe your club activities...",
+            hintStyle: TextStyle(color: isDark ? Colors.white24 : Colors.black26),
           ),
         ),
         actions: [
@@ -2048,11 +1856,13 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   }
 
   Future<bool?> _showExitDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Exit Dashboard?"),
-        content: const Text("Do you want to exit the application?"),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        title: Text("Exit Dashboard?", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+        content: Text("Do you want to exit the application?", style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -2088,6 +1898,7 @@ class ProgramCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final status = (programData['status'] ?? 'pending').toString().toLowerCase();
     final bool isCompleted = status == 'completed';
     final bool isApproved = status == 'approved' || status == 'ongoing' || status == 'completed';
@@ -2097,7 +1908,7 @@ class ProgramCard extends StatelessWidget {
 
     switch (status) {
       case 'approved':
-        statusColor = Colors.green;
+        statusColor = isDark ? Colors.greenAccent : Colors.green;
         statusIcon = Icons.check_circle;
         break;
       case 'ongoing':
@@ -2105,82 +1916,87 @@ class ProgramCard extends StatelessWidget {
         statusIcon = Icons.play_circle_filled;
         break;
       case 'completed':
-        statusColor = Colors.blue;
+        statusColor = isDark ? Colors.lightBlueAccent : Colors.blue;
         statusIcon = Icons.task_alt;
         break;
       case 'rejected':
-        statusColor = Colors.red;
+        statusColor = isDark ? Colors.redAccent : Colors.red;
         statusIcon = Icons.cancel;
         break;
       default:
-        statusColor = Colors.grey;
+        statusColor = isDark ? Colors.white54 : Colors.grey;
         statusIcon = Icons.hourglass_empty;
     }
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: isDark ? 0 : 2,
+      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+        side: isDark ? BorderSide(color: Colors.white.withOpacity(0.1)) : BorderSide.none,
+      ),
       child: InkWell(
         onTap: () => _showProgramDetails(context),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(15),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
+                      shape: BoxShape.circle,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(statusIcon, size: 14, color: statusColor),
-                        const SizedBox(width: 4),
-                        Text(
-                          status.toUpperCase(),
-                          style: TextStyle(
-                            color: statusColor,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: Icon(statusIcon, size: 16, color: statusColor),
                   ),
-                  const Spacer(),
-                  if (status == 'pending' || status == 'rejected')
-                    IconButton(
-                      icon: const Icon(Icons.edit, size: 18, color: Colors.blue),
-                      onPressed: onEdit,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                    onPressed: onDelete,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                  Row(
+                    children: [
+                      if (status == 'pending' || status == 'rejected')
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 16, color: Colors.blue),
+                          onPressed: onEdit,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: Icon(Icons.delete_outline, size: 16, color: isDark ? Colors.redAccent : Colors.red),
+                        onPressed: onDelete,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
                   ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
                 programData['name'] ?? 'Untitled Event',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 14,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
-                "${programData['category'] ?? 'General'} • ${programData['date'] ?? 'TBD'}",
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                programData['category'] ?? 'General',
+                style: TextStyle(color: isDark ? Colors.white54 : Colors.grey[600], fontSize: 11),
               ),
-              if (isApproved) ...[
-                const Divider(height: 20),
+              Text(
+                programData['date'] ?? 'TBD',
+                style: TextStyle(color: isDark ? Colors.white38 : Colors.grey[500], fontSize: 10),
+              ),
+              const Spacer(),
+              if (isApproved && !isCompleted) ...[
+                Divider(color: isDark ? Colors.white12 : Colors.grey[300]),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -2202,28 +2018,28 @@ class ProgramCard extends StatelessWidget {
                 ),
               ],
               if (isCompleted) ...[
-                const SizedBox(height: 12),
+                Divider(color: isDark ? Colors.white12 : Colors.grey[300]),
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton.icon(
+                  child: OutlinedButton(
                     onPressed: () {
-                      // Navigate to EventRegistrationsListScreen
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => EventRegistrationsListScreen(
-                            eventId: programId, // Or actual global event ID if needed
+                            eventId: programId,
                             eventName: programData['name'] ?? 'Event',
                           ),
                         ),
                       );
                     },
-                    icon: const Icon(Icons.emoji_events_outlined),
-                    label: const Text("Manage Winners & Certificates"),
                     style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.zero,
                       foregroundColor: Colors.orange,
                       side: const BorderSide(color: Colors.orange),
+                      textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
                     ),
+                    child: const Text("MANAGE WINNERS"),
                   ),
                 ),
               ],
@@ -2241,45 +2057,43 @@ class ProgramCard extends StatelessWidget {
         required bool active,
         required VoidCallback onTap,
       }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = isDark ? Colors.blueAccent : Theme.of(context).primaryColor;
+    
     return InkWell(
       onTap: active ? onTap : null,
       borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? Theme.of(context).primaryColor.withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: active ? Theme.of(context).primaryColor : Colors.grey[300],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: active ? primaryColor : (isDark ? Colors.white24 : Colors.grey[300]),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              color: active ? primaryColor : (isDark ? Colors.white24 : Colors.grey[300]),
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                color: active ? Theme.of(context).primaryColor : Colors.grey[300],
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   void _showProgramDetails(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: Text(programData['name'] ?? 'Event Details',
-            style: const TextStyle(fontWeight: FontWeight.bold)),
+            style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2306,31 +2120,34 @@ class ProgramCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
               ],
-              Text(programData['description'] ?? 'No description available', style: const TextStyle(fontSize: 14)),
+              Text(
+                programData['description'] ?? 'No description available', 
+                style: TextStyle(fontSize: 14, color: isDark ? Colors.white70 : Colors.black87)
+              ),
               const SizedBox(height: 16),
-              _buildDetailRow(ctx, Icons.calendar_today, "Date", programData['date'] ?? 'TBD'),
-              _buildDetailRow(ctx, Icons.access_time, "Time", programData['time'] ?? 'TBD'),
-              _buildDetailRow(ctx, Icons.location_on, "Venue", programData['location'] ?? 'TBD'),
-              _buildDetailRow(ctx, Icons.category, "Category", programData['category'] ?? 'General'),
-              _buildDetailRow(ctx, Icons.visibility, "Visibility", programData['visibility']?.toString().toUpperCase() ?? 'COLLEGE'),
+              _buildDetailRow(ctx, Icons.calendar_today, "Date", programData['date'] ?? 'TBD', isDark),
+              _buildDetailRow(ctx, Icons.access_time, "Time", programData['time'] ?? 'TBD', isDark),
+              _buildDetailRow(ctx, Icons.location_on, "Venue", programData['location'] ?? 'TBD', isDark),
+              _buildDetailRow(ctx, Icons.category, "Category", programData['category'] ?? 'General', isDark),
+              _buildDetailRow(ctx, Icons.visibility, "Visibility", programData['visibility']?.toString().toUpperCase() ?? 'COLLEGE', isDark),
               if (programData['eventMode'] != null)
-                _buildDetailRow(ctx, Icons.laptop, "Mode", programData['eventMode']),
+                _buildDetailRow(ctx, Icons.laptop, "Mode", programData['eventMode'], isDark),
               if (programData['totalSeats'] != null)
-                _buildDetailRow(ctx, Icons.event_seat, "Capacity", programData['totalSeats'].toString()),
+                _buildDetailRow(ctx, Icons.event_seat, "Capacity", programData['totalSeats'].toString(), isDark),
               if (programData['hasPrizePool'] == true)
-                _buildDetailRow(ctx, Icons.emoji_events, "Prize", "₹${programData['prizeAmount'] ?? ''}"),
+                _buildDetailRow(ctx, Icons.emoji_events, "Prize", "₹${programData['prizeAmount'] ?? ''}", isDark),
               if (programData['requiresVolunteers'] == true) ...[
-                const Divider(),
-                const Text("Volunteer Details", style: TextStyle(fontWeight: FontWeight.bold)),
+                Divider(color: isDark ? Colors.white12 : Colors.grey[300]),
+                Text("Volunteer Details", style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
                 const SizedBox(height: 8),
-                _buildDetailRow(ctx, Icons.people, "Needed", programData['volunteerCount']?.toString() ?? 'N/A'),
-                _buildDetailRow(ctx, Icons.assignment, "Role", programData['volunteerRole'] ?? 'N/A'),
+                _buildDetailRow(ctx, Icons.people, "Needed", programData['volunteerCount']?.toString() ?? 'N/A', isDark),
+                _buildDetailRow(ctx, Icons.assignment, "Role", programData['volunteerRole'] ?? 'N/A', isDark),
               ],
               if (programData['isTeamEvent'] == true) ...[
-                const Divider(),
-                const Text("Team Event", style: TextStyle(fontWeight: FontWeight.bold)),
+                Divider(color: isDark ? Colors.white12 : Colors.grey[300]),
+                Text("Team Event", style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
                 const SizedBox(height: 8),
-                _buildDetailRow(ctx, Icons.group, "Team Size", programData['teamSize']?.toString() ?? 'N/A'),
+                _buildDetailRow(ctx, Icons.group, "Team Size", programData['teamSize']?.toString() ?? 'N/A', isDark),
               ],
             ],
           ),
@@ -2345,18 +2162,18 @@ class ProgramCard extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(BuildContext context, IconData icon, String label, String value) {
+  Widget _buildDetailRow(BuildContext context, IconData icon, String label, String value, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: Colors.blueGrey),
+          Icon(icon, size: 18, color: isDark ? Colors.blueAccent : Colors.blueGrey),
           const SizedBox(width: 8),
           Expanded(
             child: RichText(
               text: TextSpan(
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13),
+                style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 13),
                 children: [
                   TextSpan(text: "$label: ", style: const TextStyle(fontWeight: FontWeight.bold)),
                   TextSpan(text: value),

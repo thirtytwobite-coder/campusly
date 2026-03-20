@@ -63,6 +63,7 @@ class EventDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       body: Stack(
@@ -88,6 +89,7 @@ class EventDetailsScreen extends StatelessWidget {
               final bool requiresVolunteers = (data['requiresVolunteers'] ?? false) == true;
               final int volunteerCount = data['volunteerCount'] ?? 0;
               final String volunteerRole = data['volunteerRole']?.toString() ?? '';
+              final Map<String, dynamic>? manualWinners = data['manualWinners'] as Map<String, dynamic>?;
 
               return CustomScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -179,6 +181,14 @@ class EventDetailsScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 24),
                               _metricsGridDecorated(theme, date, time, venue, eventMode),
+                              
+                              if (manualWinners != null && manualWinners.values.any((v) => v.toString().isNotEmpty)) ...[
+                                const SizedBox(height: 32),
+                                _sectionHeader(theme, "Event Winners", Colors.orange.shade700),
+                                const SizedBox(height: 12),
+                                _buildWinnersSection(manualWinners, theme),
+                              ],
+
                               const SizedBox(height: 32),
                               _sectionHeader(theme, "About Event", Colors.blue),
                               const SizedBox(height: 12),
@@ -217,6 +227,55 @@ class EventDetailsScreen extends StatelessWidget {
       ),
       bottomNavigationBar: _buildBottomAction(context, event, theme),
     );
+  }
+
+  Widget _buildWinnersSection(Map<String, dynamic> winners, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    List<Widget> winnerItems = [];
+    
+    final ranks = ['1st', '2nd', '3rd'];
+    final colors = [Colors.amber.shade700, Colors.blueGrey.shade400, Colors.brown.shade400];
+    final icons = [Icons.workspace_premium, Icons.military_tech, Icons.emoji_events];
+
+    for (int i = 0; i < ranks.length; i++) {
+      final name = winners[ranks[i]]?.toString() ?? '';
+      if (name.isNotEmpty) {
+        winnerItems.add(
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors[i].withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: colors[i].withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: colors[i].withOpacity(0.2), shape: BoxShape.circle),
+                  child: Icon(icons[i], color: colors[i], size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(ranks[i].toUpperCase() + " PLACE", 
+                        style: TextStyle(color: colors[i], fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1)),
+                      Text(name, 
+                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: isDark ? Colors.white : Colors.black87)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ).animate().fadeIn(delay: (100 * i).ms).slideX(begin: 0.1),
+        );
+      }
+    }
+
+    return Column(children: winnerItems);
   }
 
   Widget _sectionHeader(ThemeData theme, String title, Color accentColor) {
