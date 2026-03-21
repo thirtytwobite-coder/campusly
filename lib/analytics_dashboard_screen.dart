@@ -89,7 +89,6 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
         return true;
       }).toList();
 
-      // Process events in parallel to significantly improve loading speed
       final results = await Future.wait(filteredDocs.map((doc) async {
         final data = doc.data();
         final eventId = doc.id;
@@ -97,7 +96,6 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
         final clubId = data['clubId'];
         final programId = data['programId'];
 
-        // Use count aggregation for faster and cheaper counting
         final regsCountQuery = await FirebaseFirestore.instance
             .collection('registrations')
             .where('eventId', isEqualTo: eventId)
@@ -186,7 +184,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == ThemeMode.dark || theme.brightness == Brightness.dark;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: isDark ? Colors.black : Colors.grey[50],
@@ -232,7 +230,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                       const SizedBox(height: 32),
                       Text(
                         "Filter by Status", 
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)
                       ),
                       const SizedBox(height: 16),
                       _buildFilterSection(isDark),
@@ -242,7 +240,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                         children: [
                           Text(
                             "$_filter Events", 
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: isDark ? Colors.white : Colors.black)
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: isDark ? Colors.white : Colors.black87)
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -284,7 +282,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
-                      childAspectRatio: 0.9,
+                      childAspectRatio: 0.85,
                     ),
                     delegate: SliverChildBuilderDelegate(
                           (context, index) => _buildModernGridItem(_filteredEventStats[index], index, isDark),
@@ -320,14 +318,16 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                   });
                 }
               },
-              selectedColor: Theme.of(context).primaryColor,
+              selectedColor: const Color(0xFFFFD700), // Vibrant Yellow highlight
               labelStyle: TextStyle(
-                color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black),
+                color: isSelected ? Colors.black87 : (isDark ? Colors.white70 : Colors.black87),
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
-              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-              elevation: 2,
+              backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.4),
+              elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              side: BorderSide(color: isSelected ? Colors.transparent : (isDark ? Colors.white12 : Colors.black12)),
             ),
           );
         }).toList(),
@@ -345,7 +345,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                 "Total Events",
                 _totalEvents.toString(),
                 Icons.event_note_rounded,
-                Colors.blue,
+                const Color(0xFFA855F7), // Vibrant Purple
                 isDark,
               ),
             ),
@@ -355,7 +355,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                 "Registrations",
                 _totalRegistrations.toString(),
                 Icons.people_alt_rounded,
-                Colors.green,
+                const Color(0xFF10B981), // Light Vibrant Green
                 isDark,
               ),
             ),
@@ -363,10 +363,10 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
         ),
         const SizedBox(height: 12),
         _buildModernSummaryCard(
-          "Low Participation Events (<5)",
+          "Low Participation (<5)",
           _lowParticipationCount.toString(),
           Icons.trending_down_rounded,
-          Colors.orange,
+          const Color(0xFFEF4444), // Vibrant Red
           isDark,
           fullWidth: true,
           onTap: () {
@@ -381,110 +381,101 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   }
 
   Widget _buildModernSummaryCard(String title, String value, IconData icon, Color color, bool isDark, {bool fullWidth = false, VoidCallback? onTap}) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : theme.cardColor,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(color: color.withOpacity(isDark ? 0.05 : 0.1), blurRadius: 20, offset: const Offset(0, 10)),
-          ],
-          border: Border.all(color: color.withOpacity(isDark ? 0.2 : 0.1), width: 1.5),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
+    return GlassCard(
+      borderRadius: 24,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 24),
               ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    value, 
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)
-                  ),
-                  Text(
-                    title, 
-                    style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.grey[600], fontWeight: FontWeight.w500)
-                  ),
-                ],
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      value, 
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)
+                    ),
+                    Text(
+                      title, 
+                      style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.w600)
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildModernGridItem(Map<String, dynamic> stat, int index, bool isDark) {
-    final theme = Theme.of(context);
     final count = stat['count'] as int;
-    final color = count < 5 ? Colors.orange : theme.primaryColor;
+    
+    final List<Color> vibrantColors = [
+      const Color(0xFFA855F7), // Purple
+      const Color(0xFF10B981), // Light Green
+      const Color(0xFFFFD700), // Yellow
+      const Color(0xFF3B82F6), // Blue
+    ];
+    
+    final color = count < 5 ? const Color(0xFFEF4444) : vibrantColors[index % vibrantColors.length];
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.03), blurRadius: 10, offset: const Offset(0, 5)),
-        ],
-        border: Border.all(color: color.withOpacity(isDark ? 0.2 : 0.1)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                height: 70,
-                width: 70,
-                child: CircularProgressIndicator(
-                  value: _maxEventCount > 0 ? count / _maxEventCount : 0,
-                  strokeWidth: 8,
-                  backgroundColor: color.withOpacity(0.1),
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
-                  strokeCap: StrokeCap.round,
+    return GlassCard(
+      borderRadius: 24,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  height: 70,
+                  width: 70,
+                  child: CircularProgressIndicator(
+                    value: _maxEventCount > 0 ? count / _maxEventCount : 0,
+                    strokeWidth: 8,
+                    backgroundColor: color.withOpacity(0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                    strokeCap: StrokeCap.round,
+                  ),
                 ),
-              ),
-              Text(
-                count.toString(),
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            stat['title'],
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            stat['date'] != null ? DateFormat('MMM d, yyyy').format(stat['date']) : 'Date TBD',
-            style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.grey[500]),
-          ),
-        ],
+                Text(
+                  count.toString(),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              stat['title'],
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black87),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              stat['date'] != null ? DateFormat('MMM d, yyyy').format(stat['date']) : 'Date TBD',
+              style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.black38, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
       ),
     ).animate().fadeIn(delay: (50 * index).ms).scale(begin: const Offset(0.9, 0.9));
-  }
-
-  Widget _buildEventListItem(Map<String, dynamic> stat, int index) {
-    // Legacy list item fallback - but now we use Grid
-    return const SizedBox.shrink();
   }
 }

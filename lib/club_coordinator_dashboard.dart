@@ -178,7 +178,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E1E1E) : Theme.of(context).cardColor,
+                  color: isDark ? const Color(0xFF1E1E1E).withOpacity(0.8) : Theme.of(context).cardColor,
                   boxShadow: [
                     BoxShadow(
                       blurRadius: 20,
@@ -371,24 +371,27 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
               ),
               const SizedBox(height: 15),
 
-              TextField(
-                style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                decoration: InputDecoration(
-                  hintText: 'Search events...',
-                  hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.grey),
-                  prefixIcon: Icon(Icons.search, color: isDark ? Colors.white54 : Colors.grey),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                    borderSide: BorderSide.none,
+              GlassCard(
+                borderRadius: 15,
+                child: TextField(
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                  decoration: InputDecoration(
+                    hintText: 'Search events...',
+                    hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.grey),
+                    prefixIcon: Icon(Icons.search, color: isDark ? Colors.white54 : Colors.grey),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.1),
                   ),
-                  filled: true,
-                  fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.1),
+                  onChanged: (value) {
+                    setState(() {
+                      searchQuery = value.toLowerCase();
+                    });
+                  },
                 ),
-                onChanged: (value) {
-                  setState(() {
-                    searchQuery = value.toLowerCase();
-                  });
-                },
               ),
               const SizedBox(height: 15),
 
@@ -471,7 +474,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                       crossAxisCount: 2,
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
-                      childAspectRatio: 0.75,
+                      childAspectRatio: 0.7,
                     ),
                     itemCount: docs.length,
                     itemBuilder: (context, index) {
@@ -506,46 +509,48 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
   Widget _clubDescriptionCard(String description) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    return Card(
-      elevation: isDark ? 0 : 2,
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-        side: isDark ? BorderSide(color: Colors.white.withOpacity(0.1)) : BorderSide.none,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Club Description",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold, 
-                    fontSize: 18,
-                    color: isDark ? Colors.white : Colors.black,
+    return GlassCard(
+      borderRadius: 15,
+      child: Card(
+        elevation: 0,
+        color: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Club Description",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold, 
+                      fontSize: 18,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
-                  onPressed: () => _showEditDescriptionDialog(description),
-                ),
-              ],
-            ),
-            Divider(color: isDark ? Colors.white12 : Colors.grey[300]),
-            Text(
-              description,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                height: 1.5,
-                color: isDark ? Colors.white70 : Colors.black87,
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
+                    onPressed: () => _showEditDescriptionDialog(description),
+                  ),
+                ],
               ),
-            ),
-          ],
+              Divider(color: isDark ? Colors.white12 : Colors.grey[300]),
+              Text(
+                description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  height: 1.5,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     ).animate().fadeIn().slideY(begin: 0.1);
@@ -560,37 +565,40 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(15),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark ? color.withOpacity(0.05) : color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: color.withOpacity(isDark ? 0.2 : 0.3)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 32, color: color),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: FontWeight.bold, 
-                fontSize: 14,
-                color: isDark ? Colors.white : Colors.black,
+    return GlassCard(
+      borderRadius: 15,
+      color: isDark ? color.withOpacity(0.1) : color.withOpacity(0.05),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 32, color: color),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 14,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
               ),
-            ),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 10, 
-                color: isDark ? Colors.white54 : Colors.grey,
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 10, 
+                  color: isDark ? Colors.white54 : Colors.grey,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -598,57 +606,115 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
 
   void _showBrandingDialog(Map<String, dynamic> clubData) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final logoController = TextEditingController(text: clubData['profilePic'] ?? '');
+    String logoBase64 = clubData['profilePic'] ?? '';
     final signatureController = TextEditingController(text: clubData['signatureUrl'] ?? '');
     final facultySignatureController = TextEditingController(text: clubData['facultySignatureUrl'] ?? '');
 
+    bool isProcessingLogo = false;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        title: Text("Club Branding Settings", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "These settings will be applied to all your club certificates.",
-                style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.grey),
-              ),
-              const SizedBox(height: 16),
-              _buildBrandingField(logoController, "Club Logo URL", isDark),
-              const SizedBox(height: 12),
-              _buildBrandingField(signatureController, "Coordinator Signature URL", isDark),
-              const SizedBox(height: 12),
-              _buildBrandingField(facultySignatureController, "Faculty Signature URL", isDark),
-            ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          title: Text("Club Branding Settings", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Update your club logo and official signatures for certificates.",
+                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.grey),
+                ),
+                const SizedBox(height: 20),
+                
+                // 🔹 Logo Upload Section
+                Stack(
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white10 : Colors.grey[100],
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.blue.withOpacity(0.3), width: 2),
+                      ),
+                      child: ClipOval(
+                        child: logoBase64.isNotEmpty
+                            ? (logoBase64.startsWith('data:image') 
+                                ? Image.memory(base64Decode(logoBase64.split(',').last), fit: BoxFit.cover)
+                                : Image.network(logoBase64, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.business, size: 40)))
+                            : const Icon(Icons.add_photo_alternate_outlined, size: 40, color: Colors.blue),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.blue,
+                        child: IconButton(
+                          icon: isProcessingLogo 
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                          onPressed: isProcessingLogo ? null : () async {
+                            final picker = ImagePicker();
+                            final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
+                            if (pickedFile == null) return;
+
+                            setDialogState(() => isProcessingLogo = true);
+                            try {
+                              final bytes = await pickedFile.readAsBytes();
+                              final base64String = base64Encode(bytes);
+                              setDialogState(() {
+                                logoBase64 = 'data:image/jpeg;base64,$base64String';
+                                isProcessingLogo = false;
+                              });
+                            } catch (e) {
+                              setDialogState(() => isProcessingLogo = false);
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text("Club Logo", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                
+                const SizedBox(height: 24),
+                _buildBrandingField(signatureController, "Coordinator Signature URL", isDark),
+                const SizedBox(height: 12),
+                _buildBrandingField(facultySignatureController, "Faculty Signature URL", isDark),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                await FirebaseFirestore.instance
+                    .collection('clubs')
+                    .doc(clubId)
+                    .update({
+                  'profilePic': logoBase64.trim(),
+                  'signatureUrl': signatureController.text.trim(),
+                  'facultySignatureUrl': facultySignatureController.text.trim(),
+                });
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Branding updated successfully!")),
+                  );
+                }
+              },
+              child: const Text("Save Settings"),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              await FirebaseFirestore.instance
-                  .collection('clubs')
-                  .doc(clubId)
-                  .update({
-                'profilePic': logoController.text.trim(),
-                'signatureUrl': signatureController.text.trim(),
-                'facultySignatureUrl': facultySignatureController.text.trim(),
-              });
-              if (mounted) {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Branding updated successfully!")),
-                );
-              }
-            },
-            child: const Text("Save Settings"),
-          ),
-        ],
       ),
     );
   }
@@ -1928,13 +1994,9 @@ class ProgramCard extends StatelessWidget {
         statusIcon = Icons.hourglass_empty;
     }
 
-    return Card(
-      elevation: isDark ? 0 : 2,
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-        side: isDark ? BorderSide(color: Colors.white.withOpacity(0.1)) : BorderSide.none,
-      ),
+    return GlassCard(
+      borderRadius: 15,
+      color: statusColor.withOpacity(0.1),
       child: InkWell(
         onTap: () => _showProgramDetails(context),
         borderRadius: BorderRadius.circular(15),
@@ -1949,7 +2011,7 @@ class ProgramCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: isDark ? Colors.black26 : Colors.white54,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(statusIcon, size: 16, color: statusColor),
@@ -1988,15 +2050,15 @@ class ProgramCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 programData['category'] ?? 'General',
-                style: TextStyle(color: isDark ? Colors.white54 : Colors.grey[600], fontSize: 11),
+                style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 11, fontWeight: FontWeight.w600),
               ),
               Text(
                 programData['date'] ?? 'TBD',
-                style: TextStyle(color: isDark ? Colors.white38 : Colors.grey[500], fontSize: 10),
+                style: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontSize: 10),
               ),
               const Spacer(),
               if (isApproved && !isCompleted) ...[
-                Divider(color: isDark ? Colors.white12 : Colors.grey[300]),
+                Divider(color: isDark ? Colors.white12 : Colors.black12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -2018,7 +2080,7 @@ class ProgramCard extends StatelessWidget {
                 ),
               ],
               if (isCompleted) ...[
-                Divider(color: isDark ? Colors.white12 : Colors.grey[300]),
+                Divider(color: isDark ? Colors.white12 : Colors.black12),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
@@ -2035,9 +2097,9 @@ class ProgramCard extends StatelessWidget {
                     },
                     style: OutlinedButton.styleFrom(
                       padding: EdgeInsets.zero,
-                      foregroundColor: Colors.orange,
-                      side: const BorderSide(color: Colors.orange),
-                      textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                      foregroundColor: isDark ? Colors.orangeAccent : Colors.orange.shade800,
+                      side: BorderSide(color: isDark ? Colors.orangeAccent : Colors.orange.shade800),
+                      textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
                     ),
                     child: const Text("MANAGE WINNERS"),
                   ),
@@ -2058,7 +2120,7 @@ class ProgramCard extends StatelessWidget {
         required VoidCallback onTap,
       }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = isDark ? Colors.blueAccent : Theme.of(context).primaryColor;
+    final primaryColor = isDark ? Colors.blueAccent : Colors.blue.shade700;
     
     return InkWell(
       onTap: active ? onTap : null,
@@ -2069,13 +2131,13 @@ class ProgramCard extends StatelessWidget {
           Icon(
             icon,
             size: 18,
-            color: active ? primaryColor : (isDark ? Colors.white24 : Colors.grey[300]),
+            color: active ? primaryColor : (isDark ? Colors.white24 : Colors.black12),
           ),
           Text(
             label,
             style: TextStyle(
               fontSize: 9,
-              color: active ? primaryColor : (isDark ? Colors.white24 : Colors.grey[300]),
+              color: active ? primaryColor : (isDark ? Colors.white24 : Colors.black12),
               fontWeight: FontWeight.bold,
             ),
           ),

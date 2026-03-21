@@ -18,6 +18,7 @@ import 'change_password.dart';
 import 'login_screen.dart';
 import 'main.dart';
 import 'profile_screen.dart';
+import 'vibrant_background.dart';
 
 class MainFacultyDashboard extends StatefulWidget {
   final String collegeName;
@@ -63,95 +64,103 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
           appBar: AppBar(
             title: const Text('Club-Faculty Mapping'),
           ),
-          body: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('clubs').snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
+          body: Stack(
+            children: [
+              const VibrantBackground(),
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('clubs').snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-              final docs = snapshot.data!.docs.where((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                final clubCollege = data['college'];
-                return clubCollege == null ||
-                    clubCollege == '' ||
-                    clubCollege == widget.collegeName;
-              }).toList();
+                  final docs = snapshot.data!.docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final clubCollege = data['college'];
+                    return clubCollege == null ||
+                        clubCollege == '' ||
+                        clubCollege == widget.collegeName;
+                  }).toList();
 
-              if (docs.isEmpty) {
-                return const Center(
-                    child: Text("No clubs available for mapping."));
-              }
+                  if (docs.isEmpty) {
+                    return const Center(
+                        child: Text("No clubs available for mapping."));
+                  }
 
-              return ListView.separated(
-                padding: const EdgeInsets.all(12),
-                itemCount: docs.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final clubData = docs[index].data() as Map<String, dynamic>;
-                  final clubId = docs[index].id;
-                  final bool isGlobal =
-                      clubData['college'] == null || clubData['college'] == '';
+                  return ListView.separated(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: docs.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final clubData = docs[index].data() as Map<String, dynamic>;
+                      final clubId = docs[index].id;
+                      final bool isGlobal =
+                          clubData['college'] == null || clubData['college'] == '';
 
-                  return StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('club_mappings')
-                        .doc("${widget.collegeName}_$clubId")
-                        .snapshots(),
-                    builder: (context, mapSnap) {
-                      String assigned = "Not Assigned";
-                      Color statusColor = Theme.of(context).colorScheme.error;
-                      bool hasMapping = false;
+                      return StreamBuilder<DocumentSnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('club_mappings')
+                            .doc("${widget.collegeName}_$clubId")
+                            .snapshots(),
+                        builder: (context, mapSnap) {
+                          String assigned = "Not Assigned";
+                          Color statusColor = Theme.of(context).colorScheme.error;
+                          bool hasMapping = false;
 
-                      if (mapSnap.hasData && mapSnap.data!.exists) {
-                        final mappingData = mapSnap.data!.data() as Map<String, dynamic>;
-                        assigned = mappingData['facultyName'] ??
-                            mappingData['facultyEmail'] ??
-                            "Not Assigned";
-                        statusColor = Colors.green;
-                        hasMapping = true;
-                      }
+                          if (mapSnap.hasData && mapSnap.data!.exists) {
+                            final mappingData = mapSnap.data!.data() as Map<String, dynamic>;
+                            assigned = mappingData['facultyName'] ??
+                                mappingData['facultyEmail'] ??
+                                "Not Assigned";
+                            statusColor = Colors.green;
+                            hasMapping = true;
+                          }
 
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        leading: CircleAvatar(
-                          backgroundColor: isGlobal
-                              ? Theme.of(context).colorScheme.secondary.withOpacity(0.1)
-                              : Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                          child: Icon(isGlobal ? Icons.public_outlined : Icons.school_outlined,
-                              color: isGlobal
-                                  ? Theme.of(context).colorScheme.secondary
-                                  : Theme.of(context).colorScheme.primary),
-                        ),
-                        title: Text(clubData['clubName']?.toUpperCase() ?? 'CLUB',
-                            style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text("Faculty: $assigned",
-                              style: TextStyle(color: statusColor, fontSize: 13)),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (hasMapping)
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                tooltip: 'Remove Mapping',
-                                onPressed: () => _confirmDeleteMapping(clubId, clubData['clubName']),
+                          return GlassCard(
+                            borderRadius: 16,
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              leading: CircleAvatar(
+                                backgroundColor: isGlobal
+                                    ? Theme.of(context).colorScheme.secondary.withOpacity(0.1)
+                                    : Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                child: Icon(isGlobal ? Icons.public_outlined : Icons.school_outlined,
+                                    color: isGlobal
+                                        ? Theme.of(context).colorScheme.secondary
+                                        : Theme.of(context).colorScheme.primary),
                               ),
-                            IconButton(
-                              icon: const Icon(Icons.rule_folder_outlined),
-                              tooltip: 'Assign Faculty',
-                              onPressed: () => _assignFacultyToClub(clubId, clubData['clubName']),
+                              title: Text(clubData['clubName']?.toUpperCase() ?? 'CLUB',
+                                  style: const TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text("Faculty: $assigned",
+                                    style: TextStyle(color: statusColor, fontSize: 13)),
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (hasMapping)
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                      tooltip: 'Remove Mapping',
+                                      onPressed: () => _confirmDeleteMapping(clubId, clubData['clubName']),
+                                    ),
+                                  IconButton(
+                                    icon: const Icon(Icons.rule_folder_outlined),
+                                    tooltip: 'Assign Faculty',
+                                    onPressed: () => _assignFacultyToClub(clubId, clubData['clubName']),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
-                      );
+                          );
+                        },
+                      ).animate().fadeIn(duration: 500.ms).slideX();
                     },
-                  ).animate().fadeIn(duration: 500.ms).slideX();
+                  );
                 },
-              );
-            },
+              ),
+            ],
           ),
         ),
       ),
@@ -262,34 +271,42 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
       MaterialPageRoute(
         builder: (c) => Scaffold(
           appBar: AppBar(title: const Text('Manage Local Clubs')),
-          body: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('clubs')
-                .where('college', isEqualTo: widget.collegeName)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-              final docs = snapshot.data!.docs;
-              if (docs.isEmpty) return const Center(child: Text("No local clubs added yet."));
+          body: Stack(
+            children: [
+              const VibrantBackground(),
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('clubs')
+                    .where('college', isEqualTo: widget.collegeName)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  final docs = snapshot.data!.docs;
+                  if (docs.isEmpty) return const Center(child: Text("No local clubs added yet."));
 
-              return ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: docs.length,
-                separatorBuilder: (context, index) => const Divider(),
-                itemBuilder: (context, index) {
-                  final data = docs[index].data() as Map<String, dynamic>;
-                  final clubId = docs[index].id;
-                  return ListTile(
-                    title: Text(data['clubName']?.toUpperCase() ?? 'CLUB', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: const Text("Local Club"),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      onPressed: () => _deleteClub(clubId, data['clubName']),
-                    ),
+                  return ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: docs.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final data = docs[index].data() as Map<String, dynamic>;
+                      final clubId = docs[index].id;
+                      return GlassCard(
+                        borderRadius: 16,
+                        child: ListTile(
+                          title: Text(data['clubName']?.toUpperCase() ?? 'CLUB', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: const Text("Local Club"),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            onPressed: () => _deleteClub(clubId, data['clubName']),
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
-              );
-            },
+              ),
+            ],
           ),
         ),
       ),
@@ -406,33 +423,38 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
 
             ],
           ),
-          body: GridView.count(
-            padding: const EdgeInsets.all(20),
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
+          body: Stack(
             children: [
-              _buildCard("Mapping Dashboard", Icons.rule_folder_outlined, _openMappingDashboard),
-              _buildCard("Manage Clubs", Icons.business_center_outlined, _openManageClubs),
-              _buildCard("Add Local Club", Icons.add_business_outlined, _addClubDialog),
-              _buildCard("Register Faculty", Icons.person_add_alt_1_outlined, () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (c) =>
-                            AddFacultyScreen(collegeName: widget.collegeName)));
-              }),
-              _buildCard("College Analytics", Icons.analytics_outlined, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (c) => AnalyticsDashboardScreen(
-                      collegeName: widget.collegeName,
-                    ),
-                  ),
-                );
-              }),
-            ].animate(interval: 200.ms).fadeIn(duration: 300.ms).slideY(),
+              const VibrantBackground(),
+              GridView.count(
+                padding: const EdgeInsets.all(20),
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                children: [
+                  _buildCard("Mapping Dashboard", Icons.rule_folder_outlined, _openMappingDashboard),
+                  _buildCard("Manage Clubs", Icons.business_center_outlined, _openManageClubs),
+                  _buildCard("Add Local Club", Icons.add_business_outlined, _addClubDialog),
+                  _buildCard("Register Faculty", Icons.person_add_alt_1_outlined, () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (c) =>
+                                AddFacultyScreen(collegeName: widget.collegeName)));
+                  }),
+                  _buildCard("College Analytics", Icons.analytics_outlined, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (c) => AnalyticsDashboardScreen(
+                          collegeName: widget.collegeName,
+                        ),
+                      ),
+                    );
+                  }),
+                ].animate(interval: 200.ms).fadeIn(duration: 300.ms).slideY(),
+              ),
+            ],
           ),
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
@@ -480,31 +502,35 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
   }
 
   Widget _buildCard(String title, IconData icon, VoidCallback onTap) {
-    return Card(
-      elevation: 2.0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-              child: Icon(icon, size: 28, color: Theme.of(context).colorScheme.primary),
-            ),
-            const SizedBox(height: 15),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
+    return GlassCard(
+      borderRadius: 20,
+      child: Card(
+        elevation: 0,
+        color: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: 30,
+                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                child: Icon(icon, size: 28, color: Theme.of(context).colorScheme.primary),
               ),
-            ),
-          ],
+              const SizedBox(height: 15),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
