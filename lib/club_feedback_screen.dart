@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'vibrant_background.dart';
 
 class ClubFeedbackScreen extends StatefulWidget {
   final String clubId;
@@ -18,7 +19,6 @@ class ClubFeedbackScreen extends StatefulWidget {
 }
 
 class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
-  // Store events and their associated feedback
   List<Map<String, dynamic>> _eventsWithFeedback = [];
   bool _isLoading = true;
   String _errorMessage = '';
@@ -31,8 +31,6 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
 
   Future<void> _fetchFeedbacks() async {
     try {
-      // 1. Fetch all events associated with this club
-      // Removed orderBy('createdAt') to prevent composite index errors, we will sort it locally
       final eventsSnapshot = await FirebaseFirestore.instance
           .collection('events')
           .where('clubId', isEqualTo: widget.clubId)
@@ -48,7 +46,6 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
         return;
       }
       
-      // Sort events locally by createdAt descending
       final docs = eventsSnapshot.docs.toList();
       docs.sort((a, b) {
         final Map<String, dynamic> dataA = a.data();
@@ -62,16 +59,14 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
         return timeB.compareTo(timeA);
       });
 
-      final List<Map<String, dynamic>> eventsList = [];
-
-      // Process each event fetching its feedback
-      for (var eventDoc in docs) {
+      // Fetch all event data in parallel
+      final eventsListResults = await Future.wait(docs.map((eventDoc) async {
         final eventData = eventDoc.data();
         final eventId = eventDoc.id;
         final eventTitle = eventData['title'] ?? 'Unknown Event';
         final Timestamp? eventDate = eventData['createdAt'] as Timestamp?;
 
-        // 2. Query registrations for this specific event to get feedback
+        // Optimization: query only for registrations that have a rating or feedback
         final regSnapshot = await FirebaseFirestore.instance
             .collection('registrations')
             .where('eventId', isEqualTo: eventId)
@@ -83,9 +78,8 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
 
         for (var doc in regSnapshot.docs) {
           final data = doc.data();
-          // Only keep registrations that have feedback text or a rating > 0
           if (data['feedback'] != null || (data['rating'] != null && data['rating'] > 0)) {
-            final rating = data['rating'] ?? 0;
+            final rating = (data['rating'] ?? 0).toDouble();
             if (rating > 0) {
               totalRating += rating;
               ratingCount++;
@@ -101,10 +95,7 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
           }
         }
 
-        // Add event to list only if there's feedback, or add all (we'll filter out empty ones if we want)
-        // Let's only include events that have some feedback to show
         if (feedbacksForEvent.isNotEmpty) {
-          // Sort feedbacks newest first
           feedbacksForEvent.sort((a, b) {
             final Timestamp? timeA = a['feedbackAt'] as Timestamp?;
             final Timestamp? timeB = b['feedbackAt'] as Timestamp?;
@@ -114,20 +105,23 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
             return timeB.compareTo(timeA);
           });
 
-          eventsList.add({
+          return {
             'eventId': eventId,
             'eventTitle': eventTitle,
             'eventDate': eventDate,
             'feedbacks': feedbacksForEvent,
             'avgRating': ratingCount > 0 ? (totalRating / ratingCount) : 0.0,
             'feedbackCount': feedbacksForEvent.length,
-          });
+          };
         }
-      }
+        return null;
+      }));
+
+      final List<Map<String, dynamic>> finalEventsList = eventsListResults.whereType<Map<String, dynamic>>().toList();
 
       if (mounted) {
         setState(() {
-          _eventsWithFeedback = eventsList;
+          _eventsWithFeedback = finalEventsList;
           _isLoading = false;
         });
       }
@@ -150,10 +144,15 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
       appBar: AppBar(
         title: Text('${widget.clubName} Feedback'),
         elevation: 0,
-        backgroundColor: theme.colorScheme.primary,
+        backgroundColor: theme.primaryColor,
         foregroundColor: Colors.white,
       ),
-      body: _buildBody(theme),
+      body: Stack(
+        children: [
+          const VibrantBackground(),
+          _buildBody(theme),
+        ],
+      ),
     );
   }
 
@@ -176,18 +175,11 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              Text(
-                _errorMessage,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey),
-              ),
+              Text(_errorMessage, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: () {
-                  setState(() {
-                    _isLoading = true;
-                    _errorMessage = '';
-                  });
+                  setState(() { _isLoading = true; _errorMessage = ''; });
                   _fetchFeedbacks();
                 },
                 icon: const Icon(Icons.refresh),
@@ -206,10 +198,7 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
           children: [
             Icon(Icons.rate_review_outlined, size: 80, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            const Text(
-              "No Feedback Yet",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
+            const Text("No Feedback Yet", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 32.0),
@@ -224,61 +213,154 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
       );
     }
 
-    return ListView.separated(
+    return GridView.builder(
       padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 0.85,
+      ),
       itemCount: _eventsWithFeedback.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final event = _eventsWithFeedback[index];
-        final String eventTitle = event['eventTitle'];
-        final List<Map<String, dynamic>> feedbacks = event['feedbacks'];
-        final double avgRating = event['avgRating'];
-        final int feedbackCount = event['feedbackCount'];
-
-        return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: ExpansionTile(
-            title: Text(
-              eventTitle,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            subtitle: Row(
-              children: [
-                if (avgRating > 0) ...[
-                  const Icon(Icons.star_rounded, color: Colors.amber, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    avgRating.toStringAsFixed(1),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const Text(" • "),
-                ],
-                Text("$feedbackCount reviews"),
-              ],
-            ),
-            childrenPadding: const EdgeInsets.all(16).copyWith(top: 0),
-            backgroundColor: Colors.grey.withOpacity(0.02),
-            children: [
-              const Divider(),
-              ...feedbacks.map((feedback) {
-                return _buildFeedbackItem(feedback, theme);
-              }).toList(),
-            ],
-          ),
-        ).animate().fadeIn(delay: (20 * index).ms).slideX(begin: 0.1);
+        return _buildEventFeedbackCard(event, index);
       },
     );
   }
 
+  Widget _buildEventFeedbackCard(Map<String, dynamic> event, int index) {
+    final theme = Theme.of(context);
+    final String eventTitle = event['eventTitle'];
+    final double avgRating = event['avgRating'];
+    final int feedbackCount = event['feedbackCount'];
+
+    return InkWell(
+      onTap: () => _showFeedbackDetails(event),
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5)),
+          ],
+          border: Border.all(color: theme.primaryColor.withOpacity(0.05)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  height: 60,
+                  width: 60,
+                  child: CircularProgressIndicator(
+                    value: avgRating / 5,
+                    strokeWidth: 6,
+                    backgroundColor: Colors.amber.withOpacity(0.1),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
+                    strokeCap: StrokeCap.round,
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      avgRating.toStringAsFixed(1),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              eventTitle,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "$feedbackCount Reviews",
+              style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(delay: (50 * index).ms).scale(begin: const Offset(0.9, 0.9));
+  }
+
+  void _showFeedbackDetails(Map<String, dynamic> event) {
+    final theme = Theme.of(context);
+    final List<Map<String, dynamic>> feedbacks = event['feedbacks'];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(event['eventTitle'], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        Text("${event['feedbackCount']} Student Reviews", style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(color: Colors.amber.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
+                        const SizedBox(width: 4),
+                        Text(event['avgRating'].toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.all(24),
+                itemCount: feedbacks.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 20),
+                itemBuilder: (context, index) {
+                  final feedback = feedbacks[index];
+                  return _buildFeedbackItem(feedback, theme);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFeedbackItem(Map<String, dynamic> feedback, ThemeData theme) {
-    final int rating = feedback['rating'];
+    final int rating = feedback['rating'].toInt();
     final String text = feedback['feedback'];
     final Timestamp? timestamp = feedback['feedbackAt'] as Timestamp?;
     
@@ -287,84 +369,55 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
       dateStr = DateFormat('MMM d, yyyy').format(timestamp.toDate());
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16, top: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                child: Text(
-                  (feedback['studentName'][0] as String).toUpperCase(),
-                  style: TextStyle(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      feedback['studentName'],
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      dateStr,
-                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              if (rating > 0)
-                Row(
-                  children: [
-                    Text(
-                      rating.toString(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const Icon(
-                      Icons.star_rounded,
-                      color: Colors.amber,
-                      size: 16,
-                    ),
-                  ],
-                ),
-            ],
-          ),
-          
-          if (text.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[200]!),
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: theme.primaryColor.withOpacity(0.1),
               child: Text(
-                '"$text"',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontStyle: FontStyle.italic,
-                  color: Colors.grey[800],
-                ),
+                (feedback['studentName'][0] as String).toUpperCase(),
+                style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(feedback['studentName'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text(dateStr, style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                ],
+              ),
+            ),
+            Row(
+              children: List.generate(5, (i) => Icon(
+                Icons.star_rounded, 
+                size: 16, 
+                color: i < rating ? Colors.amber : Colors.grey[200]
+              )),
+            ),
           ],
+        ),
+        if (text.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey[100]!),
+            ),
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 14, color: Colors.grey[800], height: 1.4),
+            ),
+          ),
         ],
-      ),
+      ],
     );
   }
 }

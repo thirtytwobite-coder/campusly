@@ -146,6 +146,10 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
               icon: const Icon(Icons.notifications),
               onPressed: _showNotifications,
             ),
+            IconButton(
+              icon: const Icon(Icons.brightness_6),
+              onPressed: _toggleTheme,
+            ),
           ],
         ),
         body: NotificationListener<UserScrollNotification>(
@@ -1997,6 +2001,15 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     }
   }
 
+  Future<void> _toggleTheme() async {
+    themeNotifier.value = themeNotifier.value == ThemeMode.light
+        ? ThemeMode.dark
+        : ThemeMode.light;
+    (await SharedPreferences.getInstance()).setBool(
+      'isDarkMode',
+      themeNotifier.value == ThemeMode.dark,
+    );
+  }
 
   Future<void> _showEditDescriptionDialog(String current) async {
     final controller = TextEditingController(text: current);

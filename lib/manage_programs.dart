@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class ManageProgramsScreen extends StatefulWidget {
   final String clubId;
@@ -20,10 +21,12 @@ class ManageProgramsScreen extends StatefulWidget {
 class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.clubName} - Programs'),
-        backgroundColor: const Color(0xFF1A237E),
+        elevation: 0,
+        backgroundColor: theme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: StreamBuilder<QuerySnapshot>(
@@ -58,8 +61,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                     icon: const Icon(Icons.add),
                     label: const Text('Create First Program'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1A237E),
-                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     ),
                   ),
                 ],
@@ -67,8 +69,14 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(10),
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 0.75,
+            ),
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
               final programDoc = snapshot.data!.docs[index];
@@ -88,107 +96,41 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF1A237E),
         onPressed: () => _showAddProgramDialog(context),
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add),
       ),
     );
   }
 
   void _showAddProgramDialog(BuildContext context) {
     final nameController = TextEditingController();
-    final descriptionController = TextEditingController();
-    final dateController = TextEditingController();
-    final locationController = TextEditingController();
-    final timeController = TextEditingController();
-    final prizeAmountController = TextEditingController();
-    final posterLinkController = TextEditingController();
-    final maxSeatsController = TextEditingController(text: "100"); // 🔹 Default
-    final registrationClosingDateController = TextEditingController();
-    final registrationClosingTimeController = TextEditingController();
-    bool hasPrizePool = false;
-    String visibility = 'college'; 
-    String? category;
+    final categoryController = TextEditingController();
+    DateTime? selectedDate;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Create New Program'),
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Add Program'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Program Name *', border: OutlineInputBorder())),
-                const SizedBox(height: 12),
-                TextField(controller: maxSeatsController, decoration: const InputDecoration(labelText: 'Max Seats (0 for unlimited)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.event_seat)), keyboardType: TextInputType.number),
-                const SizedBox(height: 12),
-                TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Description *', border: OutlineInputBorder()), maxLines: 3),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: category,
-                  hint: const Text('Select Category'),
-                  decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
-                  items: ['Technical', 'Cultural', 'Sports', 'Academic', 'Social', 'Other'].map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
-                  onChanged: (v) => setDialogState(() => category = v),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: dateController,
-                  decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)', border: OutlineInputBorder()),
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Program Name')),
+                TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Category')),
+                ListTile(
+                  title: Text(selectedDate == null ? 'Select Date' : DateFormat('yyyy-MM-dd').format(selectedDate!)),
+                  trailing: const Icon(Icons.calendar_today),
                   onTap: () async {
-                    final picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2100));
-                    if (picked != null) dateController.text = DateFormat('yyyy-MM-dd').format(picked);
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) setDialogState(() => selectedDate = picked);
                   },
-                  readOnly: true,
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: timeController,
-                  decoration: const InputDecoration(labelText: 'Time (HH:MM) *', border: OutlineInputBorder()),
-                  onTap: () async {
-                    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-                    if (picked != null) timeController.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-                  },
-                  readOnly: true,
-                ),
-                const SizedBox(height: 12),
-                TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Venue *', border: OutlineInputBorder())),
-                const SizedBox(height: 12),
-                CheckboxListTile(
-                  value: hasPrizePool,
-                  title: const Text('Prize Pool'),
-                  onChanged: (v) => setDialogState(() => hasPrizePool = v ?? false),
-                ),
-                if (hasPrizePool) TextField(controller: prizeAmountController, decoration: const InputDecoration(labelText: 'Prize Amount', border: OutlineInputBorder(), prefixText: '₹ ')),
-                const SizedBox(height: 12),
-                const Divider(),
-                const Text('Registration Deadline', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: registrationClosingDateController,
-                  decoration: const InputDecoration(labelText: 'Closing Date (YYYY-MM-DD)', border: OutlineInputBorder()),
-                  onTap: () async {
-                    final picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2100));
-                    if (picked != null) registrationClosingDateController.text = DateFormat('yyyy-MM-dd').format(picked);
-                  },
-                  readOnly: true,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: registrationClosingTimeController,
-                  decoration: const InputDecoration(labelText: 'Closing Time (HH:MM)', border: OutlineInputBorder()),
-                  onTap: () async {
-                    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-                    if (picked != null) registrationClosingTimeController.text = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-                  },
-                  readOnly: true,
-                ),
-                const SizedBox(height: 12),
-                const Divider(),
-                const Text('Event Visibility', style: TextStyle(fontWeight: FontWeight.bold)),
-                RadioListTile<String>(value: 'college', groupValue: visibility, title: const Text('College Only'), onChanged: (v) => setDialogState(() => visibility = v!)),
-                RadioListTile<String>(value: 'public', groupValue: visibility, title: const Text('Public'), onChanged: (v) => setDialogState(() => visibility = v!)),
               ],
             ),
           ),
@@ -196,14 +138,12 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
               onPressed: () {
-                if (nameController.text.isEmpty || descriptionController.text.isEmpty || category == null) return;
-                _addProgram(
-                  ctx, nameController.text, descriptionController.text, dateController.text, timeController.text, locationController.text, 
-                  hasPrizePool, prizeAmountController.text, posterLinkController.text, visibility, category!, int.tryParse(maxSeatsController.text) ?? 100,
-                  registrationClosingDateController.text, registrationClosingTimeController.text
-                );
+                if (nameController.text.isNotEmpty && categoryController.text.isNotEmpty && selectedDate != null) {
+                  _addProgram(nameController.text, categoryController.text, DateFormat('yyyy-MM-dd').format(selectedDate!));
+                  Navigator.pop(ctx);
+                }
               },
-              child: const Text('Create'),
+              child: const Text('Add'),
             ),
           ],
         ),
@@ -213,48 +153,48 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
 
   void _showEditProgramDialog(BuildContext context, String programId, Map<String, dynamic> programData) {
     final nameController = TextEditingController(text: programData['name']);
-    final descriptionController = TextEditingController(text: programData['description']);
-    final dateController = TextEditingController(text: programData['date']);
-    final locationController = TextEditingController(text: programData['location']);
-    final timeController = TextEditingController(text: programData['time']);
-    final maxSeatsController = TextEditingController(text: (programData['maxSeats'] ?? 100).toString());
-    String visibility = programData['visibility'] ?? 'college';
-    String? category = programData['category'];
+    final categoryController = TextEditingController(text: programData['category']);
+    DateTime? selectedDate;
+    if (programData['date'] != null) {
+      try { selectedDate = DateFormat('yyyy-MM-dd').parse(programData['date']); } catch (_) {}
+    }
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+        builder: (ctx, setDialogState) => AlertDialog(
           title: const Text('Edit Program'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Program Name', border: OutlineInputBorder())),
-                const SizedBox(height: 12),
-                TextField(controller: maxSeatsController, decoration: const InputDecoration(labelText: 'Max Seats', border: OutlineInputBorder()), keyboardType: TextInputType.number),
-                const SizedBox(height: 12),
-                TextField(controller: descriptionController, decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()), maxLines: 3),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: category,
-                  decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
-                  items: ['Technical', 'Cultural', 'Sports', 'Academic', 'Social', 'Other'].map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
-                  onChanged: (v) => setDialogState(() => category = v),
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Program Name')),
+                TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Category')),
+                ListTile(
+                  title: Text(selectedDate == null ? 'Select Date' : DateFormat('yyyy-MM-dd').format(selectedDate!)),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: selectedDate ?? DateTime.now(),
+                      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) setDialogState(() => selectedDate = picked);
+                  },
                 ),
-                const SizedBox(height: 12),
-                TextField(controller: dateController, decoration: const InputDecoration(labelText: 'Date', border: OutlineInputBorder()), readOnly: true),
-                const SizedBox(height: 12),
-                TextField(controller: timeController, decoration: const InputDecoration(labelText: 'Time', border: OutlineInputBorder()), readOnly: true),
-                const SizedBox(height: 12),
-                TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Venue', border: OutlineInputBorder())),
               ],
             ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             ElevatedButton(
-              onPressed: () => _updateProgram(ctx, programId, nameController.text, descriptionController.text, dateController.text, timeController.text, locationController.text, "", visibility, false, "", category!, int.tryParse(maxSeatsController.text) ?? 100),
+              onPressed: () {
+                if (nameController.text.isNotEmpty && categoryController.text.isNotEmpty && selectedDate != null) {
+                  _updateProgram(programId, nameController.text, categoryController.text, DateFormat('yyyy-MM-dd').format(selectedDate!));
+                  Navigator.pop(ctx);
+                }
+              },
               child: const Text('Update'),
             ),
           ],
@@ -263,83 +203,91 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     );
   }
 
-  Future<void> _addProgram(BuildContext context, String name, String description, String date, String time, String location, bool hasPrize, String prize, String poster, String visibility, String category, int maxSeats, String closingDate, String closingTime) async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('student').doc(user?.uid).get();
-      if (!userDoc.exists) userDoc = await FirebaseFirestore.instance.collection('faculty').doc(user?.uid).get();
-      final coordinatorName = (userDoc.data() as Map<String, dynamic>?)?['name'] ?? 'Unknown';
-      final college = (userDoc.data() as Map<String, dynamic>?)?['college'] ?? 'Unknown';
+  Future<void> _addProgram(String name, String category, String date) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-      final programRef = await FirebaseFirestore.instance.collection('clubs').doc(widget.clubId).collection('programs').add({
-        'name': name.trim(),
-        'description': description.trim(),
-        'date': date,
-        'time': time,
-        'location': location.trim(),
-        'visibility': visibility,
-        'college': college,
-        'category': category,
-        'maxSeats': maxSeats,
-        'status': 'pending',
-        'clubId': widget.clubId,
-        'clubName': widget.clubName,
-        'coordinatorId': user?.uid,
-        'coordinatorName': coordinatorName,
-        'registrationClosingDate': closingDate.isNotEmpty ? closingDate : null,
-        'registrationClosingTime': closingTime.isNotEmpty ? closingTime : null,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      
-      // create global event entry for notification & navigation
-      await FirebaseFirestore.instance.collection('events').add({
-        'title': name.trim(),
-        'programId': programRef.id,
-        'createdBy': user?.uid,
-        'status': 'pending',
-        'clubId': widget.clubId,
-        'registrationClosingDate': closingDate.isNotEmpty ? closingDate : null,
-        'registrationClosingTime': closingTime.isNotEmpty ? closingTime : null,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      Navigator.pop(context);
-    } catch (e) { print(e); }
+    final programRef = await FirebaseFirestore.instance
+        .collection('clubs')
+        .doc(widget.clubId)
+        .collection('programs')
+        .add({
+      'name': name,
+      'category': category,
+      'date': date,
+      'status': 'pending',
+      'coordinatorId': user.uid,
+      'clubId': widget.clubId,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    await FirebaseFirestore.instance.collection('events').add({
+      'title': name,
+      'clubId': widget.clubId,
+      'programId': programRef.id,
+      'status': 'pending',
+      'visibility': 'college',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 
-  Future<void> _updateProgram(BuildContext context, String programId, String name, String description, String date, String time, String location, String poster, String visibility, bool hasPrize, String prize, String category, int maxSeats) async {
-    try {
-      await FirebaseFirestore.instance.collection('clubs').doc(widget.clubId).collection('programs').doc(programId).update({
-        'name': name.trim(),
-        'description': description.trim(),
-        'maxSeats': maxSeats,
-        'category': category,
-        'updatedAt': FieldValue.serverTimestamp(),
+  Future<void> _updateProgram(String programId, String name, String category, String date) async {
+    await FirebaseFirestore.instance
+        .collection('clubs')
+        .doc(widget.clubId)
+        .collection('programs')
+        .doc(programId)
+        .update({
+      'name': name,
+      'category': category,
+      'date': date,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    final events = await FirebaseFirestore.instance
+        .collection('events')
+        .where('programId', isEqualTo: programId)
+        .get();
+    
+    for (var doc in events.docs) {
+      await doc.reference.update({
+        'title': name,
       });
-      // update global event if exists
-      final eventQuery = await FirebaseFirestore.instance.collection('events').where('programId', isEqualTo: programId).limit(1).get();
-      if (eventQuery.docs.isNotEmpty) {
-        await eventQuery.docs.first.reference.update({
-          'title': name.trim(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      }
-      Navigator.pop(context);
-    } catch (e) { print(e); }
+    }
   }
 
   Future<void> _requestStatusChange(String programId, String newStatus) async {
-    // 🔹 When approving, we must also sync to the 'events' collection
     final programRef = FirebaseFirestore.instance.collection('clubs').doc(widget.clubId).collection('programs').doc(programId);
     await programRef.update({'status': newStatus, 'updatedAt': FieldValue.serverTimestamp()});
 
-    // keep global event in step as well
     final eventQuery = await FirebaseFirestore.instance.collection('events').where('programId', isEqualTo: programId).get();
     for (var doc in eventQuery.docs) {
       await doc.reference.update({'status': newStatus, 'updatedAt': FieldValue.serverTimestamp()});
     }
   }
 
-  void _confirmDelete(BuildContext context, String programId) {}
+  void _confirmDelete(BuildContext context, String programId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Program?'),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () async {
+              await FirebaseFirestore.instance.collection('clubs').doc(widget.clubId).collection('programs').doc(programId).delete();
+              final events = await FirebaseFirestore.instance.collection('events').where('programId', isEqualTo: programId).get();
+              for (var d in events.docs) await d.reference.delete();
+              Navigator.pop(ctx);
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class ProgramCard extends StatelessWidget {
@@ -354,18 +302,74 @@ class ProgramCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: ListTile(
-        title: Text(programData['name'] ?? 'Unnamed'),
-        subtitle: Text("Date: ${programData['date']} | Seats: ${programData['maxSeats'] ?? 'Unlimited'}"),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: onEdit),
-          ],
-        ),
+    final theme = Theme.of(context);
+    final status = (programData['status'] ?? 'pending').toString().toLowerCase();
+    
+    Color statusColor;
+    IconData statusIcon;
+    switch (status) {
+      case 'approved': statusColor = Colors.green; statusIcon = Icons.check_circle; break;
+      case 'ongoing': statusColor = Colors.orange; statusIcon = Icons.play_circle; break;
+      case 'completed': statusColor = Colors.blue; statusIcon = Icons.task_alt; break;
+      case 'rejected': statusColor = Colors.red; statusIcon = Icons.cancel; break;
+      default: statusColor = Colors.grey; statusIcon = Icons.hourglass_empty;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5)),
+        ],
+        border: Border.all(color: statusColor.withOpacity(0.1)),
       ),
-    );
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(statusIcon, size: 16, color: statusColor),
+              Row(
+                children: [
+                  IconButton(icon: const Icon(Icons.edit, size: 16, color: Colors.blue), onPressed: onEdit, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+                  IconButton(icon: const Icon(Icons.delete, size: 16, color: Colors.red), onPressed: onDelete, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            programData['name'] ?? 'Untitled',
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            programData['category'] ?? 'General',
+            style: TextStyle(fontSize: 10, color: Colors.grey[600], fontWeight: FontWeight.bold),
+          ),
+          const Spacer(),
+          if (status == 'approved') 
+            ElevatedButton(
+              onPressed: () => onStatusChange('ongoing'),
+              style: ElevatedButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(double.infinity, 30)),
+              child: const Text("START", style: TextStyle(fontSize: 10)),
+            )
+          else if (status == 'ongoing')
+            ElevatedButton(
+              onPressed: () => onStatusChange('completed'),
+              style: ElevatedButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(double.infinity, 30), backgroundColor: Colors.orange),
+              child: const Text("FINISH", style: TextStyle(fontSize: 10)),
+            )
+          else
+            Text(status.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor)),
+        ],
+      ),
+    ).animate().fadeIn().scale(begin: const Offset(0.9, 0.9));
   }
 }

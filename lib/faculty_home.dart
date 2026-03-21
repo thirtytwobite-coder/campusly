@@ -1,4 +1,3 @@
-import 'package:college_event_manager/analytics_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,6 +11,8 @@ import 'login_screen.dart';
 import 'profile_screen.dart';
 import 'program_approval_screen.dart';
 import 'program_status_screen.dart';
+import 'certificate_approval_screen.dart';
+import 'analytics_screen.dart';
 
 class FacultyHomeScreen extends StatefulWidget {
   const FacultyHomeScreen({super.key});
@@ -297,7 +298,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 2.8, // Adjusted for better button proportions
+              childAspectRatio: 2.8,
               children: [
                 _buildOptionButton(
                   icon: Icons.bar_chart,
@@ -332,6 +333,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                   },
                 ),
                 _buildApproveButton(clubId, clubName),
+                _buildVerifyCertsButton(clubId, clubName),
                 _buildOptionButton(
                   icon: Icons.check_circle_outline,
                   label: "Approved",
@@ -441,6 +443,69 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                   hz: 2,
                   offset: const Offset(1, 1),
                 ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildVerifyCertsButton(String clubId, String clubName) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('certificate_approvals')
+          .where('clubId', isEqualTo: clubId)
+          .where('status', isEqualTo: 'pending')
+          .snapshots(),
+      builder: (context, snapshot) {
+        final bool hasPending = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+        final int pendingCount = snapshot.data?.docs.length ?? 0;
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: _buildOptionButton(
+                icon: Icons.verified_user_outlined,
+                label: "Verify Certs",
+                color: Colors.indigo,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CertificateApprovalScreen(
+                        clubId: clubId,
+                        clubName: clubName,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            if (hasPending)
+              Positioned(
+                right: -2,
+                top: -2,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                  child: Text(
+                    pendingCount.toString(),
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                ).animate(onPlay: (c) => c.repeat()).shake(hz: 2),
               ),
           ],
         );

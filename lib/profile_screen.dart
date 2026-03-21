@@ -5,8 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'change_password.dart';
 import 'login_screen.dart';
 import 'vibrant_background.dart';
@@ -88,8 +86,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  bool _isUploadingPic = false;
-
   void _initializeControllers() {
     _nameController = TextEditingController(text: userData?['name'] ?? '');
     _phoneController = TextEditingController(text: userData?['phone'] ?? '');
@@ -98,58 +94,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _semesterController = TextEditingController(text: userData?['semester'] ?? '');
     _ktuIdController = TextEditingController(text: userData?['ktuId'] ?? '');
     _profilePicController = TextEditingController(text: userData?['profilePic'] ?? '');
-  }
-
-  Future<void> _pickAndUploadImage() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final picker = ImagePicker();
-    // Reduced quality and size for profile picture
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery, 
-      imageQuality: 50,
-      maxWidth: 800,
-    );
-
-    if (pickedFile == null) return;
-
-    setState(() {
-      _isUploadingPic = true;
-    });
-
-    try {
-      final bytes = await pickedFile.readAsBytes();
-      if (bytes.isEmpty) {
-        throw Exception("Selected file is empty.");
-      }
-
-      final base64String = base64Encode(bytes);
-      final dataUrl = 'data:image/jpeg;base64,$base64String';
-
-      setState(() {
-        _profilePicController.text = dataUrl;
-        userData?['profilePic'] = dataUrl;
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile picture ready! Tap Save Changes to instantly apply it.'), backgroundColor: Colors.green),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to upload image: $e'), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isUploadingPic = false;
-        });
-      }
-    }
   }
 
   Future<void> _saveChanges() async {
@@ -432,11 +376,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ? const Center(child: CircularProgressIndicator())
               : userData == null
                   ? const Center(child: Text('User data not found.'))
-                  : LiquidPullToRefresh(
+                  : RefreshIndicator(
                       onRefresh: _fetchUserData,
-                      color: theme.colorScheme.primary,
-                      backgroundColor: theme.colorScheme.surface,
-                      showChildOpacityTransition: false,
                       child: SingleChildScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
                         child: Column(
@@ -594,24 +535,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 24),
             _buildEditableField(_nameController, 'Full Name', Icons.person_outline, theme),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isUploadingPic ? null : _pickAndUploadImage,
-                    icon: _isUploadingPic 
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.photo_library),
-                    label: Text(_isUploadingPic ? 'Uploading...' : 'Upload New Profile Picture'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: theme.colorScheme.primaryContainer,
-                      foregroundColor: theme.colorScheme.onPrimaryContainer,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-              ],
+            _buildEditableField(
+              _profilePicController, 
+              'Profile Picture URL', 
+              Icons.image_outlined,
+              theme,
             ),
             const SizedBox(height: 16),
             _buildEditableField(

@@ -15,7 +15,7 @@ class AnalyticsScreen extends StatefulWidget {
     required this.clubId,
     required this.clubName,
     this.coordinatorId,
-    this.isFaculty = false,
+    this.isFaculty = false, // Added isFaculty parameter
   });
 
   @override
@@ -33,6 +33,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   Future<void> _fetchMyProgramIds() async {
+    // If it's a faculty member, they don't need to filter by their own programs
     if (widget.isFaculty || widget.coordinatorId == null) {
       setState(() => _isLoadingIds = false);
       return;
@@ -64,6 +65,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       appBar: AppBar(
         title: Text("${widget.clubName} Analytics"),
         actions: [
+          // Show approval button only for faculty
           if (widget.isFaculty)
             IconButton(
               icon: const Icon(Icons.playlist_add_check),
@@ -101,6 +103,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
           final events = allEvents.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
+            // If it's a coordinator, filter by their programs. Faculty sees all.
             if (widget.coordinatorId != null && !widget.isFaculty) {
               final pId = data['programId'];
               return _myProgramIds.contains(pId);
@@ -150,7 +153,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         builder: (context) => EventRegistrationsListScreen(
                           eventId: event.id,
                           eventName: title,
-                          isFacultyView: widget.isFaculty,
                         ),
                       ),
                     );
