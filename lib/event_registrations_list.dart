@@ -170,7 +170,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
           .get();
 
       final batch = FirebaseFirestore.instance.batch();
-      
+
       for (var doc in approvalQuery.docs) {
         batch.update(doc.reference, {
           'status': approved ? 'approved' : 'rejected',
@@ -197,7 +197,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
         if (_clubId != null) {
           final clubDoc = await FirebaseFirestore.instance.collection('clubs').doc(_clubId!).get();
           final coordinatorEmails = List<String>.from(clubDoc.data()?['coordinatorEmails'] ?? []);
-          
+
           for (var email in coordinatorEmails) {
             await FirebaseFirestore.instance.collection('notifications').add({
               'recipientEmail': email,
@@ -213,7 +213,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
       }
 
       await batch.commit();
-      
+
       setState(() {
         _certsApproved = approved;
       });
@@ -257,7 +257,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     if (_isLoadingSettings) {
       return Scaffold(
         backgroundColor: Colors.grey[50],
@@ -331,18 +331,18 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                       physics: const BouncingScrollPhysics(),
                       children: [
                         _buildSectionHeader(
-                          "Event Winners", 
-                          Icons.emoji_events_rounded, 
-                          Colors.orange.shade700, 
-                          action: !widget.isFacultyView && isCompleted ? () => _showWinnersDialog() : null,
-                          showGenerateAll: winners.isNotEmpty
+                            "Event Winners",
+                            Icons.emoji_events_rounded,
+                            Colors.orange.shade700,
+                            action: !widget.isFacultyView && isCompleted ? () => _showWinnersDialog() : null,
+                            showGenerateAll: winners.isNotEmpty
                         ),
                         if (winners.isEmpty)
                           _buildEmptyState("No winners announced yet", "Tap 'Set Winners' to assign ranks")
                         else ...[
                           ...winners.map((doc) => _buildStudentCard(doc, isWinner: true, isCompleted: isCompleted)),
                         ],
-                        
+
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 32),
                           child: Row(
@@ -358,10 +358,10 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                         ),
 
                         _buildSectionHeader(
-                          "General Participants", 
-                          Icons.groups_rounded, 
-                          theme.primaryColor,
-                          showGenerateAll: participants.isNotEmpty
+                            "General Participants",
+                            Icons.groups_rounded,
+                            theme.primaryColor,
+                            showGenerateAll: participants.isNotEmpty
                         ),
                         if (participants.isEmpty)
                           _buildEmptyState("No participants registered", "Wait for students to sign up")
@@ -573,12 +573,12 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
-                isWinner ? "WINNER" : (participated ? "PARTICIPATED" : "REGISTERED"), 
+                isWinner ? "WINNER" : (participated ? "PARTICIPATED" : "REGISTERED"),
                 style: TextStyle(
-                  fontSize: 9, 
-                  color: (participated || isWinner) ? Colors.green.shade700 : Colors.grey.shade700, 
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.5
+                    fontSize: 9,
+                    color: (participated || isWinner) ? Colors.green.shade700 : Colors.grey.shade700,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5
                 ),
               ),
             ),
@@ -712,9 +712,9 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
             child: SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: isApproved 
-                  ? _buildVerifiedState()
-                  : (widget.isFacultyView ? _buildFacultyApprovalBar() : _buildCoordinatorRequestBar()),
+                child: isApproved
+                    ? _buildVerifiedState()
+                    : (widget.isFacultyView ? _buildFacultyApprovalBar() : _buildCoordinatorRequestBar()),
               ),
             ),
           );
@@ -734,8 +734,8 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
         children: [
           Icon(Icons.verified_user_rounded, color: Colors.white, size: 24),
           SizedBox(width: 12),
-          Text("CERTIFICATES VERIFIED BY FACULTY", 
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)
+          Text("CERTIFICATES VERIFIED BY FACULTY",
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)
           ),
         ],
       ),
@@ -797,34 +797,34 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
         bool isPending = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
 
         return isPending
-          ? Container(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.orange.shade700)),
-                  const SizedBox(width: 12),
-                  Text("PENDING FACULTY VERIFICATION", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.orange.shade800, fontSize: 13)),
-                ],
-              ),
-            )
-          : SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _requestUnifiedApproval(),
-                icon: const Icon(Icons.send_rounded, size: 18),
-                label: const Text("REQUEST FACULTY VERIFICATION"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade700,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  textStyle: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)
-                ),
-              ),
-            );
+            ? Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.orange.shade700)),
+              const SizedBox(width: 12),
+              Text("PENDING FACULTY VERIFICATION", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.orange.shade800, fontSize: 13)),
+            ],
+          ),
+        )
+            : SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => _requestUnifiedApproval(),
+            icon: const Icon(Icons.send_rounded, size: 18),
+            label: const Text("REQUEST FACULTY VERIFICATION"),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade700,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                textStyle: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)
+            ),
+          ),
+        );
       },
     );
   }
@@ -868,8 +868,8 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
           actionsPadding: const EdgeInsets.all(24),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx), 
-              child: Text("Cancel", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w800))
+                onPressed: () => Navigator.pop(ctx),
+                child: Text("Cancel", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w800))
             ),
             ElevatedButton(
               onPressed: () { Navigator.pop(ctx); _saveSettings(); },
@@ -955,7 +955,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Certificates must be approved by faculty first.")));
       return;
     }
-    
+
     FirebaseFirestore.instance
         .collection('registrations')
         .where('eventId', isEqualTo: widget.eventId)

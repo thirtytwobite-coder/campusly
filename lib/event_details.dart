@@ -82,6 +82,7 @@ class EventDetailsScreen extends StatelessWidget {
               final String venue = data['location'] ?? data['venue'] ?? 'TBD';
               final String time = data['time'] ?? 'TBD';
               final String clubName = data['clubName'] ?? 'Organizing Club';
+              final String clubId = data['clubId'] ?? '';
               final String coordinatorName = data['coordinatorName'] ?? 'TBD';
               final String? imageUrl = data['posterLink'] ?? data['imageUrl'];
               final String eventMode = data['eventMode'] ?? data['mode'] ?? 'Offline';
@@ -200,9 +201,11 @@ class EventDetailsScreen extends StatelessWidget {
                               const SizedBox(height: 32),
                               _sectionHeader(theme, "Organizer Information", Colors.indigo),
                               const SizedBox(height: 12),
-                              _infoCardDecorated(theme, Icons.hub_rounded, "Organizing Club", clubName, Colors.indigo),
+                              
+                              // 🔹 Display Club Logo here
+                              _buildClubInfoRow(clubId, clubName, theme),
                               const SizedBox(height: 8),
-                              _infoCardDecorated(theme, Icons.person_rounded, "Event Coordinator", coordinatorName, Colors.indigo),
+                              _infoCardDecorated(theme, null, Icons.person_rounded, "Event Coordinator", coordinatorName, Colors.indigo),
                               
                               if (requiresVolunteers) ...[
                                 const SizedBox(height: 32),
@@ -226,6 +229,21 @@ class EventDetailsScreen extends StatelessWidget {
         ],
       ),
       bottomNavigationBar: _buildBottomAction(context, event, theme),
+    );
+  }
+
+  Widget _buildClubInfoRow(String clubId, String clubName, ThemeData theme) {
+    if (clubId.isEmpty) return _infoCardDecorated(theme, null, Icons.hub_rounded, "Organizing Club", clubName, Colors.indigo);
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('clubs').doc(clubId).snapshots(),
+      builder: (context, snapshot) {
+        String? logo;
+        if (snapshot.hasData && snapshot.data!.exists) {
+          logo = snapshot.data!.get('profilePic');
+        }
+        return _infoCardDecorated(theme, logo, Icons.hub_rounded, "Organizing Club", clubName, Colors.indigo);
+      },
     );
   }
 
@@ -358,7 +376,7 @@ class EventDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _infoCardDecorated(ThemeData theme, IconData icon, String label, String value, Color color) {
+  Widget _infoCardDecorated(ThemeData theme, String? imageUrl, IconData fallbackIcon, String label, String value, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -368,21 +386,43 @@ class EventDetailsScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: color.withOpacity(0.1),
-            child: Icon(icon, size: 20, color: color),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: ClipOval(
+              child: imageUrl != null && imageUrl.isNotEmpty
+                  ? (imageUrl.startsWith('data:image')
+                      ? Image.memory(base64Decode(imageUrl.split(',').last), fit: BoxFit.cover)
+                      : Image.network(_convertGoogleDriveLink(imageUrl), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(fallbackIcon, size: 20, color: color)))
+                  : Icon(fallbackIcon, size: 20, color: color),
+            ),
           ),
           const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: TextStyle(color: color.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.w700)),
-              Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(color: color.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.w700)),
+                Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  String _convertGoogleDriveLink(String link) {
+    if (link.isEmpty) return '';
+    if (link.contains('drive.google.com/uc?export=view')) return link;
+    final regex = RegExp(r'(?:drive\.google\.com/file/d/|id=)([a-zA-Z0-9-_]+)');
+    final match = regex.firstMatch(link);
+    if (match != null) return 'https://drive.google.com/uc?export=view&id=${match.group(1)}';
+    return link;
   }
 
   Widget _volunteerSectionVibrant(ThemeData theme, int count, String role) {

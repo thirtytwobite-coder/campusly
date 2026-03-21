@@ -13,6 +13,7 @@ import 'program_approval_screen.dart';
 import 'program_status_screen.dart';
 import 'certificate_approval_screen.dart';
 import 'analytics_screen.dart';
+import 'vibrant_background.dart';
 
 class FacultyHomeScreen extends StatefulWidget {
   const FacultyHomeScreen({super.key});
@@ -103,12 +104,15 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
         appBar: AppBar(
           title: const Text("FACULTY DASHBOARD"),
+          backgroundColor: isDark ? Colors.black : Theme.of(context).primaryColor,
+          foregroundColor: Colors.white,
           actions: [
           ],
         ),
@@ -122,93 +126,98 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
             }
             return true;
           },
-          child: _isLoadingInfo
-              ? const Center(child: CircularProgressIndicator())
-              : StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('club_mappings')
-                      .where('facultyEmail', isEqualTo: user?.email)
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+          child: Stack(
+            children: [
+              const VibrantBackground(),
+              _isLoadingInfo
+                  ? const Center(child: CircularProgressIndicator())
+                  : StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('club_mappings')
+                          .where('facultyEmail', isEqualTo: user?.email)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
   
-                    final docs = snapshot.data?.docs ?? [];
+                        final docs = snapshot.data?.docs ?? [];
   
-                    return CustomScrollView(
-                      slivers: [
-                        SliverToBoxAdapter(
-                          child: Container(
-                            margin: const EdgeInsets.all(16),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(15),
-                              border: Border.all(
-                                color: Theme.of(
-                                  context,
-                                ).primaryColor.withOpacity(0.3),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.account_balance,
-                                  color: Colors.blueAccent,
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    facultyCollege ?? "Institution Unknown",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
+                        return CustomScrollView(
+                          slivers: [
+                            SliverToBoxAdapter(
+                              child: GlassCard(
+                                borderRadius: 15,
+                                child: Container(
+                                  margin: const EdgeInsets.all(16),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: !isDark ? BoxDecoration(
+                                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(15),
+                                    border: Border.all(
+                                      color: Theme.of(context).primaryColor.withOpacity(0.3),
                                     ),
+                                  ) : null,
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.account_balance,
+                                        color: Colors.blueAccent,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          facultyCollege ?? "Institution Unknown",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                            color: isDark ? Colors.white : Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
+                              ).animate().fadeIn().slideY(begin: -0.1),
                             ),
-                          ).animate().fadeIn().slideY(begin: -0.1),
-                        ),
   
-                        if (docs.isEmpty)
-                          const SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: Center(child: Text("No Clubs Assigned")),
-                          ),
+                            if (docs.isEmpty)
+                              SliverFillRemaining(
+                                hasScrollBody: false,
+                                child: Center(child: Text("No Clubs Assigned", style: TextStyle(color: isDark ? Colors.white70 : Colors.black54))),
+                              ),
   
-                        if (docs.isNotEmpty)
-                          SliverPadding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            sliver: SliverList(
-                              delegate: SliverChildBuilderDelegate((
-                                context,
-                                index,
-                              ) {
-                                var doc = docs[index];
-                                var data = doc.data() as Map<String, dynamic>;
-                                String clubName = data['clubName'] ?? "My Club";
-                                String clubId = data['clubId'];
+                            if (docs.isNotEmpty)
+                              SliverPadding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                sliver: SliverList(
+                                  delegate: SliverChildBuilderDelegate((
+                                    context,
+                                    index,
+                                  ) {
+                                    var doc = docs[index];
+                                    var data = doc.data() as Map<String, dynamic>;
+                                    String clubName = data['clubName'] ?? "My Club";
+                                    String clubId = data['clubId'];
   
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 16),
-                                  child: _buildClubOptionsCard(
-                                    clubName: clubName,
-                                    clubId: clubId,
-                                    clubMappingDoc: doc,
-                                  ),
-                                );
-                              }, childCount: docs.length),
-                            ),
-                          ),
-                      ],
-                    );
-                  },
-                ),
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 16),
+                                      child: _buildClubOptionsCard(
+                                        clubName: clubName,
+                                        clubId: clubId,
+                                        clubMappingDoc: doc,
+                                      ),
+                                    );
+                                  }, childCount: docs.length),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+            ],
+          ),
         ),
         bottomNavigationBar: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
@@ -219,7 +228,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
+                  color: isDark ? const Color(0xFF1E1E1E).withOpacity(0.8) : Theme.of(context).cardColor,
                   boxShadow: [
                     BoxShadow(
                       blurRadius: 20,
@@ -231,15 +240,15 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
                     child: GNav(
-                      rippleColor: Colors.grey[300]!,
-                      hoverColor: Colors.grey[100]!,
+                      rippleColor: isDark ? Colors.white10 : Colors.grey[300]!,
+                      hoverColor: isDark ? Colors.white24 : Colors.grey[100]!,
                       gap: 8,
                       activeColor: Theme.of(context).primaryColor,
                       iconSize: 24,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       duration: const Duration(milliseconds: 400),
                       tabBackgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                      color: Theme.of(context).iconTheme.color?.withOpacity(0.6) ?? Colors.grey,
+                      color: isDark ? Colors.white60 : Theme.of(context).iconTheme.color?.withOpacity(0.6) ?? Colors.grey,
                       tabs: [
                         GButton(icon: Icons.home, text: 'Home'),
                         GButton(icon: Icons.person, text: 'Profile'),
@@ -264,113 +273,120 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
     required String clubId,
     required DocumentSnapshot clubMappingDoc,
   }) {
-    return Card(
-      elevation: 4,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.group_work, color: Colors.blue),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    clubName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GlassCard(
+      borderRadius: 16,
+      child: Card(
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        color: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.group_work, color: Colors.blue),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      clubName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 2.8,
-              children: [
-                _buildOptionButton(
-                  icon: Icons.bar_chart,
-                  label: "Analytics",
-                  color: Colors.green,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AnalyticsScreen(
-                          clubId: clubId,
-                          clubName: clubName,
-                          isFaculty: true,
+                ],
+              ),
+              const Divider(height: 24),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 2.8,
+                children: [
+                  _buildOptionButton(
+                    icon: Icons.bar_chart,
+                    label: "Analytics",
+                    color: Colors.green,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AnalyticsScreen(
+                            clubId: clubId,
+                            clubName: clubName,
+                            isFaculty: true,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                _buildOptionButton(
-                  icon: Icons.people_outline,
-                  label: "Coordinators",
-                  color: Colors.blue,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ClubManagementScreen(
-                          clubMappingDoc: clubMappingDoc,
+                      );
+                    },
+                  ),
+                  _buildOptionButton(
+                    icon: Icons.people_outline,
+                    label: "Coordinators",
+                    color: Colors.blue,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ClubManagementScreen(
+                            clubMappingDoc: clubMappingDoc,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                _buildApproveButton(clubId, clubName),
-                _buildVerifyCertsButton(clubId, clubName),
-                _buildOptionButton(
-                  icon: Icons.check_circle_outline,
-                  label: "Approved",
-                  color: Colors.green,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ProgramStatusScreen(
-                          clubId: clubId,
-                          clubName: clubName,
-                          status: 'approved',
+                      );
+                    },
+                  ),
+                  _buildApproveButton(clubId, clubName),
+                  _buildVerifyCertsButton(clubId, clubName),
+                  _buildOptionButton(
+                    icon: Icons.check_circle_outline,
+                    label: "Approved",
+                    color: Colors.green,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProgramStatusScreen(
+                            clubId: clubId,
+                            clubName: clubName,
+                            status: 'approved',
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                _buildOptionButton(
-                  icon: Icons.cancel_outlined,
-                  label: "Rejected",
-                  color: Colors.red,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ProgramStatusScreen(
-                          clubId: clubId,
-                          clubName: clubName,
-                          status: 'rejected',
+                      );
+                    },
+                  ),
+                  _buildOptionButton(
+                    icon: Icons.cancel_outlined,
+                    label: "Rejected",
+                    color: Colors.red,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProgramStatusScreen(
+                            clubId: clubId,
+                            clubName: clubName,
+                            status: 'rejected',
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
