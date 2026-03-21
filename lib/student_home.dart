@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
+import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,7 +38,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   late ScrollController _scrollController;
   int _unreadNotifications = 0;
   bool _isInitialLoad = true;
-  bool _isNavbarVisible = true;
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -59,7 +59,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     }
   }
 
-  // 🔹 Fetch student data and managed clubs
   Future<void> _fetchDashboardData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -97,7 +96,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   }
 
   Future<void> _handleRefresh() async {
-    // Refresh dashboard data
     await _fetchDashboardData();
   }
 
@@ -105,7 +103,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    // 1. Listen for new ongoing events (Global/College)
     FirebaseFirestore.instance
         .collection('events')
         .where('status', isEqualTo: 'ongoing')
@@ -132,7 +129,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       }
     });
 
-    // 2. Listen for personal Team Invitations count
     FirebaseFirestore.instance
         .collection('student')
         .doc(user.uid)
@@ -211,11 +207,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               ),
               onPressed: () async {
                 Navigator.pop(ctx);
-                
-                // 1. Mark notification as read
                 await docRef.update({'read': true});
-
-                // 2. 🔹 Update the registration status to confirmed
                 final String? regId = data['regId'];
                 if (data['type'] == 'team_invite' && regId != null) {
                   try {
@@ -396,72 +388,82 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
           _isLoadingCollege
               ? const Center(child: CircularProgressIndicator())
-              : Column(
-                    children: [
-                      SafeArea(
-                        bottom: false,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  sectionTitle,
-                                  style: theme.textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    color: isDark ? Colors.white : Colors.black,
+              : LiquidPullToRefresh(
+                  onRefresh: _handleRefresh,
+                  color: theme.colorScheme.primary,
+                  backgroundColor: theme.colorScheme.surface,
+                  showChildOpacityTransition: false,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SafeArea(
+                          bottom: false,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    sectionTitle,
+                                    style: theme.textTheme.headlineSmall?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: isDark ? Colors.white : Colors.black,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              if (_selectedIndex == 2)
+                                if (_selectedIndex == 2)
+                                  _headerIconButton(
+                                    icon: Icons.emoji_events,
+                                    tooltip: "My Awards",
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const ParticipationHistoryScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 _headerIconButton(
-                                  icon: Icons.emoji_events,
-                                  tooltip: "My Awards",
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const ParticipationHistoryScreen(),
-                                      ),
-                                    );
-                                  },
+                                  icon: Icons.notifications_none_rounded,
+                                  tooltip: "Notifications",
+                                  onTap: _showNotifications,
+                                  badgeCount: _unreadNotifications,
                                 ),
-                              _headerIconButton(
-                                icon: Icons.notifications_none_rounded,
-                                tooltip: "Notifications",
-                                onTap: _showNotifications,
-                                badgeCount: _unreadNotifications,
-                              ),
-                              if (managedClubs.isNotEmpty)
+                                if (managedClubs.isNotEmpty)
+                                  _headerIconButton(
+                                    icon: Icons.admin_panel_settings_outlined,
+                                    tooltip: "Switch to Coordinator View",
+                                    onTap: _handleCoordinatorSwitch,
+                                  ),
                                 _headerIconButton(
-                                  icon: Icons.admin_panel_settings_outlined,
-                                  tooltip: "Switch to Coordinator View",
-                                  onTap: _handleCoordinatorSwitch,
+                                  icon: Icons.brightness_6,
+                                  tooltip: "Toggle Theme",
+                                  onTap: _toggleTheme,
                                 ),
-                              _headerIconButton(
-                                icon: Icons.brightness_6,
-                                tooltip: "Toggle Theme",
-                                onTap: _toggleTheme,
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      
-                      if (_selectedIndex != 2) ...[
-                        _buildTeamInvitesSection(),
-                        _buildSearchBar(),
-                        _buildCategoryChips(),
-                        const SizedBox(height: 8),
-                      ],
-  
-                      Expanded(
-                        child: _selectedIndex == 2
+
+                        if (_selectedIndex != 2) ...[
+                          _buildTeamInvitesSection(),
+                          _buildFuturisticSearchBar(),
+                          _buildCategorySection(),
+                          const SizedBox(height: 16),
+                        ],
+
+                        _selectedIndex == 2
                             ? _buildRegisteredEventsList()
-                            : _buildEventsList(),
-                      ),
-                    ],
+                            : _buildClubsWithEvents(),
+
+                        const SizedBox(height: 100), // Extra space at bottom
+                      ],
+                    ),
                   ),
+                ),
         ],
       ),
       bottomNavigationBar: AnimatedContainer(
@@ -531,7 +533,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Padding(
       padding: const EdgeInsets.only(left: 8),
       child: Tooltip(
@@ -605,7 +607,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: isDark ? Colors.indigo.withOpacity(0.1) : Colors.indigo.shade50,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: isDark ? Colors.indigo.withOpacity(0.3) : Colors.indigo.shade100),
           ),
           child: Column(
@@ -652,93 +654,302 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  Widget _buildEventsList() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('events')
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+  Widget _buildFuturisticSearchBar() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text("No events found."));
-        }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Stack(
+        children: [
+          // Subtle outer glow for dark mode
+          if (isDark)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.purpleAccent.withOpacity(0.2),
+                      blurRadius: 20,
+                      spreadRadius: -2,
+                      offset: const Offset(-5, -5),
+                    ),
+                    BoxShadow(
+                      color: Colors.blueAccent.withOpacity(0.2),
+                      blurRadius: 20,
+                      spreadRadius: -2,
+                      offset: const Offset(5, 5),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
-        final filteredDocs = snapshot.data!.docs.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final eventCollege = (data['college'] ?? "").toString().trim();
-          final visibility = (data['visibility'] ?? "public").toString().toLowerCase().trim();
-          final status = (data['status'] ?? "approved").toString().toLowerCase().trim();
-
-          // 🔹 FIX: Allow both 'ongoing' and 'approved' events to show up
-          if (status != 'ongoing' && status != 'approved') return false;
-
-          final isFromMyCollege = studentCollege != null &&
-              eventCollege.isNotEmpty &&
-              eventCollege.toLowerCase() == studentCollege!.toLowerCase();
-
-          if (_selectedIndex == 0) {
-            if (visibility != 'public') return false;
-          } else {
-            if (!isFromMyCollege) return false;
-          }
-
-          if (selectedCategory != "All" && data['category'] != selectedCategory) return false;
-
-          if (!(data['title'] ?? "").toString().toLowerCase().contains(_searchQuery)) return false;
-
-          if (_selectedDate != null) {
-            final selected = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-            if (data['date'] != selected) return false;
-          }
-
-          return true;
-        }).toList();
-
-        if (filteredDocs.isEmpty) {
-          return LiquidPullToRefresh(
-            onRefresh: _handleRefresh,
-            color: Theme.of(context).colorScheme.primary,
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            showChildOpacityTransition: false,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [
-                SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.5,
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Text(
-                        _selectedIndex == 1
-                            ? "No live or upcoming events found for $studentCollege."
-                            : "No public events available.",
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.grey),
+          // Main Search Bar Container
+          ClipRRect(
+            borderRadius: BorderRadius.circular(15),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
+                height: 60,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0F172A).withOpacity(0.8) : Colors.white.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: (isDark ? Colors.white : Colors.black).withOpacity(0.1),
+                    width: 0.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 16),
+                    Icon(
+                      Icons.search_rounded,
+                      color: isDark ? Colors.white70 : Colors.black54,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Theme(
+                        data: theme.copyWith(
+                          textSelectionTheme: TextSelectionThemeData(
+                            selectionColor: Colors.purpleAccent.withOpacity(0.3),
+                            selectionHandleColor: Colors.purpleAccent,
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w300,
+                          ),
+                          decoration: InputDecoration.collapsed(
+                            hintText: "Search...",
+                            hintStyle: TextStyle(
+                              color: (isDark ? Colors.white38 : Colors.black38),
+                              fontWeight: FontWeight.w300,
+                            ),
+                          ),
+                          cursorColor: isDark ? Colors.white : Colors.black,
+                        ),
                       ),
+                    ),
+                    
+                    // Filter box (Glassmorphism inspired by image)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: (isDark ? Colors.white : Colors.black).withOpacity(0.15),
+                          ),
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.tune_rounded,
+                            color: _selectedDate != null 
+                              ? Colors.purpleAccent 
+                              : (isDark ? Colors.white70 : Colors.black54),
+                            size: 20,
+                          ),
+                          onPressed: () => _selectDate(context),
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          // Gradient highlight on the border edges (Neon effect)
+          if (isDark)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: _GradientPainter(
+                    strokeWidth: 1.5,
+                    radius: 15,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.purpleAccent.withOpacity(0.7),
+                        Colors.purpleAccent.withOpacity(0.0),
+                        Colors.blueAccent.withOpacity(0.0),
+                        Colors.blueAccent.withOpacity(0.7),
+                      ],
+                      stops: const [0.0, 0.45, 0.55, 1.0],
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
-          );
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategorySection() {
+    final categories = ["All", "Technical", "Cultural", "Sports", "Academic", "Social"];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Event Categories",
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white70 : Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 48,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length,
+              itemBuilder: (context, i) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(categories[i]),
+                  selected: selectedCategory == categories[i],
+                  onSelected: (_) => setState(() => selectedCategory = categories[i]),
+                  labelStyle: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: selectedCategory == categories[i]
+                        ? Colors.white
+                        : (isDark ? Colors.white70 : Colors.black87),
+                  ),
+                  selectedColor: themeNotifier.value == ThemeMode.light ? Theme.of(context).colorScheme.primary : Colors.indigoAccent,
+                  backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Theme.of(context).colorScheme.surface.withOpacity(0.82),
+                  side: BorderSide(
+                    color: selectedCategory == categories[i]
+                        ? Colors.transparent
+                        : (isDark ? Colors.white.withOpacity(0.1) : Theme.of(context).colorScheme.outline.withOpacity(0.25)),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClubsWithEvents() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('clubs').snapshots(),
+      builder: (context, clubSnapshot) {
+        if (clubSnapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!clubSnapshot.hasData || clubSnapshot.data!.docs.isEmpty) {
+          return const Center(child: Text("No clubs found."));
         }
 
-        return LiquidPullToRefresh(
-          onRefresh: _handleRefresh,
-          color: Theme.of(context).colorScheme.primary,
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          showChildOpacityTransition: false,
-          child: ListView.builder(
-            controller: _scrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: filteredDocs.length,
-            padding: const EdgeInsets.only(bottom: 20),
-            itemBuilder: (context, index) => _buildEventCard(filteredDocs[index]),
-          ),
+        final clubs = clubSnapshot.data!.docs;
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: clubs.length,
+          itemBuilder: (context, index) {
+            final clubData = clubs[index].data() as Map<String, dynamic>;
+            final clubId = clubs[index].id;
+            final clubName = clubData['clubName'] ?? clubData['name'] ?? 'Unnamed Club';
+
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('events')
+                  .where('clubId', isEqualTo: clubId)
+                  .snapshots(),
+              builder: (context, eventSnapshot) {
+                if (!eventSnapshot.hasData || eventSnapshot.data!.docs.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                final filteredEvents = eventSnapshot.data!.docs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final eventCollege = (data['college'] ?? "").toString().trim();
+                  final visibility = (data['visibility'] ?? "public").toString().toLowerCase().trim();
+                  final status = (data['status'] ?? "approved").toString().toLowerCase().trim();
+
+                  if (status != 'ongoing' && status != 'approved') return false;
+
+                  final isFromMyCollege = studentCollege != null &&
+                      eventCollege.isNotEmpty &&
+                      eventCollege.toLowerCase() == studentCollege!.toLowerCase();
+
+                  if (_selectedIndex == 0) {
+                    if (visibility != 'public') return false;
+                  } else {
+                    if (!isFromMyCollege) return false;
+                  }
+
+                  if (selectedCategory != "All" && data['category'] != selectedCategory) return false;
+                  if (!(data['title'] ?? "").toString().toLowerCase().contains(_searchQuery)) return false;
+                  if (_selectedDate != null) {
+                    final selected = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+                    if (data['date'] != selected) return false;
+                  }
+
+                  return true;
+                }).toList();
+
+                // Sort locally
+                filteredEvents.sort((a, b) {
+                  final aData = a.data() as Map<String, dynamic>;
+                  final bData = b.data() as Map<String, dynamic>;
+                  final aTime = aData['createdAt'] as Timestamp?;
+                  final bTime = bData['createdAt'] as Timestamp?;
+                  if (aTime == null || bTime == null) return 0;
+                  return bTime.compareTo(aTime);
+                });
+
+                if (filteredEvents.isEmpty) return const SizedBox.shrink();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                      child: Text(
+                        clubName,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 320,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: filteredEvents.length,
+                        padding: const EdgeInsets.only(right: 16),
+                        itemBuilder: (context, index) => _buildEventCard(filteredEvents[index], isHorizontal: true, index: index),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -747,7 +958,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   Widget _buildRegisteredEventsList() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return const Center(child: Text("Please login to see registered events"));
+      return const SizedBox(height: 200, child: Center(child: Text("Please login to see registered events")));
     }
 
     return StreamBuilder<QuerySnapshot>(
@@ -755,189 +966,152 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           .collection('registrations')
           .where('userId', isEqualTo: user.uid)
           .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+      builder: (context, regSnapshot) {
+        if (regSnapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(height: 300, child: Center(child: CircularProgressIndicator()));
         }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return LiquidPullToRefresh(
-            onRefresh: _handleRefresh,
-            color: Theme.of(context).colorScheme.primary,
-            backgroundColor: Theme.of(context).colorScheme.surface,
-            showChildOpacityTransition: false,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
+        if (!regSnapshot.hasData || regSnapshot.data!.docs.isEmpty) {
+          return const SizedBox(
+            height: 200,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.5,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.assignment_late_outlined, size: 60, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      const Text("No registered events found.", style: TextStyle(color: Colors.grey)),
-                    ],
-                  ),
-                ),
+                Icon(Icons.assignment_late_outlined, size: 60, color: Colors.grey),
+                const SizedBox(height: 16),
+                const Text("No registered events found.", style: TextStyle(color: Colors.grey)),
               ],
             ),
           );
         }
 
-        final registrations = snapshot.data!.docs;
+        final registeredEventIds = regSnapshot.data!.docs.map((doc) => doc['eventId'] as String).toSet();
+        final regDocsMap = {for (var doc in regSnapshot.data!.docs) doc['eventId'] as String: doc};
 
-        return LiquidPullToRefresh(
-          onRefresh: _handleRefresh,
-          color: Theme.of(context).colorScheme.primary,
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          showChildOpacityTransition: false,
-          child: ListView.builder(
-            controller: _scrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: registrations.length,
-            padding: const EdgeInsets.all(16),
-            itemBuilder: (context, index) {
-              final regData = registrations[index].data() as Map<String, dynamic>;
-              final eventId = regData['eventId'];
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance.collection('clubs').snapshots(),
+          builder: (context, clubSnapshot) {
+            if (clubSnapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox();
+            }
+            if (!clubSnapshot.hasData || clubSnapshot.data!.docs.isEmpty) {
+              return const SizedBox();
+            }
 
-            return FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance.collection('events').doc(eventId).get(),
-              builder: (context, eventSnap) {
-                if (!eventSnap.hasData || !eventSnap.data!.exists) return const SizedBox.shrink();
-                
-                final eventData = eventSnap.data!.data() as Map<String, dynamic>? ?? {};
-                final bool isCompleted = eventData['status'] == 'completed';
-                final bool participated = regData['participated'] == true;
+            final clubs = clubSnapshot.data!.docs;
 
-                return Column(
-                  children: [
-                    _buildEventCard(eventSnap.data!),
-                    if (isCompleted || participated)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: regData['rating'] != null 
-                              ? null 
-                              : () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => FeedbackScreen(
-                                        registrationRef: registrations[index].reference,
-                                        eventTitle: regData['eventTitle'] ?? 'Event',
-                                      ),
-                                    ),
-                                  );
-                                },
-                            icon: Icon(
-                              regData['rating'] != null ? Icons.check_circle_outline : Icons.feedback_outlined
-                            ),
-                            label: Text(regData['rating'] != null ? "Feedback Submitted" : "Share My Feedback"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: regData['rating'] != null ? Colors.grey.shade400 : Colors.amber.shade700,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            return ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: clubs.length,
+              itemBuilder: (context, index) {
+                final clubData = clubs[index].data() as Map<String, dynamic>;
+                final clubId = clubs[index].id;
+                final clubName = clubData['clubName'] ?? clubData['name'] ?? 'Unnamed Club';
+
+                return StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('events')
+                      .where('clubId', isEqualTo: clubId)
+                      .snapshots(),
+                  builder: (context, eventSnapshot) {
+                    if (!eventSnapshot.hasData || eventSnapshot.data!.docs.isEmpty) {
+                      return const SizedBox();
+                    }
+
+                    final clubRegisteredEvents = eventSnapshot.data!.docs
+                        .where((doc) => registeredEventIds.contains(doc.id))
+                        .toList();
+
+                    if (clubRegisteredEvents.isEmpty) return const SizedBox();
+
+                    // Sort locally
+                    clubRegisteredEvents.sort((a, b) {
+                      final aData = a.data() as Map<String, dynamic>;
+                      final bData = b.data() as Map<String, dynamic>;
+                      final aTime = aData['createdAt'] as Timestamp?;
+                      final bTime = bData['createdAt'] as Timestamp?;
+                      if (aTime == null || bTime == null) return 0;
+                      return bTime.compareTo(aTime);
+                    });
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                          child: Text(
+                            clubName,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
                             ),
                           ),
                         ),
-                      ),
-                  ],
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: clubRegisteredEvents.length,
+                          itemBuilder: (context, idx) {
+                            final eventDoc = clubRegisteredEvents[idx];
+                            final regDoc = regDocsMap[eventDoc.id]!;
+                            final regData = regDoc.data() as Map<String, dynamic>;
+                            final eventData = eventDoc.data() as Map<String, dynamic>;
+                            final bool isCompleted = eventData['status'] == 'completed';
+                            final bool participated = regData['participated'] == true;
+
+                            return Column(
+                              children: [
+                                _buildEventCard(eventDoc, isHorizontal: false, index: idx),
+                                if (isCompleted || participated)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                    child: SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: regData['rating'] != null
+                                          ? null
+                                          : () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => FeedbackScreen(
+                                                    registrationRef: regDoc.reference,
+                                                    eventTitle: regData['eventTitle'] ?? 'Event',
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                        icon: Icon(
+                                          regData['rating'] != null ? Icons.check_circle_outline : Icons.feedback_outlined,
+                                          size: 18,
+                                        ),
+                                        label: Text(regData['rating'] != null ? "Feedback Submitted" : "Share Feedback"),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: regData['rating'] != null ? Colors.grey.shade400 : Colors.amber.shade700,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+                    );
+                  },
                 );
               },
             );
           },
-        ),
         );
       },
     );
   }
 
-  Widget _buildSearchBar() {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: GlassCard(
-        borderRadius: 14,
-        child: TextField(
-          controller: _searchController,
-          onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-          style: TextStyle(color: isDark ? Colors.white : Colors.black),
-          decoration: InputDecoration(
-            hintText: "Search live events...",
-            hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.grey),
-            prefixIcon: Icon(Icons.search, color: isDark ? Colors.white54 : Colors.grey),
-            suffixIcon: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_selectedDate != null)
-                  IconButton(
-                    icon: Icon(Icons.clear, color: isDark ? Colors.white54 : Colors.grey),
-                    onPressed: () => setState(() => _selectedDate = null),
-                  ),
-                IconButton(
-                  icon: Icon(
-                    Icons.calendar_month,
-                    color: _selectedDate != null
-                        ? theme.colorScheme.primary
-                        : (isDark ? Colors.white54 : Colors.grey),
-                  ),
-                  onPressed: () => _selectDate(context),
-                ),
-              ],
-            ),
-            filled: true,
-            fillColor: isDark ? Colors.white.withOpacity(0.05) : theme.colorScheme.surface.withOpacity(0.92),
-            contentPadding: const EdgeInsets.symmetric(vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryChips() {
-    final categories = ["All", "Technical", "Cultural", "Sports", "Academic", "Social"];
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return SizedBox(
-      height: 48,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemBuilder: (context, i) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: ChoiceChip(
-            label: Text(categories[i]),
-            selected: selectedCategory == categories[i],
-            onSelected: (_) => setState(() => selectedCategory = categories[i]),
-            labelStyle: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: selectedCategory == categories[i]
-                  ? Colors.white
-                  : (isDark ? Colors.white70 : Colors.black87),
-            ),
-            selectedColor: themeNotifier.value == ThemeMode.light ? Theme.of(context).colorScheme.primary : Colors.indigoAccent,
-            backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Theme.of(context).colorScheme.surface.withOpacity(0.82),
-            side: BorderSide(
-              color: selectedCategory == categories[i]
-                  ? Colors.transparent
-                  : (isDark ? Colors.white.withOpacity(0.1) : Theme.of(context).colorScheme.outline.withOpacity(0.25)),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEventCard(DocumentSnapshot doc) {
+  Widget _buildEventCard(DocumentSnapshot doc, {bool isHorizontal = false, int index = 0}) {
     final data = doc.data() as Map<String, dynamic>;
     final prize = (data['prizeAmount'] ?? "").toString();
     final eventDate = data['date'] ?? "TBD";
@@ -945,6 +1119,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
     final status = (data['status'] ?? 'approved').toString().toLowerCase();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    // Pick gradient based on index for variety
+    final List<List<Color>> neonGradients = [
+      [Colors.orangeAccent, Colors.deepOrangeAccent],
+      [Colors.blueAccent, Colors.cyanAccent],
+      [Colors.purpleAccent, Colors.deepPurpleAccent],
+    ];
+    final gradientColors = neonGradients[index % neonGradients.length];
 
     Color statusInfoColor = Colors.green.shade100;
     Color statusInfoText = Colors.green.shade900;
@@ -960,111 +1143,172 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       statusLabel = "COMPLETED";
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: GlassCard(
-        borderRadius: 18,
-        child: InkWell(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => EventDetailsScreen(event: doc)),
+    return Container(
+      width: isHorizontal ? 320 : double.infinity,
+      padding: EdgeInsets.only(
+        left: 16,
+        right: isHorizontal ? 0 : 16,
+        top: 8,
+        bottom: 8
+      ),
+      child: Stack(
+        children: [
+          // Vibrant Glow Effect
+          Positioned.fill(
+            child: Container(
+              margin: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: gradientColors[0].withOpacity(0.15),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (posterLink != null && posterLink.isNotEmpty)
-                posterLink.startsWith('data:image') ? Image.memory(
-                  base64Decode(posterLink.split(',').last),
-                  width: double.infinity,
-                  height: 170,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 170,
-                    width: double.infinity,
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
-                  ),
-                ) : Image.network(
-                  posterLink,
-                  width: double.infinity,
-                  height: 170,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 170,
-                    width: double.infinity,
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
-                  ),
+          
+          GlassCard(
+            borderRadius: 18,
+            child: Container(
+              decoration: BoxDecoration(
+                // Forced futuristic dark glass look even in light mode
+                color: const Color(0xFF0F172A).withOpacity(0.7),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: InkWell(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => EventDetailsScreen(event: doc)),
                 ),
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: (data['visibility'] == 'college')
-                            ? Colors.indigo.withOpacity(0.12)
-                            : Colors.green.withOpacity(0.12),
-                        shape: BoxShape.circle,
+                    if (posterLink != null && posterLink.isNotEmpty)
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                        child: posterLink.startsWith('data:image') ? Image.memory(
+                          base64Decode(posterLink.split(',').last),
+                          width: double.infinity,
+                          height: isHorizontal ? 150 : 170,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            height: isHorizontal ? 150 : 170,
+                            width: double.infinity,
+                            color: Colors.grey[900],
+                            child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                          ),
+                        ) : Image.network(
+                          posterLink,
+                          width: double.infinity,
+                          height: isHorizontal ? 150 : 170,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            height: isHorizontal ? 150 : 170,
+                            width: double.infinity,
+                            color: Colors.grey[900],
+                            child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                          ),
+                        ),
                       ),
-                      child: Icon(
-                        (data['visibility'] == 'college') ? Icons.school : Icons.public,
-                        color: (data['visibility'] == 'college') ? Colors.indigo : Colors.green,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            data['title'] ?? "Untitled Event",
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: isDark ? Colors.white : Colors.black,
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              (data['visibility'] == 'college') ? Icons.school : Icons.public,
+                              color: gradientColors[0],
+                              size: 18,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "${data['college'] ?? "General Event"} - $eventDate",
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: isDark ? Colors.white70 : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  data['title'] ?? "Untitled Event",
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 18,
+                                    color: Colors.white,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "${data['college'] ?? "General"} - $eventDate",
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontSize: 10,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 4,
+                                  runSpacing: 4,
+                                  children: [
+                                    _eventTag(statusLabel, bgColor: statusInfoColor, fgColor: statusInfoText),
+                                    if (isTeamEvent)
+                                      _eventTag("Team", bgColor: Colors.purple.withOpacity(0.14), fgColor: Colors.purple.shade900),
+                                    if (prize.isNotEmpty && prize != "0")
+                                      _eventTag("Rs.$prize", bgColor: Colors.orange.withOpacity(0.14), fgColor: Colors.orange.shade900),
+                                  ],
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 6,
-                            children: [
-                              _eventTag(statusLabel, bgColor: statusInfoColor, fgColor: statusInfoText),
-                              if (isTeamEvent)
-                                _eventTag("Team • ${data['teamSize'] ?? 'N/A'}", bgColor: Colors.purple.withOpacity(0.14), fgColor: Colors.purple.shade900),
-                              if (prize.isNotEmpty && prize != "0")
-                                _eventTag("Prize Rs.$prize", bgColor: Colors.orange.withOpacity(0.14), fgColor: Colors.orange.shade900),
-                            ],
                           ),
                         ],
                       ),
                     ),
-                    Icon(Icons.arrow_forward_ios_rounded, size: 14, color: isDark ? Colors.white54 : Colors.grey),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+
+          // Neon Gradient Border
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: _GradientPainter(
+                  strokeWidth: 2,
+                  radius: 18,
+                  gradient: LinearGradient(
+                    colors: [
+                      gradientColors[0],
+                      gradientColors[1].withOpacity(0.2),
+                      gradientColors[0].withOpacity(0.5),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1);
+    ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.1);
   }
 
   Widget _eventTag(String text, {required Color bgColor, required Color fgColor}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
-      child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: fgColor)),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(6)),
+      child: Text(text, style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: fgColor)),
     );
   }
 
@@ -1073,4 +1317,27 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final prefs = await SharedPreferences.getInstance();
     prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
   }
+}
+
+class _GradientPainter extends CustomPainter {
+  final double strokeWidth;
+  final double radius;
+  final Gradient gradient;
+
+  _GradientPainter({required this.strokeWidth, required this.radius, required this.gradient});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Rect rect = Offset.zero & size;
+    final Paint paint = Paint()
+      ..shader = gradient.createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+
+    final RRect rrect = RRect.fromRectAndRadius(rect, Radius.circular(radius));
+    canvas.drawRRect(rrect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
