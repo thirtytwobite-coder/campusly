@@ -662,51 +662,77 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Stack(
         children: [
-          // Subtle outer glow for dark mode
-          if (isDark)
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.purpleAccent.withOpacity(0.2),
-                      blurRadius: 20,
-                      spreadRadius: -2,
-                      offset: const Offset(-5, -5),
-                    ),
-                    BoxShadow(
-                      color: Colors.blueAccent.withOpacity(0.2),
-                      blurRadius: 20,
-                      spreadRadius: -2,
-                      offset: const Offset(5, 5),
-                    ),
-                  ],
-                ),
+          // Subtle outer glow/shadow
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: isDark
+                    ? [
+                        BoxShadow(
+                          color: Colors.purpleAccent.withOpacity(0.2),
+                          blurRadius: 20,
+                          spreadRadius: -2,
+                          offset: const Offset(-5, -5),
+                        ),
+                        BoxShadow(
+                          color: Colors.blueAccent.withOpacity(0.2),
+                          blurRadius: 20,
+                          spreadRadius: -2,
+                          offset: const Offset(5, 5),
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.blueAccent.withOpacity(0.08),
+                          blurRadius: 30,
+                          offset: const Offset(0, 10),
+                        ),
+                        BoxShadow(
+                          color: Colors.purpleAccent.withOpacity(0.05),
+                          blurRadius: 30,
+                          offset: const Offset(0, -5),
+                        ),
+                      ],
               ),
             ),
+          ),
 
           // Main Search Bar Container
           ClipRRect(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(20),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
               child: Container(
                 height: 60,
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF0F172A).withOpacity(0.8) : Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(15),
+                  color: isDark
+                      ? const Color(0xFF0F172A).withOpacity(0.8)
+                      : Colors.white.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: (isDark ? Colors.white : Colors.black).withOpacity(0.1),
-                    width: 0.5,
+                    color: isDark
+                        ? Colors.white.withOpacity(0.1)
+                        : Colors.white.withOpacity(0.8),
+                    width: 1.5,
                   ),
+                  gradient: isDark
+                      ? null
+                      : LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withOpacity(0.5),
+                            Colors.white.withOpacity(0.2),
+                          ],
+                        ),
                 ),
                 child: Row(
                   children: [
                     const SizedBox(width: 16),
                     Icon(
                       Icons.search_rounded,
-                      color: isDark ? Colors.white70 : Colors.black54,
+                      color: isDark ? Colors.white70 : Colors.black45,
                       size: 24,
                     ),
                     const SizedBox(width: 12),
@@ -714,49 +740,55 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       child: Theme(
                         data: theme.copyWith(
                           textSelectionTheme: TextSelectionThemeData(
-                            selectionColor: Colors.purpleAccent.withOpacity(0.3),
-                            selectionHandleColor: Colors.purpleAccent,
+                            selectionColor: isDark 
+                                ? Colors.purpleAccent.withOpacity(0.3)
+                                : Colors.blueAccent.withOpacity(0.2),
+                            selectionHandleColor: isDark ? Colors.purpleAccent : Colors.blueAccent,
                           ),
                         ),
                         child: TextField(
                           controller: _searchController,
                           onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
                           style: TextStyle(
-                            color: isDark ? Colors.white : Colors.black,
+                            color: isDark ? Colors.white : Colors.black87,
                             fontSize: 16,
-                            fontWeight: FontWeight.w300,
+                            fontWeight: FontWeight.w400,
                           ),
                           decoration: InputDecoration.collapsed(
                             hintText: "Search...",
                             hintStyle: TextStyle(
-                              color: (isDark ? Colors.white38 : Colors.black38),
+                              color: isDark ? Colors.white38 : Colors.black26,
                               fontWeight: FontWeight.w300,
                             ),
                           ),
-                          cursorColor: isDark ? Colors.white : Colors.black,
+                          cursorColor: isDark ? Colors.white : Colors.blueAccent,
                         ),
                       ),
                     ),
                     
-                    // Filter box (Glassmorphism inspired by image)
+                    // Filter box
                     Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
+                      padding: const EdgeInsets.all(8.0),
                       child: Container(
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(12),
+                          color: isDark 
+                              ? Colors.white.withOpacity(0.05)
+                              : Colors.blueAccent.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: (isDark ? Colors.white : Colors.black).withOpacity(0.15),
+                            color: isDark 
+                                ? Colors.white.withOpacity(0.15)
+                                : Colors.blueAccent.withOpacity(0.1),
                           ),
                         ),
                         child: IconButton(
                           icon: Icon(
                             Icons.tune_rounded,
                             color: _selectedDate != null 
-                              ? Colors.purpleAccent 
-                              : (isDark ? Colors.white70 : Colors.black54),
+                              ? (isDark ? Colors.purpleAccent : Colors.blueAccent)
+                              : (isDark ? Colors.white70 : Colors.black45),
                             size: 20,
                           ),
                           onPressed: () => _selectDate(context),
@@ -770,14 +802,14 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             ),
           ),
           
-          // Gradient highlight on the border edges (Neon effect)
+          // Gradient highlight on the border edges (Neon effect for dark mode)
           if (isDark)
             Positioned.fill(
               child: IgnorePointer(
                 child: CustomPaint(
                   painter: _GradientPainter(
                     strokeWidth: 1.5,
-                    radius: 15,
+                    radius: 20,
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -1121,13 +1153,20 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final theme = Theme.of(context);
 
-    // Pick gradient based on index for variety
-    final List<List<Color>> neonGradients = [
-      [Colors.orangeAccent, Colors.deepOrangeAccent],
-      [Colors.blueAccent, Colors.cyanAccent],
-      [Colors.purpleAccent, Colors.deepPurpleAccent],
-    ];
-    final gradientColors = neonGradients[index % neonGradients.length];
+    // Pick colors based on theme
+    final List<List<Color>> gradients = isDark 
+      ? [
+          [Colors.orangeAccent, Colors.deepOrangeAccent],
+          [Colors.blueAccent, Colors.cyanAccent],
+          [Colors.purpleAccent, Colors.deepPurpleAccent],
+        ]
+      : [
+          [Colors.lightBlue.shade300, Colors.blue.shade100],
+          [Colors.purple.shade300, Colors.deepPurple.shade50],
+          [Colors.teal.shade300, Colors.green.shade50],
+        ];
+    
+    final gradientColors = gradients[index % gradients.length];
 
     Color statusInfoColor = Colors.green.shade100;
     Color statusInfoText = Colors.green.shade900;
@@ -1153,17 +1192,20 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       ),
       child: Stack(
         children: [
-          // Vibrant Glow Effect
+          // Soft Shadow / Glow Effect
           Positioned.fill(
             child: Container(
               margin: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: gradientColors[0].withOpacity(0.15),
-                    blurRadius: 20,
-                    spreadRadius: 2,
+                    color: isDark 
+                        ? gradientColors[0].withOpacity(0.15)
+                        : gradientColors[0].withOpacity(0.1),
+                    blurRadius: 25,
+                    spreadRadius: isDark ? 2 : 0,
+                    offset: isDark ? Offset.zero : const Offset(0, 8),
                   ),
                 ],
               ),
@@ -1171,12 +1213,19 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           ),
           
           GlassCard(
-            borderRadius: 18,
+            borderRadius: 20,
             child: Container(
               decoration: BoxDecoration(
-                // Forced futuristic dark glass look even in light mode
-                color: const Color(0xFF0F172A).withOpacity(0.7),
-                borderRadius: BorderRadius.circular(18),
+                color: isDark
+                    ? const Color(0xFF0F172A).withOpacity(0.7)
+                    : Colors.white.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark 
+                      ? Colors.white.withOpacity(0.05)
+                      : Colors.white.withOpacity(0.8),
+                  width: 1,
+                ),
               ),
               child: InkWell(
                 onTap: () => Navigator.push(
@@ -1188,7 +1237,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   children: [
                     if (posterLink != null && posterLink.isNotEmpty)
                       ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                         child: posterLink.startsWith('data:image') ? Image.memory(
                           base64Decode(posterLink.split(',').last),
                           width: double.infinity,
@@ -1197,8 +1246,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           errorBuilder: (context, error, stackTrace) => Container(
                             height: isHorizontal ? 150 : 170,
                             width: double.infinity,
-                            color: Colors.grey[900],
-                            child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                            color: isDark ? Colors.grey[900] : Colors.grey[100],
+                            child: Icon(Icons.image_not_supported, size: 50, color: isDark ? Colors.grey : Colors.grey[400]),
                           ),
                         ) : Image.network(
                           posterLink,
@@ -1208,8 +1257,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           errorBuilder: (context, error, stackTrace) => Container(
                             height: isHorizontal ? 150 : 170,
                             width: double.infinity,
-                            color: Colors.grey[900],
-                            child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                            color: isDark ? Colors.grey[900] : Colors.grey[100],
+                            child: Icon(Icons.image_not_supported, size: 50, color: isDark ? Colors.grey : Colors.grey[400]),
                           ),
                         ),
                       ),
@@ -1219,19 +1268,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            width: 36,
-                            height: 36,
+                            width: 38,
+                            height: 38,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
+                              color: isDark 
+                                  ? Colors.white.withOpacity(0.1)
+                                  : gradientColors[0].withOpacity(0.15),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
                               (data['visibility'] == 'college') ? Icons.school : Icons.public,
-                              color: gradientColors[0],
+                              color: isDark ? gradientColors[0] : gradientColors[0].withOpacity(0.8),
                               size: 18,
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1241,32 +1292,33 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 18,
-                                    color: Colors.white,
-                                    letterSpacing: 0.5,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 17,
+                                    color: isDark ? Colors.white : Colors.black87,
+                                    letterSpacing: 0.3,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 4),
                                 Text(
                                   "${data['college'] ?? "General"} - $eventDate",
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 10,
-                                    color: Colors.white70,
+                                    fontSize: 11,
+                                    color: isDark ? Colors.white70 : Colors.black54,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 8),
                                 Wrap(
-                                  spacing: 4,
-                                  runSpacing: 4,
+                                  spacing: 6,
+                                  runSpacing: 6,
                                   children: [
                                     _eventTag(statusLabel, bgColor: statusInfoColor, fgColor: statusInfoText),
                                     if (isTeamEvent)
-                                      _eventTag("Team", bgColor: Colors.purple.withOpacity(0.14), fgColor: Colors.purple.shade900),
+                                      _eventTag("Team", bgColor: Colors.purple.withOpacity(0.1), fgColor: Colors.purple.shade700),
                                     if (prize.isNotEmpty && prize != "0")
-                                      _eventTag("Rs.$prize", bgColor: Colors.orange.withOpacity(0.14), fgColor: Colors.orange.shade900),
+                                      _eventTag("Rs.$prize", bgColor: Colors.amber.withOpacity(0.1), fgColor: Colors.amber.shade900),
                                   ],
                                 ),
                               ],
@@ -1281,19 +1333,27 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             ),
           ),
 
-          // Neon Gradient Border
+          // Thin Gradient Border (Neon for dark, Subtle for light)
           Positioned.fill(
             child: IgnorePointer(
               child: CustomPaint(
                 painter: _GradientPainter(
-                  strokeWidth: 2,
-                  radius: 18,
+                  strokeWidth: isDark ? 2 : 1.2,
+                  radius: 20,
                   gradient: LinearGradient(
-                    colors: [
-                      gradientColors[0],
-                      gradientColors[1].withOpacity(0.2),
-                      gradientColors[0].withOpacity(0.5),
-                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDark 
+                      ? [
+                          gradientColors[0],
+                          gradientColors[1].withOpacity(0.2),
+                          gradientColors[0].withOpacity(0.5),
+                        ]
+                      : [
+                          gradientColors[0].withOpacity(0.5),
+                          gradientColors[0].withOpacity(0.1),
+                          gradientColors[0].withOpacity(0.3),
+                        ],
                   ),
                 ),
               ),
