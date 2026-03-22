@@ -191,8 +191,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                final eventDoc = await FirebaseFirestore.instance.collection('events').doc(eventId).get();
-                if (eventDoc.exists && mounted) {
+                final eventDoc = await FirebaseFirestore.instance.collection('events').doc(eventId).get();                if (eventDoc.exists && mounted) {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailsScreen(event: eventDoc)));
                 }
               },
@@ -663,178 +662,101 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Stack(
-        children: [
-          // Subtle outer glow/shadow
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: isDark
-                    ? [
-                        BoxShadow(
-                          color: Colors.purpleAccent.withOpacity(0.2),
-                          blurRadius: 20,
-                          spreadRadius: -2,
-                          offset: const Offset(-5, -5),
-                        ),
-                        BoxShadow(
-                          color: Colors.blueAccent.withOpacity(0.2),
-                          blurRadius: 20,
-                          spreadRadius: -2,
-                          offset: const Offset(5, 5),
-                        ),
-                      ]
-                    : [
-                        BoxShadow(
-                          color: Colors.blueAccent.withOpacity(0.08),
-                          blurRadius: 30,
-                          offset: const Offset(0, 10),
-                        ),
-                        BoxShadow(
-                          color: Colors.purpleAccent.withOpacity(0.05),
-                          blurRadius: 30,
-                          offset: const Offset(0, -5),
-                        ),
-                      ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            height: 60,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withOpacity(0.1)
+                  : Colors.white.withOpacity(0.6),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white12 : Colors.black12,
+                width: 0.5,
               ),
             ),
-          ),
-
-          // Main Search Bar Container
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-              child: Container(
-                height: 60,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF0F172A).withOpacity(0.8)
-                      : Colors.white.withOpacity(0.6),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withOpacity(0.1)
-                        : Colors.white.withOpacity(0.8),
-                    width: 1.5,
-                  ),
-                  gradient: isDark
-                      ? null
-                      : LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.white.withOpacity(0.5),
-                            Colors.white.withOpacity(0.2),
-                          ],
-                        ),
+            child: Row(
+              children: [
+                const SizedBox(width: 16),
+                Icon(
+                  Icons.search_rounded,
+                  color: isDark ? Colors.white70 : Colors.black45,
+                  size: 24,
                 ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 16),
-                    Icon(
-                      Icons.search_rounded,
-                      color: isDark ? Colors.white70 : Colors.black45,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Theme(
-                        data: theme.copyWith(
-                          textSelectionTheme: TextSelectionThemeData(
-                            selectionColor: isDark 
-                                ? Colors.purpleAccent.withOpacity(0.3)
-                                : Colors.blueAccent.withOpacity(0.2),
-                            selectionHandleColor: isDark ? Colors.purpleAccent : Colors.blueAccent,
-                          ),
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-                          style: TextStyle(
-                            color: isDark ? Colors.white : Colors.black87,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: "Search by club or event name....",
-                            hintStyle: TextStyle(
-                              color: isDark ? Colors.white38 : Colors.black26,
-                              fontWeight: FontWeight.w300,
-                            ),
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            filled: false,
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 18),
-                          ),
-                          cursorColor: isDark ? Colors.white : Colors.blueAccent,
-                        ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Theme(
+                    data: theme.copyWith(
+                      textSelectionTheme: TextSelectionThemeData(
+                        selectionColor: isDark 
+                            ? Colors.purpleAccent.withOpacity(0.3)
+                            : Colors.blueAccent.withOpacity(0.2),
+                        selectionHandleColor: isDark ? Colors.purpleAccent : Colors.blueAccent,
                       ),
                     ),
-                    
-                    // Filter box
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: isDark 
-                              ? Colors.white.withOpacity(0.05)
-                              : Colors.blueAccent.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: isDark 
-                                ? Colors.white.withOpacity(0.15)
-                                : Colors.blueAccent.withOpacity(0.1),
-                          ),
-                        ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.tune_rounded,
-                            color: _selectedDate != null 
-                              ? (isDark ? Colors.purpleAccent : Colors.blueAccent)
-                              : (isDark ? Colors.white70 : Colors.black45),
-                            size: 20,
-                          ),
-                          onPressed: () => _selectDate(context),
-                          padding: EdgeInsets.zero,
-                        ),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          
-          // Gradient highlight on the border edges (Neon effect for dark mode)
-          if (isDark)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _GradientPainter(
-                    strokeWidth: 1.5,
-                    radius: 20,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Colors.purpleAccent.withOpacity(0.7),
-                        Colors.purpleAccent.withOpacity(0.0),
-                        Colors.blueAccent.withOpacity(0.0),
-                        Colors.blueAccent.withOpacity(0.7),
-                      ],
-                      stops: const [0.0, 0.45, 0.55, 1.0],
+                      decoration: InputDecoration(
+                        hintText: "Search by club or event name....",
+                        hintStyle: TextStyle(
+                          color: isDark ? Colors.white38 : Colors.black26,
+                          fontWeight: FontWeight.w300,
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        filled: false,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                      ),
+                      cursorColor: isDark ? Colors.white : Colors.blueAccent,
                     ),
                   ),
                 ),
-              ),
+                
+                // Filter box
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: isDark 
+                          ? Colors.white.withOpacity(0.05)
+                          : Colors.blueAccent.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark 
+                            ? Colors.white.withOpacity(0.15)
+                            : Colors.blueAccent.withOpacity(0.1),
+                      ),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.tune_rounded,
+                        color: _selectedDate != null 
+                          ? (isDark ? Colors.purpleAccent : Colors.blueAccent)
+                          : (isDark ? Colors.white70 : Colors.black45),
+                        size: 20,
+                      ),
+                      onPressed: () => _selectDate(context),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+              ],
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
@@ -981,13 +903,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       ),
                     ),
                     SizedBox(
-                      height: 320,
+                      height: 280,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         physics: const BouncingScrollPhysics(),
                         itemCount: filteredEvents.length,
                         padding: const EdgeInsets.only(right: 16),
-                        itemBuilder: (context, index) => _buildEventCard(filteredEvents[index], isHorizontal: true, index: index),
+                        itemBuilder: (context, index) => _buildEventCard(
+                          filteredEvents[index],
+                          isHorizontal: true,
+                          index: index,
+                          clubLogo: clubData['profilePic'],
+                        ),
                       ),
                     ),
                   ],
@@ -1122,7 +1049,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
                             return Column(
                               children: [
-                                _buildEventCard(eventDoc, isHorizontal: false, index: idx),
+                                _buildEventCard(
+                                  eventDoc,
+                                  isHorizontal: false,
+                                  index: idx,
+                                  clubLogo: clubData['profilePic'],
+                                ),
                                 if (isCompleted || participated)
                                   Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -1172,7 +1104,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  Widget _buildEventCard(DocumentSnapshot doc, {bool isHorizontal = false, int index = 0}) {
+  Widget _buildEventCard(DocumentSnapshot doc, {bool isHorizontal = false, int index = 0, String? clubLogo}) {
     final data = doc.data() as Map<String, dynamic>;
     final prize = (data['prizeAmount'] ?? "").toString();
     final eventDate = data['date'] ?? "TBD";
@@ -1212,7 +1144,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     }
 
     return Container(
-      width: isHorizontal ? 320 : double.infinity,
+      width: isHorizontal ? 360 : double.infinity,
       padding: EdgeInsets.only(
         left: 16,
         right: isHorizontal ? 0 : 16,
@@ -1270,10 +1202,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         child: posterLink.startsWith('data:image') ? Image.memory(
                           base64Decode(posterLink.split(',').last),
                           width: double.infinity,
-                          height: isHorizontal ? 150 : 170,
+                          height: isHorizontal ? 120 : 170,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Container(
-                            height: isHorizontal ? 150 : 170,
+                            height: isHorizontal ? 120 : 170,
                             width: double.infinity,
                             color: isDark ? Colors.grey[900] : Colors.grey[100],
                             child: Icon(Icons.image_not_supported, size: 50, color: isDark ? Colors.grey : Colors.grey[400]),
@@ -1281,10 +1213,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         ) : Image.network(
                           posterLink,
                           width: double.infinity,
-                          height: isHorizontal ? 150 : 170,
+                          height: isHorizontal ? 120 : 170,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Container(
-                            height: isHorizontal ? 150 : 170,
+                            height: isHorizontal ? 120 : 170,
                             width: double.infinity,
                             color: isDark ? Colors.grey[900] : Colors.grey[100],
                             child: Icon(Icons.image_not_supported, size: 50, color: isDark ? Colors.grey : Colors.grey[400]),
@@ -1305,10 +1237,24 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                   : gradientColors[0].withOpacity(0.15),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(
-                              (data['visibility'] == 'college') ? Icons.school : Icons.public,
-                              color: isDark ? gradientColors[0] : gradientColors[0].withOpacity(0.8),
-                              size: 18,
+                            child: ClipOval(
+                              child: (clubLogo != null && clubLogo.isNotEmpty)
+                                ? (clubLogo.startsWith('data:image') 
+                                    ? Image.memory(
+                                        base64Decode(clubLogo.split(',').last),
+                                        fit: BoxFit.cover,
+                                        width: 38,
+                                        height: 38,
+                                        errorBuilder: (context, error, stackTrace) => _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
+                                      )
+                                    : Image.network(
+                                        clubLogo,
+                                        fit: BoxFit.cover,
+                                        width: 38,
+                                        height: 38,
+                                        errorBuilder: (context, error, stackTrace) => _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
+                                      ))
+                                : _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -1318,30 +1264,30 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                               children: [
                                 Text(
                                   data['title'] ?? "Untitled Event",
-                                  maxLines: 2,
+                                  maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w800,
-                                    fontSize: 17,
+                                    fontSize: 16,
                                     color: isDark ? Colors.white : Colors.black87,
                                     letterSpacing: 0.3,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 2),
                                 Text(
                                   "${data['college'] ?? "General"} - $eventDate",
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 11,
+                                    fontSize: 10,
                                     color: isDark ? Colors.white70 : Colors.black54,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 6),
                                 Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
+                                  spacing: 4,
+                                  runSpacing: 4,
                                   children: [
                                     _eventTag(statusLabel, bgColor: statusInfoColor, fgColor: statusInfoText),
                                     if (isTeamEvent)
@@ -1391,6 +1337,14 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         ],
       ),
     ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.1);
+  }
+
+  Widget _buildDefaultClubIcon(bool isDark, List<Color> gradientColors, String? visibility) {
+    return Icon(
+      (visibility == 'college') ? Icons.school : Icons.public,
+      color: isDark ? gradientColors[0] : gradientColors[0].withOpacity(0.8),
+      size: 18,
+    );
   }
 
   Widget _eventTag(String text, {required Color bgColor, required Color fgColor}) {
