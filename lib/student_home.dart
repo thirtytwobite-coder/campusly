@@ -673,116 +673,169 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: Container(
-            height: 60,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withOpacity(0.1)
-                  : Colors.white.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark ? Colors.white12 : Colors.black12,
-                width: 0.5,
+      child: Stack(
+        children: [
+          // Background Glow Effect for Dark Mode
+          if (isDark)
+            Positioned.fill(
+              child: Container(
+                margin: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.purpleAccent.withOpacity(0.3),
+                      blurRadius: 20,
+                      spreadRadius: -2,
+                      offset: const Offset(-5, 0),
+                    ),
+                    BoxShadow(
+                      color: Colors.blueAccent.withOpacity(0.3),
+                      blurRadius: 20,
+                      spreadRadius: -2,
+                      offset: const Offset(5, 0),
+                    ),
+                  ],
+                ),
               ),
             ),
-            child: Row(
-              children: [
-                const SizedBox(width: 16),
-                Icon(
-                  Icons.search_rounded,
-                  color: isDark ? Colors.white70 : Colors.black45,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Theme(
-                    data: theme.copyWith(
-                      textSelectionTheme: TextSelectionThemeData(
-                        selectionColor: isDark 
-                            ? Colors.purpleAccent.withOpacity(0.3)
-                            : Colors.blueAccent.withOpacity(0.2),
-                        selectionHandleColor: isDark ? Colors.purpleAccent : Colors.blueAccent,
-                      ),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: "Search by club or event name....",
-                        hintStyle: TextStyle(
-                          color: isDark ? Colors.white38 : Colors.black26,
-                          fontWeight: FontWeight.w300,
-                        ),
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        filled: false,
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 18),
-                      ),
-                      cursorColor: isDark ? Colors.white : Colors.blueAccent,
-                    ),
-                  ),
-                ),
-                
-                if (_searchQuery.isNotEmpty)
-                  IconButton(
-                    icon: Icon(
-                      Icons.close_rounded,
-                      color: isDark ? Colors.white70 : Colors.black45,
-                      size: 20,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _searchQuery = "";
-                        _searchController.clear();
-                      });
-                    },
-                  ),
 
-                // Filter box
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: isDark 
-                          ? Colors.white.withOpacity(0.05)
-                          : Colors.blueAccent.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isDark 
-                            ? Colors.white.withOpacity(0.15)
-                            : Colors.blueAccent.withOpacity(0.1),
-                      ),
-                    ),
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.tune_rounded,
-                        color: _selectedDate != null 
-                          ? (isDark ? Colors.purpleAccent : Colors.blueAccent)
-                          : (isDark ? Colors.white70 : Colors.black45),
-                        size: 20,
-                      ),
-                      onPressed: () => _selectDate(context),
-                      padding: EdgeInsets.zero,
-                    ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: Container(
+                height: 60,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF0F172A).withOpacity(0.85)
+                      : Colors.white.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.black12,
+                    width: 0.5,
                   ),
                 ),
-              ],
+                child: Row(
+                  children: [
+                    const SizedBox(width: 16),
+                    Icon(
+                      Icons.search_rounded,
+                      color: isDark ? Colors.white70 : Colors.black45,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Theme(
+                        data: theme.copyWith(
+                          textSelectionTheme: TextSelectionThemeData(
+                            selectionColor: isDark 
+                                ? Colors.purpleAccent.withOpacity(0.3)
+                                : Colors.blueAccent.withOpacity(0.2),
+                            selectionHandleColor: isDark ? Colors.purpleAccent : Colors.blueAccent,
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: "Search by club or event name....",
+                            hintStyle: TextStyle(
+                              color: isDark ? Colors.white38 : Colors.black26,
+                              fontWeight: FontWeight.w300,
+                            ),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            filled: false,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                          ),
+                          cursorColor: isDark ? Colors.white : Colors.blueAccent,
+                        ),
+                      ),
+                    ),
+                    
+                    if (_searchQuery.isNotEmpty)
+                      IconButton(
+                        icon: Icon(
+                          Icons.close_rounded,
+                          color: isDark ? Colors.white70 : Colors.black45,
+                          size: 20,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _searchQuery = "";
+                            _searchController.clear();
+                          });
+                        },
+                      ),
+
+                    // Filter box
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: isDark 
+                              ? Colors.white.withOpacity(0.05)
+                              : Colors.blueAccent.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isDark 
+                                ? Colors.white.withOpacity(0.15)
+                                : Colors.blueAccent.withOpacity(0.1),
+                          ),
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.tune_rounded,
+                            color: _selectedDate != null 
+                              ? (isDark ? Colors.purpleAccent : Colors.blueAccent)
+                              : (isDark ? Colors.white70 : Colors.black45),
+                            size: 20,
+                          ),
+                          onPressed: () => _selectDate(context),
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
+
+          // Enhanced Neon Border for Dark Mode
+          if (isDark)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: _GradientPainter(
+                    strokeWidth: 1.8,
+                    radius: 20,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.purpleAccent.withOpacity(0.9),
+                        Colors.purpleAccent.withOpacity(0.1),
+                        Colors.blueAccent.withOpacity(0.1),
+                        Colors.blueAccent.withOpacity(0.9),
+                      ],
+                      stops: const [0.0, 0.4, 0.6, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -929,7 +982,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       ),
                     ),
                     SizedBox(
-                      height: 250, // Increased height from 220
+                      height: 310, // Increased height from 280
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         physics: const BouncingScrollPhysics(),
@@ -1228,10 +1281,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         child: posterLink.startsWith('data:image') ? Image.memory(
                           base64Decode(posterLink.split(',').last),
                           width: double.infinity,
-                          height: isHorizontal ? 160 : 170, // Increased height
+                          height: isHorizontal ? 185 : 195,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Container(
-                            height: isHorizontal ? 160 : 170,
+                            height: isHorizontal ? 185 : 195,
                             width: double.infinity,
                             color: isDark ? Colors.grey[900] : Colors.grey[100],
                             child: Icon(Icons.image_not_supported, size: 40, color: isDark ? Colors.grey : Colors.grey[400]),
@@ -1239,10 +1292,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         ) : Image.network(
                           posterLink,
                           width: double.infinity,
-                          height: isHorizontal ? 160 : 170, // Increased height
+                          height: isHorizontal ? 185 : 195,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Container(
-                            height: isHorizontal ? 160 : 170,
+                            height: isHorizontal ? 185 : 195,
                             width: double.infinity,
                             color: isDark ? Colors.grey[900] : Colors.grey[100],
                             child: Icon(Icons.image_not_supported, size: 40, color: isDark ? Colors.grey : Colors.grey[400]),
@@ -1250,13 +1303,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         ),
                       ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+                      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Container(
-                            width: 32,
-                            height: 32,
+                            width: 48, // Increased logo size to 48
+                            height: 48,
                             decoration: BoxDecoration(
                               color: isDark 
                                   ? Colors.white.withOpacity(0.1)
@@ -1269,21 +1322,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                     ? Image.memory(
                                         base64Decode(clubLogo.split(',').last),
                                         fit: BoxFit.cover,
-                                        width: 32,
-                                        height: 32,
+                                        width: 48,
+                                        height: 48,
                                         errorBuilder: (context, error, stackTrace) => _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
                                       )
                                     : Image.network(
                                         clubLogo,
                                         fit: BoxFit.cover,
-                                        width: 32,
-                                        height: 32,
+                                        width: 48,
+                                        height: 48,
                                         errorBuilder: (context, error, stackTrace) => _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
                                       ))
                                 : _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1294,23 +1347,23 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w800,
-                                    fontSize: 13,
+                                    fontSize: 18, // Increased text size to 18
                                     color: isDark ? Colors.white : Colors.black87,
                                     letterSpacing: 0.2,
                                   ),
                                 ),
-                                const SizedBox(height: 1),
+                                const SizedBox(height: 2),
                                 Text(
                                   "${data['college'] ?? "General"} - $eventDate",
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 8,
+                                    fontSize: 12, // Increased text size to 12
                                     color: isDark ? Colors.white70 : Colors.black54,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 6),
                                 Wrap(
                                   spacing: 4,
                                   runSpacing: 4,
@@ -1369,15 +1422,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     return Icon(
       (visibility == 'college') ? Icons.school : Icons.public,
       color: isDark ? gradientColors[0] : gradientColors[0].withOpacity(0.8),
-      size: 16,
+      size: 24, // Increased size to 24
     );
   }
 
   Widget _eventTag(String text, {required Color bgColor, required Color fgColor}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(4)),
-      child: Text(text, style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: fgColor)),
+      child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fgColor)), // Increased font size to 11
     );
   }
 
