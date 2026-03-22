@@ -382,6 +382,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final sectionTitle = _selectedIndex == 0
         ? "Campus Events"
         : _selectedIndex == 1
@@ -408,6 +409,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                   sectionTitle,
                                   style: theme.textTheme.headlineSmall?.copyWith(
                                     fontWeight: FontWeight.w800,
+                                    color: isDark ? Colors.white : Colors.black,
                                   ),
                                 ),
                               ),
@@ -471,7 +473,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           children: [
             Container(
               decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
+                color: isDark ? const Color(0xFF1E1E1E).withOpacity(0.8) : theme.colorScheme.surface,
                 boxShadow: [
                   BoxShadow(
                     blurRadius: 20,
@@ -483,15 +485,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
                   child: GNav(
-                    rippleColor: Colors.grey[300]!,
-                    hoverColor: Colors.grey[100]!,
+                    rippleColor: isDark ? Colors.white10 : Colors.grey[300]!,
+                    hoverColor: isDark ? Colors.white24 : Colors.grey[100]!,
                     gap: 8,
                     activeColor: theme.colorScheme.primary,
                     iconSize: 24,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     duration: const Duration(milliseconds: 400),
                     tabBackgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: isDark ? Colors.white60 : theme.colorScheme.onSurface.withOpacity(0.6),
                     tabs: const [
                       GButton(icon: Icons.language, text: 'Public'),
                       GButton(icon: Icons.school, text: 'My College'),
@@ -528,6 +530,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     int badgeCount = 0,
   }) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Padding(
       padding: const EdgeInsets.only(left: 8),
       child: Tooltip(
@@ -535,39 +539,42 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
-          child: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface.withOpacity(0.85),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: theme.colorScheme.outline.withOpacity(0.2),
-              ),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(icon, size: 20),
-                if (badgeCount > 0)
-                  Positioned(
-                    right: 6,
-                    top: 6,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
-                      child: Text(
-                        badgeCount.toString(),
-                        style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
+          child: GlassCard(
+            borderRadius: 12,
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: !isDark ? BoxDecoration(
+                color: theme.colorScheme.surface.withOpacity(0.85),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: theme.colorScheme.outline.withOpacity(0.2),
+                ),
+              ) : null,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(icon, size: 20, color: isDark ? Colors.white : Colors.black),
+                  if (badgeCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
+                        child: Text(
+                          badgeCount.toString(),
+                          style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -578,6 +585,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   Widget _buildTeamInvitesSection() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -596,20 +604,20 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.indigo.shade50,
+            color: isDark ? Colors.indigo.withOpacity(0.1) : Colors.indigo.shade50,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.indigo.shade100),
+            border: Border.all(color: isDark ? Colors.indigo.withOpacity(0.3) : Colors.indigo.shade100),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.group_add, color: Colors.indigo, size: 18),
-                  SizedBox(width: 8),
+                  const Icon(Icons.group_add, color: Colors.indigoAccent, size: 18),
+                  const SizedBox(width: 8),
                   Text(
                     "Recent Team Invites",
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.indigoAccent : Colors.indigo),
                   ),
                 ],
               ),
@@ -622,16 +630,16 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     onTap: () => _confirmInvite(doc.reference, data),
                     child: Row(
                       children: [
-                        const Icon(Icons.arrow_right, size: 16, color: Colors.indigo),
+                        const Icon(Icons.arrow_right, size: 16, color: Colors.indigoAccent),
                         Expanded(
                           child: Text(
                             data['message'] ?? 'New Invitation',
-                            style: const TextStyle(fontSize: 13),
+                            style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Icon(Icons.chevron_right, size: 14, color: Colors.indigo),
+                        const Icon(Icons.chevron_right, size: 14, color: Colors.indigoAccent),
                       ],
                     ),
                   ),
@@ -665,7 +673,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           final visibility = (data['visibility'] ?? "public").toString().toLowerCase().trim();
           final status = (data['status'] ?? "approved").toString().toLowerCase().trim();
 
-          if (status != 'ongoing') return false;
+          // 🔹 FIX: Allow both 'ongoing' and 'approved' events to show up
+          if (status != 'ongoing' && status != 'approved') return false;
 
           final isFromMyCollege = studentCollege != null &&
               eventCollege.isNotEmpty &&
@@ -705,8 +714,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       padding: const EdgeInsets.all(20),
                       child: Text(
                         _selectedIndex == 1
-                            ? "No live events found for $studentCollege.\nEvents appear once they are started by the coordinator."
-                            : "No live public events available.",
+                            ? "No live or upcoming events found for $studentCollege."
+                            : "No public events available.",
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.grey),
                       ),
@@ -847,39 +856,46 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   Widget _buildSearchBar() {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-        decoration: InputDecoration(
-          hintText: "Search live events...",
-          prefixIcon: const Icon(Icons.search),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_selectedDate != null)
+      child: GlassCard(
+        borderRadius: 14,
+        child: TextField(
+          controller: _searchController,
+          onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+          style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          decoration: InputDecoration(
+            hintText: "Search live events...",
+            hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.grey),
+            prefixIcon: Icon(Icons.search, color: isDark ? Colors.white54 : Colors.grey),
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_selectedDate != null)
+                  IconButton(
+                    icon: Icon(Icons.clear, color: isDark ? Colors.white54 : Colors.grey),
+                    onPressed: () => setState(() => _selectedDate = null),
+                  ),
                 IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () => setState(() => _selectedDate = null),
+                  icon: Icon(
+                    Icons.calendar_month,
+                    color: _selectedDate != null
+                        ? theme.colorScheme.primary
+                        : (isDark ? Colors.white54 : Colors.grey),
+                  ),
+                  onPressed: () => _selectDate(context),
                 ),
-              IconButton(
-                icon: Icon(
-                  Icons.calendar_month,
-                  color: _selectedDate != null
-                      ? theme.colorScheme.primary
-                      : null,
-                ),
-                onPressed: () => _selectDate(context),
-              ),
-            ],
-          ),
-          filled: true,
-          fillColor: theme.colorScheme.surface.withOpacity(0.92),
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
+              ],
+            ),
+            filled: true,
+            fillColor: isDark ? Colors.white.withOpacity(0.05) : theme.colorScheme.surface.withOpacity(0.92),
+            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
           ),
         ),
       ),
@@ -888,6 +904,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
   Widget _buildCategoryChips() {
     final categories = ["All", "Technical", "Cultural", "Sports", "Academic", "Social"];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SizedBox(
       height: 48,
@@ -904,15 +921,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             labelStyle: TextStyle(
               fontWeight: FontWeight.w700,
               color: selectedCategory == categories[i]
-                  ? Theme.of(context).colorScheme.onPrimary
-                  : Theme.of(context).colorScheme.onSurface,
+                  ? Colors.white
+                  : (isDark ? Colors.white70 : Colors.black87),
             ),
             selectedColor: themeNotifier.value == ThemeMode.light ? Theme.of(context).colorScheme.primary : Colors.indigoAccent,
-            backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.82),
+            backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Theme.of(context).colorScheme.surface.withOpacity(0.82),
             side: BorderSide(
               color: selectedCategory == categories[i]
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.outline.withOpacity(0.25),
+                  ? Colors.transparent
+                  : (isDark ? Colors.white.withOpacity(0.1) : Theme.of(context).colorScheme.outline.withOpacity(0.25)),
             ),
           ),
         ),
@@ -927,108 +944,117 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final posterLink = data['posterLink'] as String?;
     final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
     final status = (data['status'] ?? 'approved').toString().toLowerCase();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    Color statusInfoColor = Colors.orange.shade100;
-    Color statusInfoText = Colors.orange.shade900;
-    String statusLabel = "ONGOING";
+    Color statusInfoColor = Colors.green.shade100;
+    Color statusInfoText = Colors.green.shade900;
+    String statusLabel = "UPCOMING";
 
-    if (status == 'completed') {
+    if (status == 'ongoing') {
+      statusInfoColor = Colors.orange.shade100;
+      statusInfoText = Colors.orange.shade900;
+      statusLabel = "ONGOING";
+    } else if (status == 'completed') {
       statusInfoColor = Colors.grey.shade300;
       statusInfoText = Colors.grey.shade800;
       statusLabel = "COMPLETED";
     }
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: InkWell(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => EventDetailsScreen(event: doc)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (posterLink != null && posterLink.isNotEmpty)
-              posterLink.startsWith('data:image') ? Image.memory(
-                base64Decode(posterLink.split(',').last),
-                width: double.infinity,
-                height: 170,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  height: 170,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: GlassCard(
+        borderRadius: 18,
+        child: InkWell(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => EventDetailsScreen(event: doc)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (posterLink != null && posterLink.isNotEmpty)
+                posterLink.startsWith('data:image') ? Image.memory(
+                  base64Decode(posterLink.split(',').last),
                   width: double.infinity,
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
-                ),
-              ) : Image.network(
-                posterLink,
-                width: double.infinity,
-                height: 170,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
                   height: 170,
-                  width: double.infinity,
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: (data['visibility'] == 'college')
-                          ? Colors.indigo.withOpacity(0.12)
-                          : Colors.green.withOpacity(0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      (data['visibility'] == 'college') ? Icons.school : Icons.public,
-                      color: (data['visibility'] == 'college') ? Colors.indigo : Colors.green,
-                    ),
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 170,
+                    width: double.infinity,
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          data['title'] ?? "Untitled Event",
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "${data['college'] ?? "General Event"} - $eventDate",
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ) : Image.network(
+                  posterLink,
+                  width: double.infinity,
+                  height: 170,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 170,
+                    width: double.infinity,
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: (data['visibility'] == 'college')
+                            ? Colors.indigo.withOpacity(0.12)
+                            : Colors.green.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        (data['visibility'] == 'college') ? Icons.school : Icons.public,
+                        color: (data['visibility'] == 'college') ? Colors.indigo : Colors.green,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            data['title'] ?? "Untitled Event",
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: [
-                            _eventTag(statusLabel, bgColor: statusInfoColor, fgColor: statusInfoText),
-                            if (isTeamEvent)
-                              _eventTag("Team • ${data['teamSize'] ?? 'N/A'}", bgColor: Colors.purple.withOpacity(0.14), fgColor: Colors.purple.shade900),
-                            if (prize.isNotEmpty && prize != "0")
-                              _eventTag("Prize Rs.$prize", bgColor: Colors.orange.withOpacity(0.14), fgColor: Colors.orange.shade900),
-                          ],
-                        ),
-                      ],
+                          const SizedBox(height: 4),
+                          Text(
+                            "${data['college'] ?? "General Event"} - $eventDate",
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: isDark ? Colors.white70 : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              _eventTag(statusLabel, bgColor: statusInfoColor, fgColor: statusInfoText),
+                              if (isTeamEvent)
+                                _eventTag("Team • ${data['teamSize'] ?? 'N/A'}", bgColor: Colors.purple.withOpacity(0.14), fgColor: Colors.purple.shade900),
+                              if (prize.isNotEmpty && prize != "0")
+                                _eventTag("Prize Rs.$prize", bgColor: Colors.orange.withOpacity(0.14), fgColor: Colors.orange.shade900),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
-                ],
+                    Icon(Icons.arrow_forward_ios_rounded, size: 14, color: isDark ? Colors.white54 : Colors.grey),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1);

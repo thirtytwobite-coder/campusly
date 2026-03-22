@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import 'change_password.dart';
 import 'login_screen.dart';
 import 'vibrant_background.dart';
@@ -94,6 +96,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _semesterController = TextEditingController(text: userData?['semester'] ?? '');
     _ktuIdController = TextEditingController(text: userData?['ktuId'] ?? '');
     _profilePicController = TextEditingController(text: userData?['profilePic'] ?? '');
+  }
+
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    try {
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 50, // Compress image to reduce base64 string size
+      );
+
+      if (image != null) {
+        final bytes = await File(image.path).readAsBytes();
+        String base64Image = 'data:image/png;base64,${base64Encode(bytes)}';
+        
+        setState(() {
+          _profilePicController.text = base64Image;
+          // Update the local userData so the avatar previews the new image immediately
+          userData?['profilePic'] = base64Image;
+        });
+      }
+    } catch (e) {
+      _showError('Error picking image: $e');
+    }
   }
 
   Future<void> _saveChanges() async {
@@ -425,27 +450,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
-          Hero(
-            tag: 'profile-avatar',
-            child: CircleAvatar(
-              radius: 50,
-              backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-              backgroundImage: profilePicUrl.isNotEmpty 
-                  ? (profilePicUrl.startsWith('data:image')
-                      ? MemoryImage(base64Decode(profilePicUrl.split(',').last)) as ImageProvider
-                      : NetworkImage(_convertGoogleDriveLink(profilePicUrl)))
-                  : null,
-              child: profilePicUrl.isEmpty 
-                  ? Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                      style: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
+          Stack(
+            children: [
+              Hero(
+                tag: 'profile-avatar',
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                  backgroundImage: profilePicUrl.isNotEmpty 
+                      ? (profilePicUrl.startsWith('data:image')
+                          ? MemoryImage(base64Decode(profilePicUrl.split(',').last)) as ImageProvider
+                          : NetworkImage(_convertGoogleDriveLink(profilePicUrl)))
+                      : null,
+                  child: profilePicUrl.isEmpty 
+                      ? Text(
+                          name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                          style: TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
+                          ),
+                        )
+                      : null,
+                ),
+              ),
+              if (isEditing)
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
                         color: theme.colorScheme.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: theme.cardColor, width: 2),
                       ),
-                    )
-                  : null,
-            ),
+                      child: const Icon(
+                        Icons.add,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 16),
           Text(
@@ -536,13 +586,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildEditableField(_nameController, 'Full Name', Icons.person_outline, theme),
             const SizedBox(height: 16),
             _buildEditableField(
-              _profilePicController, 
-              'Profile Picture URL', 
-              Icons.image_outlined,
-              theme,
-            ),
-            const SizedBox(height: 16),
-            _buildEditableField(
               _phoneController, 
               'Phone Number', 
               Icons.phone_outlined,
@@ -608,6 +651,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       setState(() {
                         isEditing = false;
                         _initializeControllers();
+                        // Reset userData profilePic if it was changed during picking
+                        _fetchUserData(); 
                       });
                     },
                     style: OutlinedButton.styleFrom(
@@ -751,17 +796,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-}
-
-class UpperCaseTextFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    return TextEditingValue(
-      text: newValue.text.toUpperCase(),
-      selection: newValue.selection,
-    );
-  }
-}
 
   String _convertGoogleDriveLink(String? link) {
     if (link == null || link.isEmpty) return '';
@@ -784,3 +818,14 @@ class UpperCaseTextFormatter extends TextInputFormatter {
 
     return link;
   }
+}
+
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    return TextEditingValue(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
+    );
+  }
+}
