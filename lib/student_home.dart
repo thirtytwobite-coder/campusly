@@ -453,6 +453,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           _buildFuturisticSearchBar(),
                           _buildCategorySection(),
                           const SizedBox(height: 16),
+                        ] else ...[
+                          _buildFuturisticSearchBar(),
+                          const SizedBox(height: 16),
                         ],
 
                         _selectedIndex == 2
@@ -754,12 +757,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             fontSize: 16,
                             fontWeight: FontWeight.w400,
                           ),
-                          decoration: InputDecoration.collapsed(
-                            hintText: "Search...",
+                          decoration: InputDecoration(
+                            hintText: "Search by club or event name....",
                             hintStyle: TextStyle(
                               color: isDark ? Colors.white38 : Colors.black26,
                               fontWeight: FontWeight.w300,
                             ),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            filled: false,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 18),
                           ),
                           cursorColor: isDark ? Colors.white : Colors.blueAccent,
                         ),
@@ -933,7 +942,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   }
 
                   if (selectedCategory != "All" && data['category'] != selectedCategory) return false;
-                  if (!(data['title'] ?? "").toString().toLowerCase().contains(_searchQuery)) return false;
+                  
+                  final bool titleMatches = (data['title'] ?? "").toString().toLowerCase().contains(_searchQuery);
+                  final bool clubMatches = clubName.toLowerCase().contains(_searchQuery);
+                  if (!titleMatches && !clubMatches) return false;
+
                   if (_selectedDate != null) {
                     final selected = DateFormat('yyyy-MM-dd').format(_selectedDate!);
                     if (data['date'] != selected) return false;
@@ -1051,7 +1064,23 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     }
 
                     final clubRegisteredEvents = eventSnapshot.data!.docs
-                        .where((doc) => registeredEventIds.contains(doc.id))
+                        .where((doc) {
+                          if (!registeredEventIds.contains(doc.id)) return false;
+                          final data = doc.data() as Map<String, dynamic>;
+                          
+                          // Search query filter
+                          final String title = (data['title'] ?? "").toString().toLowerCase();
+                          final String clubNameLower = clubName.toLowerCase();
+                          if (!title.contains(_searchQuery) && !clubNameLower.contains(_searchQuery)) return false;
+
+                          // Date filter
+                          if (_selectedDate != null) {
+                            final selected = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+                            if (data['date'] != selected) return false;
+                          }
+
+                          return true;
+                        })
                         .toList();
 
                     if (clubRegisteredEvents.isEmpty) return const SizedBox();
