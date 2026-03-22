@@ -675,30 +675,33 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Stack(
         children: [
-          // Background Glow Effect for Dark Mode
-          if (isDark)
-            Positioned.fill(
-              child: Container(
-                margin: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.purpleAccent.withOpacity(0.3),
-                      blurRadius: 20,
-                      spreadRadius: -2,
-                      offset: const Offset(-5, 0),
-                    ),
-                    BoxShadow(
-                      color: Colors.blueAccent.withOpacity(0.3),
-                      blurRadius: 20,
-                      spreadRadius: -2,
-                      offset: const Offset(5, 0),
-                    ),
-                  ],
-                ),
+          // Background Glow Effect
+          Positioned.fill(
+            child: Container(
+              margin: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDark 
+                        ? Colors.purpleAccent.withOpacity(0.3)
+                        : Colors.purpleAccent.withOpacity(0.15),
+                    blurRadius: 20,
+                    spreadRadius: -2,
+                    offset: const Offset(-5, 0),
+                  ),
+                  BoxShadow(
+                    color: isDark 
+                        ? Colors.blueAccent.withOpacity(0.3)
+                        : Colors.blueAccent.withOpacity(0.15),
+                    blurRadius: 20,
+                    spreadRadius: -2,
+                    offset: const Offset(5, 0),
+                  ),
+                ],
               ),
             ),
+          ),
 
           ClipRRect(
             borderRadius: BorderRadius.circular(20),
@@ -709,10 +712,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 decoration: BoxDecoration(
                   color: isDark
                       ? const Color(0xFF0F172A).withOpacity(0.85)
-                      : Colors.white.withOpacity(0.6),
+                      : Colors.white.withOpacity(0.75),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.black12,
+                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.8),
                     width: 0.5,
                   ),
                 ),
@@ -812,29 +815,35 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             ),
           ),
 
-          // Enhanced Neon Border for Dark Mode
-          if (isDark)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _GradientPainter(
-                    strokeWidth: 1.8,
-                    radius: 20,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Colors.purpleAccent.withOpacity(0.9),
-                        Colors.purpleAccent.withOpacity(0.1),
-                        Colors.blueAccent.withOpacity(0.1),
-                        Colors.blueAccent.withOpacity(0.9),
-                      ],
-                      stops: const [0.0, 0.4, 0.6, 1.0],
-                    ),
+          // Neon Border
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: _GradientPainter(
+                  strokeWidth: 1.8,
+                  radius: 20,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDark 
+                      ? [
+                          Colors.purpleAccent.withOpacity(0.9),
+                          Colors.purpleAccent.withOpacity(0.1),
+                          Colors.blueAccent.withOpacity(0.1),
+                          Colors.blueAccent.withOpacity(0.9),
+                        ]
+                      : [
+                          Colors.purpleAccent.withOpacity(0.6),
+                          Colors.purpleAccent.withOpacity(0.1),
+                          Colors.blueAccent.withOpacity(0.1),
+                          Colors.blueAccent.withOpacity(0.6),
+                        ],
+                    stops: const [0.0, 0.4, 0.6, 1.0],
                   ),
                 ),
               ),
             ),
+          ),
         ],
       ),
     );
@@ -982,18 +991,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       ),
                     ),
                     SizedBox(
-                      height: 310, // Increased height from 280
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: filteredEvents.length,
-                        padding: const EdgeInsets.only(right: 16),
-                        itemBuilder: (context, index) => _buildEventCard(
-                          filteredEvents[index],
-                          isHorizontal: true,
-                          index: index,
-                          clubLogo: clubData['profilePic'],
-                        ),
+                      height: 270, // Increased height slightly to accommodate scaling
+                      child: _EventCarousel(
+                        events: filteredEvents,
+                        clubLogo: clubData['profilePic'],
+                        cardBuilder: _buildEventCard,
                       ),
                     ),
                   ],
@@ -1223,12 +1225,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     }
 
     return Container(
-      width: isHorizontal ? 360 : double.infinity,
-      padding: EdgeInsets.only(
-        left: 16,
-        right: isHorizontal ? 0 : 16,
-        top: 8,
-        bottom: 8
+      width: isHorizontal ? null : double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: isHorizontal ? 8 : 16,
+        vertical: 8,
       ),
       child: Stack(
         children: [
@@ -1281,35 +1281,35 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         child: posterLink.startsWith('data:image') ? Image.memory(
                           base64Decode(posterLink.split(',').last),
                           width: double.infinity,
-                          height: isHorizontal ? 185 : 195,
+                          height: isHorizontal ? 130 : 150, // Reduced poster height
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Container(
-                            height: isHorizontal ? 185 : 195,
+                            height: isHorizontal ? 130 : 150,
                             width: double.infinity,
                             color: isDark ? Colors.grey[900] : Colors.grey[100],
-                            child: Icon(Icons.image_not_supported, size: 40, color: isDark ? Colors.grey : Colors.grey[400]),
+                            child: Icon(Icons.image_not_supported, size: 30, color: isDark ? Colors.grey : Colors.grey[400]),
                           ),
                         ) : Image.network(
                           posterLink,
                           width: double.infinity,
-                          height: isHorizontal ? 185 : 195,
+                          height: isHorizontal ? 130 : 150, // Reduced poster height
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Container(
-                            height: isHorizontal ? 185 : 195,
+                            height: isHorizontal ? 130 : 150,
                             width: double.infinity,
                             color: isDark ? Colors.grey[900] : Colors.grey[100],
-                            child: Icon(Icons.image_not_supported, size: 40, color: isDark ? Colors.grey : Colors.grey[400]),
+                            child: Icon(Icons.image_not_supported, size: 30, color: isDark ? Colors.grey : Colors.grey[400]),
                           ),
                         ),
                       ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                      padding: const EdgeInsets.fromLTRB(10, 6, 10, 8), // Reduced padding
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Container(
-                            width: 48, // Increased logo size to 48
-                            height: 48,
+                            width: 32, // Reduced logo size further
+                            height: 32,
                             decoration: BoxDecoration(
                               color: isDark 
                                   ? Colors.white.withOpacity(0.1)
@@ -1322,21 +1322,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                     ? Image.memory(
                                         base64Decode(clubLogo.split(',').last),
                                         fit: BoxFit.cover,
-                                        width: 48,
-                                        height: 48,
+                                        width: 32,
+                                        height: 32,
                                         errorBuilder: (context, error, stackTrace) => _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
                                       )
                                     : Image.network(
                                         clubLogo,
                                         fit: BoxFit.cover,
-                                        width: 48,
-                                        height: 48,
+                                        width: 32,
+                                        height: 32,
                                         errorBuilder: (context, error, stackTrace) => _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
                                       ))
                                 : _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
                             ),
                           ),
-                          const SizedBox(width: 14),
+                          const SizedBox(width: 10), // Reduced spacing
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1347,23 +1347,22 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w800,
-                                    fontSize: 18, // Increased text size to 18
+                                    fontSize: 13, // Reduced text size further
                                     color: isDark ? Colors.white : Colors.black87,
                                     letterSpacing: 0.2,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
                                 Text(
                                   "${data['college'] ?? "General"} - $eventDate",
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 12, // Increased text size to 12
+                                    fontSize: 10, // Reduced text size further
                                     color: isDark ? Colors.white70 : Colors.black54,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 4),
                                 Wrap(
                                   spacing: 4,
                                   runSpacing: 4,
@@ -1415,22 +1414,25 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.1);
+    ).animate(delay: (index * 100).ms)
+      .fadeIn(duration: 500.ms, curve: Curves.easeOut)
+      .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1), curve: Curves.easeOutBack)
+      .moveY(begin: 30, end: 0, duration: 500.ms, curve: Curves.easeOut);
   }
 
   Widget _buildDefaultClubIcon(bool isDark, List<Color> gradientColors, String? visibility) {
     return Icon(
       (visibility == 'college') ? Icons.school : Icons.public,
       color: isDark ? gradientColors[0] : gradientColors[0].withOpacity(0.8),
-      size: 24, // Increased size to 24
+      size: 16, // Reduced size further
     );
   }
 
   Widget _eventTag(String text, {required Color bgColor, required Color fgColor}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1), // Reduced padding
       decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(4)),
-      child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fgColor)), // Increased font size to 11
+      child: Text(text, style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: fgColor)), // Reduced font size further
     );
   }
 
@@ -1438,6 +1440,74 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     final prefs = await SharedPreferences.getInstance();
     prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
+  }
+}
+
+class _EventCarousel extends StatefulWidget {
+  final List<DocumentSnapshot> events;
+  final String? clubLogo;
+  final Widget Function(DocumentSnapshot, {bool isHorizontal, int index, String? clubLogo}) cardBuilder;
+
+  const _EventCarousel({
+    required this.events,
+    this.clubLogo,
+    required this.cardBuilder,
+  });
+
+  @override
+  State<_EventCarousel> createState() => _EventCarouselState();
+}
+
+class _EventCarouselState extends State<_EventCarousel> {
+  late PageController _pageController;
+  double _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.88);
+    _pageController.addListener(() {
+      if (mounted) {
+        setState(() {
+          _currentPage = _pageController.page ?? 0;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PageView.builder(
+      controller: _pageController,
+      itemCount: widget.events.length,
+      padEnds: false,
+      physics: const BouncingScrollPhysics(),
+      itemBuilder: (context, index) {
+        double delta = (index - _currentPage).abs();
+        double scale = (1.0 - (delta * 0.12)).clamp(0.88, 1.0);
+        double opacity = (1.0 - (delta * 0.25)).clamp(0.75, 1.0);
+
+        return Transform.scale(
+          scale: scale,
+          alignment: Alignment.centerLeft,
+          child: Opacity(
+            opacity: opacity,
+            child: widget.cardBuilder(
+              widget.events[index],
+              isHorizontal: true,
+              index: index,
+              clubLogo: widget.clubLogo,
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
