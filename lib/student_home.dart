@@ -380,148 +380,159 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         ? "My College Events"
         : "Participation History";
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          const VibrantBackground(),
-
-          _isLoadingCollege
-              ? const Center(child: CircularProgressIndicator())
-              : LiquidPullToRefresh(
-                  onRefresh: _handleRefresh,
-                  color: theme.colorScheme.primary,
-                  backgroundColor: theme.colorScheme.surface,
-                  showChildOpacityTransition: false,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SafeArea(
-                          bottom: false,
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    sectionTitle,
-                                    style: theme.textTheme.headlineSmall?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      color: isDark ? Colors.white : Colors.black,
+    return PopScope(
+      canPop: _searchQuery.isEmpty && _selectedDate == null,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        setState(() {
+          _searchQuery = "";
+          _searchController.clear();
+          _selectedDate = null;
+        });
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            const VibrantBackground(),
+      
+            _isLoadingCollege
+                ? const Center(child: CircularProgressIndicator())
+                : LiquidPullToRefresh(
+                    onRefresh: _handleRefresh,
+                    color: theme.colorScheme.primary,
+                    backgroundColor: theme.colorScheme.surface,
+                    showChildOpacityTransition: false,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SafeArea(
+                            bottom: false,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      sectionTitle,
+                                      style: theme.textTheme.headlineSmall?.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                        color: isDark ? Colors.white : Colors.black,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                if (_selectedIndex == 2)
+                                  if (_selectedIndex == 2)
+                                    _headerIconButton(
+                                      icon: Icons.emoji_events,
+                                      tooltip: "My Awards",
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const ParticipationHistoryScreen(),
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   _headerIconButton(
-                                    icon: Icons.emoji_events,
-                                    tooltip: "My Awards",
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => const ParticipationHistoryScreen(),
-                                        ),
-                                      );
-                                    },
+                                    icon: Icons.notifications_none_rounded,
+                                    tooltip: "Notifications",
+                                    onTap: _showNotifications,
+                                    badgeCount: _unreadNotifications,
                                   ),
-                                _headerIconButton(
-                                  icon: Icons.notifications_none_rounded,
-                                  tooltip: "Notifications",
-                                  onTap: _showNotifications,
-                                  badgeCount: _unreadNotifications,
-                                ),
-                                if (managedClubs.isNotEmpty)
+                                  if (managedClubs.isNotEmpty)
+                                    _headerIconButton(
+                                      icon: Icons.admin_panel_settings_outlined,
+                                      tooltip: "Switch to Coordinator View",
+                                      onTap: _handleCoordinatorSwitch,
+                                    ),
                                   _headerIconButton(
-                                    icon: Icons.admin_panel_settings_outlined,
-                                    tooltip: "Switch to Coordinator View",
-                                    onTap: _handleCoordinatorSwitch,
+                                    icon: Icons.brightness_6,
+                                    tooltip: "Toggle Theme",
+                                    onTap: _toggleTheme,
                                   ),
-                                _headerIconButton(
-                                  icon: Icons.brightness_6,
-                                  tooltip: "Toggle Theme",
-                                  onTap: _toggleTheme,
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-
-                        if (_selectedIndex != 2) ...[
-                          _buildTeamInvitesSection(),
-                          _buildFuturisticSearchBar(),
-                          _buildCategorySection(),
-                          const SizedBox(height: 16),
-                        ] else ...[
-                          _buildFuturisticSearchBar(),
-                          const SizedBox(height: 16),
+      
+                          if (_selectedIndex != 2) ...[
+                            _buildTeamInvitesSection(),
+                            _buildFuturisticSearchBar(),
+                            _buildCategorySection(),
+                            const SizedBox(height: 16),
+                          ] else ...[
+                            _buildFuturisticSearchBar(),
+                            const SizedBox(height: 16),
+                          ],
+      
+                          _selectedIndex == 2
+                              ? _buildRegisteredEventsList()
+                              : _buildClubsWithEvents(),
+      
+                          const SizedBox(height: 100), // Extra space at bottom
                         ],
-
-                        _selectedIndex == 2
-                            ? _buildRegisteredEventsList()
-                            : _buildClubsWithEvents(),
-
-                        const SizedBox(height: 100), // Extra space at bottom
+                      ),
+                    ),
+                  ),
+          ],
+        ),
+        bottomNavigationBar: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: 80,
+          clipBehavior: Clip.hardEdge,
+          decoration: const BoxDecoration(),
+          child: Wrap(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E1E).withOpacity(0.8) : theme.colorScheme.surface,
+                  boxShadow: [
+                    BoxShadow(
+                      blurRadius: 20,
+                      color: Colors.black.withOpacity(.1),
+                    )
+                  ],
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
+                    child: GNav(
+                      rippleColor: isDark ? Colors.white10 : Colors.grey[300]!,
+                      hoverColor: isDark ? Colors.white24 : Colors.grey[100]!,
+                      gap: 8,
+                      activeColor: theme.colorScheme.primary,
+                      iconSize: 24,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      duration: const Duration(milliseconds: 400),
+                      tabBackgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                      color: isDark ? Colors.white60 : theme.colorScheme.onSurface.withOpacity(0.6),
+                      tabs: const [
+                        GButton(icon: Icons.language, text: 'Public'),
+                        GButton(icon: Icons.school, text: 'My College'),
+                        GButton(icon: Icons.history, text: 'History'),
+                        GButton(icon: Icons.person, text: 'Profile'),
                       ],
+                      selectedIndex: _selectedIndex > 3 ? 0 : _selectedIndex,
+                      onTabChange: (index) {
+                        if (index == 3) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                          );
+                          return;
+                        }
+                        setState(() {
+                          _selectedIndex = index;
+                        });
+                      },
                     ),
                   ),
                 ),
-        ],
-      ),
-      bottomNavigationBar: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        height: 80,
-        clipBehavior: Clip.hardEdge,
-        decoration: const BoxDecoration(),
-        child: Wrap(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E1E1E).withOpacity(0.8) : theme.colorScheme.surface,
-                boxShadow: [
-                  BoxShadow(
-                    blurRadius: 20,
-                    color: Colors.black.withOpacity(.1),
-                  )
-                ],
               ),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
-                  child: GNav(
-                    rippleColor: isDark ? Colors.white10 : Colors.grey[300]!,
-                    hoverColor: isDark ? Colors.white24 : Colors.grey[100]!,
-                    gap: 8,
-                    activeColor: theme.colorScheme.primary,
-                    iconSize: 24,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    duration: const Duration(milliseconds: 400),
-                    tabBackgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                    color: isDark ? Colors.white60 : theme.colorScheme.onSurface.withOpacity(0.6),
-                    tabs: const [
-                      GButton(icon: Icons.language, text: 'Public'),
-                      GButton(icon: Icons.school, text: 'My College'),
-                      GButton(icon: Icons.history, text: 'History'),
-                      GButton(icon: Icons.person, text: 'Profile'),
-                    ],
-                    selectedIndex: _selectedIndex > 3 ? 0 : _selectedIndex,
-                    onTabChange: (index) {
-                      if (index == 3) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                        );
-                        return;
-                      }
-                      setState(() {
-                        _selectedIndex = index;
-                      });
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -723,6 +734,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   ),
                 ),
                 
+                if (_searchQuery.isNotEmpty)
+                  IconButton(
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: isDark ? Colors.white70 : Colors.black45,
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _searchQuery = "";
+                        _searchController.clear();
+                      });
+                    },
+                  ),
+
                 // Filter box
                 Padding(
                   padding: const EdgeInsets.all(8.0),
@@ -903,7 +929,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       ),
                     ),
                     SizedBox(
-                      height: 280,
+                      height: 250, // Increased height from 220
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         physics: const BouncingScrollPhysics(),
@@ -1202,35 +1228,35 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         child: posterLink.startsWith('data:image') ? Image.memory(
                           base64Decode(posterLink.split(',').last),
                           width: double.infinity,
-                          height: isHorizontal ? 120 : 170,
+                          height: isHorizontal ? 160 : 170, // Increased height
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Container(
-                            height: isHorizontal ? 120 : 170,
+                            height: isHorizontal ? 160 : 170,
                             width: double.infinity,
                             color: isDark ? Colors.grey[900] : Colors.grey[100],
-                            child: Icon(Icons.image_not_supported, size: 50, color: isDark ? Colors.grey : Colors.grey[400]),
+                            child: Icon(Icons.image_not_supported, size: 40, color: isDark ? Colors.grey : Colors.grey[400]),
                           ),
                         ) : Image.network(
                           posterLink,
                           width: double.infinity,
-                          height: isHorizontal ? 120 : 170,
+                          height: isHorizontal ? 160 : 170, // Increased height
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Container(
-                            height: isHorizontal ? 120 : 170,
+                            height: isHorizontal ? 160 : 170,
                             width: double.infinity,
                             color: isDark ? Colors.grey[900] : Colors.grey[100],
-                            child: Icon(Icons.image_not_supported, size: 50, color: isDark ? Colors.grey : Colors.grey[400]),
+                            child: Icon(Icons.image_not_supported, size: 40, color: isDark ? Colors.grey : Colors.grey[400]),
                           ),
                         ),
                       ),
                     Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            width: 38,
-                            height: 38,
+                            width: 32,
+                            height: 32,
                             decoration: BoxDecoration(
                               color: isDark 
                                   ? Colors.white.withOpacity(0.1)
@@ -1243,21 +1269,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                     ? Image.memory(
                                         base64Decode(clubLogo.split(',').last),
                                         fit: BoxFit.cover,
-                                        width: 38,
-                                        height: 38,
+                                        width: 32,
+                                        height: 32,
                                         errorBuilder: (context, error, stackTrace) => _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
                                       )
                                     : Image.network(
                                         clubLogo,
                                         fit: BoxFit.cover,
-                                        width: 38,
-                                        height: 38,
+                                        width: 32,
+                                        height: 32,
                                         errorBuilder: (context, error, stackTrace) => _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
                                       ))
                                 : _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1268,23 +1294,23 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w800,
-                                    fontSize: 16,
+                                    fontSize: 13,
                                     color: isDark ? Colors.white : Colors.black87,
-                                    letterSpacing: 0.3,
+                                    letterSpacing: 0.2,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 1),
                                 Text(
                                   "${data['college'] ?? "General"} - $eventDate",
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 10,
+                                    fontSize: 8,
                                     color: isDark ? Colors.white70 : Colors.black54,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 4),
                                 Wrap(
                                   spacing: 4,
                                   runSpacing: 4,
@@ -1343,15 +1369,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     return Icon(
       (visibility == 'college') ? Icons.school : Icons.public,
       color: isDark ? gradientColors[0] : gradientColors[0].withOpacity(0.8),
-      size: 18,
+      size: 16,
     );
   }
 
   Widget _eventTag(String text, {required Color bgColor, required Color fgColor}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(6)),
-      child: Text(text, style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: fgColor)),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(4)),
+      child: Text(text, style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold, color: fgColor)),
     );
   }
 
