@@ -240,7 +240,8 @@ class EventDetailsScreen extends StatelessWidget {
       builder: (context, snapshot) {
         String? logo;
         if (snapshot.hasData && snapshot.data!.exists) {
-          logo = snapshot.data!.get('profilePic');
+          final clubData = snapshot.data!.data() as Map<String, dynamic>?;
+          logo = clubData?['profilePic'];
         }
         return _infoCardDecorated(theme, logo, Icons.hub_rounded, "Organizing Club", clubName, Colors.indigo);
       },
