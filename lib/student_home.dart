@@ -190,8 +190,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                final eventDoc = await FirebaseFirestore.instance.collection('events').doc(eventId).get();
-                if (eventDoc.exists && mounted) {
+                final eventDoc = await FirebaseFirestore.instance.collection('events').doc(eventId).get();                if (eventDoc.exists && mounted) {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailsScreen(event: eventDoc)));
                 }
               },
@@ -380,145 +379,159 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         ? "My College Events"
         : "Participation History";
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          const VibrantBackground(),
-
-          _isLoadingCollege
-              ? const Center(child: CircularProgressIndicator())
-              : LiquidPullToRefresh(
-                  onRefresh: _handleRefresh,
-                  color: theme.colorScheme.primary,
-                  backgroundColor: theme.colorScheme.surface,
-                  showChildOpacityTransition: false,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SafeArea(
-                          bottom: false,
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    sectionTitle,
-                                    style: theme.textTheme.headlineSmall?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      color: isDark ? Colors.white : Colors.black,
+    return PopScope(
+      canPop: _searchQuery.isEmpty && _selectedDate == null,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        setState(() {
+          _searchQuery = "";
+          _searchController.clear();
+          _selectedDate = null;
+        });
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            const VibrantBackground(),
+      
+            _isLoadingCollege
+                ? const Center(child: CircularProgressIndicator())
+                : LiquidPullToRefresh(
+                    onRefresh: _handleRefresh,
+                    color: theme.colorScheme.primary,
+                    backgroundColor: theme.colorScheme.surface,
+                    showChildOpacityTransition: false,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SafeArea(
+                            bottom: false,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      sectionTitle,
+                                      style: theme.textTheme.headlineSmall?.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                        color: isDark ? Colors.white : Colors.black,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                if (_selectedIndex == 2)
+                                  if (_selectedIndex == 2)
+                                    _headerIconButton(
+                                      icon: Icons.emoji_events,
+                                      tooltip: "My Awards",
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const ParticipationHistoryScreen(),
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   _headerIconButton(
-                                    icon: Icons.emoji_events,
-                                    tooltip: "My Awards",
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => const ParticipationHistoryScreen(),
-                                        ),
-                                      );
-                                    },
+                                    icon: Icons.notifications_none_rounded,
+                                    tooltip: "Notifications",
+                                    onTap: _showNotifications,
+                                    badgeCount: _unreadNotifications,
                                   ),
-                                _headerIconButton(
-                                  icon: Icons.notifications_none_rounded,
-                                  tooltip: "Notifications",
-                                  onTap: _showNotifications,
-                                  badgeCount: _unreadNotifications,
-                                ),
-                                if (managedClubs.isNotEmpty)
+                                  if (managedClubs.isNotEmpty)
+                                    _headerIconButton(
+                                      icon: Icons.admin_panel_settings_outlined,
+                                      tooltip: "Switch to Coordinator View",
+                                      onTap: _handleCoordinatorSwitch,
+                                    ),
                                   _headerIconButton(
-                                    icon: Icons.admin_panel_settings_outlined,
-                                    tooltip: "Switch to Coordinator View",
-                                    onTap: _handleCoordinatorSwitch,
+                                    icon: Icons.brightness_6,
+                                    tooltip: "Toggle Theme",
+                                    onTap: _toggleTheme,
                                   ),
-                                _headerIconButton(
-                                  icon: Icons.brightness_6,
-                                  tooltip: "Toggle Theme",
-                                  onTap: _toggleTheme,
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-
-                        if (_selectedIndex != 2) ...[
-                          _buildTeamInvitesSection(),
-                          _buildFuturisticSearchBar(),
-                          _buildCategorySection(),
-                          const SizedBox(height: 16),
+      
+                          if (_selectedIndex != 2) ...[
+                            _buildTeamInvitesSection(),
+                            _buildFuturisticSearchBar(),
+                            _buildCategorySection(),
+                            const SizedBox(height: 16),
+                          ] else ...[
+                            _buildFuturisticSearchBar(),
+                            const SizedBox(height: 16),
+                          ],
+      
+                          _selectedIndex == 2
+                              ? _buildRegisteredEventsList()
+                              : _buildClubsWithEvents(),
+      
+                          const SizedBox(height: 100), // Extra space at bottom
                         ],
-
-                        _selectedIndex == 2
-                            ? _buildRegisteredEventsList()
-                            : _buildClubsWithEvents(),
-
-                        const SizedBox(height: 100), // Extra space at bottom
+                      ),
+                    ),
+                  ),
+          ],
+        ),
+        bottomNavigationBar: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: 80,
+          clipBehavior: Clip.hardEdge,
+          decoration: const BoxDecoration(),
+          child: Wrap(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E1E).withOpacity(0.8) : theme.colorScheme.surface,
+                  boxShadow: [
+                    BoxShadow(
+                      blurRadius: 20,
+                      color: Colors.black.withOpacity(.1),
+                    )
+                  ],
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
+                    child: GNav(
+                      rippleColor: isDark ? Colors.white10 : Colors.grey[300]!,
+                      hoverColor: isDark ? Colors.white24 : Colors.grey[100]!,
+                      gap: 8,
+                      activeColor: theme.colorScheme.primary,
+                      iconSize: 24,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      duration: const Duration(milliseconds: 400),
+                      tabBackgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                      color: isDark ? Colors.white60 : theme.colorScheme.onSurface.withOpacity(0.6),
+                      tabs: const [
+                        GButton(icon: Icons.language, text: 'Public'),
+                        GButton(icon: Icons.school, text: 'My College'),
+                        GButton(icon: Icons.history, text: 'History'),
+                        GButton(icon: Icons.person, text: 'Profile'),
                       ],
+                      selectedIndex: _selectedIndex > 3 ? 0 : _selectedIndex,
+                      onTabChange: (index) {
+                        if (index == 3) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                          );
+                          return;
+                        }
+                        setState(() {
+                          _selectedIndex = index;
+                        });
+                      },
                     ),
                   ),
                 ),
-        ],
-      ),
-      bottomNavigationBar: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        height: 80,
-        clipBehavior: Clip.hardEdge,
-        decoration: const BoxDecoration(),
-        child: Wrap(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E1E1E).withOpacity(0.8) : theme.colorScheme.surface,
-                boxShadow: [
-                  BoxShadow(
-                    blurRadius: 20,
-                    color: Colors.black.withOpacity(.1),
-                  )
-                ],
               ),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
-                  child: GNav(
-                    rippleColor: isDark ? Colors.white10 : Colors.grey[300]!,
-                    hoverColor: isDark ? Colors.white24 : Colors.grey[100]!,
-                    gap: 8,
-                    activeColor: theme.colorScheme.primary,
-                    iconSize: 24,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    duration: const Duration(milliseconds: 400),
-                    tabBackgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                    color: isDark ? Colors.white60 : theme.colorScheme.onSurface.withOpacity(0.6),
-                    tabs: const [
-                      GButton(icon: Icons.language, text: 'Public'),
-                      GButton(icon: Icons.school, text: 'My College'),
-                      GButton(icon: Icons.history, text: 'History'),
-                      GButton(icon: Icons.person, text: 'Profile'),
-                    ],
-                    selectedIndex: _selectedIndex > 3 ? 0 : _selectedIndex,
-                    onTabChange: (index) {
-                      if (index == 3) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                        );
-                        return;
-                      }
-                      setState(() {
-                        _selectedIndex = index;
-                      });
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -661,31 +674,35 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Stack(
         children: [
-          // Subtle outer glow for dark mode
-          if (isDark)
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.purpleAccent.withOpacity(0.2),
-                      blurRadius: 20,
-                      spreadRadius: -2,
-                      offset: const Offset(-5, -5),
-                    ),
-                    BoxShadow(
-                      color: Colors.blueAccent.withOpacity(0.2),
-                      blurRadius: 20,
-                      spreadRadius: -2,
-                      offset: const Offset(5, 5),
-                    ),
-                  ],
-                ),
+<<<<<<< HEAD
+          // Background Glow Effect
+          Positioned.fill(
+            child: Container(
+              margin: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDark 
+                        ? Colors.purpleAccent.withOpacity(0.3)
+                        : Colors.purpleAccent.withOpacity(0.15),
+                    blurRadius: 20,
+                    spreadRadius: -2,
+                    offset: const Offset(-5, 0),
+                  ),
+                  BoxShadow(
+                    color: isDark 
+                        ? Colors.blueAccent.withOpacity(0.3)
+                        : Colors.blueAccent.withOpacity(0.15),
+                    blurRadius: 20,
+                    spreadRadius: -2,
+                    offset: const Offset(5, 0),
+                  ),
+                ],
               ),
             ),
+          ),
 
-          // Main Search Bar Container
           ClipRRect(
             borderRadius: BorderRadius.circular(15),
             child: BackdropFilter(
@@ -693,10 +710,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               child: Container(
                 height: 60,
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF0F172A).withOpacity(0.8) : Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(15),
+                  color: isDark
+                      ? const Color(0xFF0F172A).withOpacity(0.85)
+                      : Colors.white.withOpacity(0.75),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: (isDark ? Colors.white : Colors.black).withOpacity(0.1),
+                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.8),
                     width: 0.5,
                   ),
                 ),
@@ -725,19 +744,40 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             fontSize: 16,
                             fontWeight: FontWeight.w300,
                           ),
-                          decoration: InputDecoration.collapsed(
-                            hintText: "Search...",
+                          decoration: InputDecoration(
+                            hintText: "Search by club or event name....",
                             hintStyle: TextStyle(
                               color: (isDark ? Colors.white38 : Colors.black38),
                               fontWeight: FontWeight.w300,
                             ),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            filled: false,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 18),
                           ),
                           cursorColor: isDark ? Colors.white : Colors.black,
                         ),
                       ),
                     ),
                     
-                    // Filter box (Glassmorphism inspired by image)
+                    if (_searchQuery.isNotEmpty)
+                      IconButton(
+                        icon: Icon(
+                          Icons.close_rounded,
+                          color: isDark ? Colors.white70 : Colors.black45,
+                          size: 20,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _searchQuery = "";
+                            _searchController.clear();
+                          });
+                        },
+                      ),
+
+                    // Filter box
                     Padding(
                       padding: const EdgeInsets.only(right: 8.0),
                       child: Container(
@@ -768,30 +808,36 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               ),
             ),
           ),
-          
-          // Gradient highlight on the border edges (Neon effect)
-          if (isDark)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _GradientPainter(
-                    strokeWidth: 1.5,
-                    radius: 15,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Colors.purpleAccent.withOpacity(0.7),
-                        Colors.purpleAccent.withOpacity(0.0),
-                        Colors.blueAccent.withOpacity(0.0),
-                        Colors.blueAccent.withOpacity(0.7),
-                      ],
-                      stops: const [0.0, 0.45, 0.55, 1.0],
-                    ),
+
+          // Neon Border
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: _GradientPainter(
+                  strokeWidth: 1.8,
+                  radius: 20,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDark 
+                      ? [
+                          Colors.purpleAccent.withOpacity(0.9),
+                          Colors.purpleAccent.withOpacity(0.1),
+                          Colors.blueAccent.withOpacity(0.1),
+                          Colors.blueAccent.withOpacity(0.9),
+                        ]
+                      : [
+                          Colors.purpleAccent.withOpacity(0.6),
+                          Colors.purpleAccent.withOpacity(0.1),
+                          Colors.blueAccent.withOpacity(0.1),
+                          Colors.blueAccent.withOpacity(0.6),
+                        ],
+                    stops: const [0.0, 0.4, 0.6, 1.0],
                   ),
                 ),
               ),
             ),
+          ),
         ],
       ),
     );
@@ -900,7 +946,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   }
 
                   if (selectedCategory != "All" && data['category'] != selectedCategory) return false;
-                  if (!(data['title'] ?? "").toString().toLowerCase().contains(_searchQuery)) return false;
+                  
+                  final bool titleMatches = (data['title'] ?? "").toString().toLowerCase().contains(_searchQuery);
+                  final bool clubMatches = clubName.toLowerCase().contains(_searchQuery);
+                  if (!titleMatches && !clubMatches) return false;
+
                   if (_selectedDate != null) {
                     final selected = DateFormat('yyyy-MM-dd').format(_selectedDate!);
                     if (data['date'] != selected) return false;
@@ -935,13 +985,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       ),
                     ),
                     SizedBox(
-                      height: 320,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: filteredEvents.length,
-                        padding: const EdgeInsets.only(right: 16),
-                        itemBuilder: (context, index) => _buildEventCard(filteredEvents[index], isHorizontal: true, index: index),
+                      height: 270, // Increased height slightly to accommodate scaling
+                      child: _EventCarousel(
+                        events: filteredEvents,
+                        clubLogo: clubData['profilePic'],
+                        cardBuilder: _buildEventCard,
                       ),
                     ),
                   ],
@@ -1018,7 +1066,23 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     }
 
                     final clubRegisteredEvents = eventSnapshot.data!.docs
-                        .where((doc) => registeredEventIds.contains(doc.id))
+                        .where((doc) {
+                          if (!registeredEventIds.contains(doc.id)) return false;
+                          final data = doc.data() as Map<String, dynamic>;
+                          
+                          // Search query filter
+                          final String title = (data['title'] ?? "").toString().toLowerCase();
+                          final String clubNameLower = clubName.toLowerCase();
+                          if (!title.contains(_searchQuery) && !clubNameLower.contains(_searchQuery)) return false;
+
+                          // Date filter
+                          if (_selectedDate != null) {
+                            final selected = DateFormat('yyyy-MM-dd').format(_selectedDate!);
+                            if (data['date'] != selected) return false;
+                          }
+
+                          return true;
+                        })
                         .toList();
 
                     if (clubRegisteredEvents.isEmpty) return const SizedBox();
@@ -1060,7 +1124,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
 
                             return Column(
                               children: [
-                                _buildEventCard(eventDoc, isHorizontal: false, index: idx),
+                                _buildEventCard(
+                                  eventDoc,
+                                  isHorizontal: false,
+                                  index: idx,
+                                  clubLogo: clubData['profilePic'],
+                                ),
                                 if (isCompleted || participated)
                                   Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -1110,7 +1179,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  Widget _buildEventCard(DocumentSnapshot doc, {bool isHorizontal = false, int index = 0}) {
+  Widget _buildEventCard(DocumentSnapshot doc, {bool isHorizontal = false, int index = 0, String? clubLogo}) {
     final data = doc.data() as Map<String, dynamic>;
     final prize = (data['prizeAmount'] ?? "").toString();
     final eventDate = data['date'] ?? "TBD";
@@ -1143,12 +1212,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     }
 
     return Container(
-      width: isHorizontal ? 320 : double.infinity,
-      padding: EdgeInsets.only(
-        left: 16,
-        right: isHorizontal ? 0 : 16,
-        top: 8,
-        bottom: 8
+      width: isHorizontal ? null : double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: isHorizontal ? 8 : 16,
+        vertical: 8,
       ),
       child: Stack(
         children: [
@@ -1191,72 +1258,86 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         child: posterLink.startsWith('data:image') ? Image.memory(
                           base64Decode(posterLink.split(',').last),
                           width: double.infinity,
-                          height: isHorizontal ? 150 : 170,
+                          height: isHorizontal ? 130 : 150, // Reduced poster height
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Container(
-                            height: isHorizontal ? 150 : 170,
+                            height: isHorizontal ? 130 : 150,
                             width: double.infinity,
-                            color: Colors.grey[900],
-                            child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                            color: isDark ? Colors.grey[900] : Colors.grey[100],
+                            child: Icon(Icons.image_not_supported, size: 30, color: isDark ? Colors.grey : Colors.grey[400]),
                           ),
                         ) : Image.network(
                           posterLink,
                           width: double.infinity,
-                          height: isHorizontal ? 150 : 170,
+                          height: isHorizontal ? 130 : 150, // Reduced poster height
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Container(
-                            height: isHorizontal ? 150 : 170,
+                            height: isHorizontal ? 130 : 150,
                             width: double.infinity,
-                            color: Colors.grey[900],
-                            child: const Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                            color: isDark ? Colors.grey[900] : Colors.grey[100],
+                            child: Icon(Icons.image_not_supported, size: 30, color: isDark ? Colors.grey : Colors.grey[400]),
                           ),
                         ),
                       ),
                     Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.fromLTRB(10, 6, 10, 8), // Reduced padding
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Container(
-                            width: 36,
-                            height: 36,
+                            width: 32, // Reduced logo size further
+                            height: 32,
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(
-                              (data['visibility'] == 'college') ? Icons.school : Icons.public,
-                              color: gradientColors[0],
-                              size: 18,
+                            child: ClipOval(
+                              child: (clubLogo != null && clubLogo.isNotEmpty)
+                                ? (clubLogo.startsWith('data:image') 
+                                    ? Image.memory(
+                                        base64Decode(clubLogo.split(',').last),
+                                        fit: BoxFit.cover,
+                                        width: 32,
+                                        height: 32,
+                                        errorBuilder: (context, error, stackTrace) => _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
+                                      )
+                                    : Image.network(
+                                        clubLogo,
+                                        fit: BoxFit.cover,
+                                        width: 32,
+                                        height: 32,
+                                        errorBuilder: (context, error, stackTrace) => _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
+                                      ))
+                                : _buildDefaultClubIcon(isDark, gradientColors, data['visibility']),
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 10), // Reduced spacing
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   data['title'] ?? "Untitled Event",
-                                  maxLines: 2,
+                                  maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 18,
-                                    color: Colors.white,
-                                    letterSpacing: 0.5,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13, // Reduced text size further
+                                    color: isDark ? Colors.white : Colors.black87,
+                                    letterSpacing: 0.2,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
                                 Text(
                                   "${data['college'] ?? "General"} - $eventDate",
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 10,
-                                    color: Colors.white70,
+                                    fontSize: 10, // Reduced text size further
+                                    color: isDark ? Colors.white70 : Colors.black54,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 4),
                                 Wrap(
                                   spacing: 4,
                                   runSpacing: 4,
@@ -1300,14 +1381,26 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.1);
+    ),
+.animate(delay: (index * 100).ms)
+      .fadeIn(duration: 500.ms, curve: Curves.easeOut)
+      .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1), curve: Curves.easeOutBack)
+      .moveY(begin: 30, end: 0, duration: 500.ms, curve: Curves.easeOut);
+  }
+
+  Widget _buildDefaultClubIcon(bool isDark, List<Color> gradientColors, String? visibility) {
+    return Icon(
+      (visibility == 'college') ? Icons.school : Icons.public,
+      color: isDark ? gradientColors[0] : gradientColors[0].withOpacity(0.8),
+      size: 16, // Reduced size further
+    );
   }
 
   Widget _eventTag(String text, {required Color bgColor, required Color fgColor}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(6)),
-      child: Text(text, style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: fgColor)),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1), // Reduced padding
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(4)),
+      child: Text(text, style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: fgColor)), // Reduced font size further
     );
   }
 
@@ -1315,6 +1408,74 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     themeNotifier.value = themeNotifier.value == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     final prefs = await SharedPreferences.getInstance();
     prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
+  }
+}
+
+class _EventCarousel extends StatefulWidget {
+  final List<DocumentSnapshot> events;
+  final String? clubLogo;
+  final Widget Function(DocumentSnapshot, {bool isHorizontal, int index, String? clubLogo}) cardBuilder;
+
+  const _EventCarousel({
+    required this.events,
+    this.clubLogo,
+    required this.cardBuilder,
+  });
+
+  @override
+  State<_EventCarousel> createState() => _EventCarouselState();
+}
+
+class _EventCarouselState extends State<_EventCarousel> {
+  late PageController _pageController;
+  double _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.88);
+    _pageController.addListener(() {
+      if (mounted) {
+        setState(() {
+          _currentPage = _pageController.page ?? 0;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PageView.builder(
+      controller: _pageController,
+      itemCount: widget.events.length,
+      padEnds: false,
+      physics: const BouncingScrollPhysics(),
+      itemBuilder: (context, index) {
+        double delta = (index - _currentPage).abs();
+        double scale = (1.0 - (delta * 0.12)).clamp(0.88, 1.0);
+        double opacity = (1.0 - (delta * 0.25)).clamp(0.75, 1.0);
+
+        return Transform.scale(
+          scale: scale,
+          alignment: Alignment.centerLeft,
+          child: Opacity(
+            opacity: opacity,
+            child: widget.cardBuilder(
+              widget.events[index],
+              isHorizontal: true,
+              index: index,
+              clubLogo: widget.clubLogo,
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
