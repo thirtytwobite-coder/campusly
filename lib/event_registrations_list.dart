@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -275,11 +276,18 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text("Registrations", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: -0.5)),
         elevation: 0,
-        backgroundColor: theme.primaryColor,
+        backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
+        flexibleSpace: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(color: Colors.transparent),
+          ),
+        ),
         actions: [
           if (!widget.isFacultyView)
             Container(
@@ -324,7 +332,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
 
               return Column(
                 children: [
-                  _buildStatsHeader(winners.length, participants.length),
+                  _buildStatsHeader(context, winners.length, participants.length),
                   Expanded(
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
@@ -384,105 +392,187 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
     );
   }
 
-  Widget _buildStatsHeader(int winnersCount, int participantsCount) {
-    final theme = Theme.of(context);
+  Widget _buildStatsHeader(BuildContext context, int winnersCount, int participantsCount) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final total = winnersCount + participantsCount;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-      decoration: BoxDecoration(
-        color: theme.primaryColor,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(40),
-        ),
-        boxShadow: [
-          BoxShadow(color: theme.primaryColor.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(
-            widget.eventName,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -1.0,
-            ),
-          ).animate().fadeIn(duration: 800.ms).scale(begin: const Offset(0.8, 0.8), curve: Curves.elasticOut).shimmer(duration: 2.seconds, color: Colors.white24),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+      padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+      child: GlassCard(
+        borderRadius: 30,
+        blur: 25,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
             children: [
-              _buildStatItem("Winners", winnersCount.toString(), Colors.orange.shade300).animate().fadeIn(delay: 400.ms).slideX(begin: -0.2),
-              Container(width: 1, height: 40, color: Colors.white.withOpacity(0.2)),
-              _buildStatItem("Total Registrations", (winnersCount + participantsCount).toString(), Colors.white).animate().fadeIn(delay: 400.ms).slideX(begin: 0.2),
+              Text(
+                widget.eventName,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1.0,
+                  height: 1.1,
+                ),
+              ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatItem("Winners", winnersCount.toString(), Colors.orangeAccent, isDark),
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: isDark ? Colors.white10 : Colors.black12,
+                  ),
+                  _buildStatItem("Total Registrations", total.toString(), isDark ? Colors.white70 : Colors.blue.shade700, isDark),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
-    );
+    ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.1, end: 0);
   }
 
-  Widget _buildStatItem(String label, String value, Color color) {
+  Widget _buildStatItem(String label, String value, Color color, bool isDark) {
     return Column(
       children: [
-        Text(value, style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: color, letterSpacing: -1)),
-        Text(label.toUpperCase(), style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.7), fontWeight: FontWeight.w800, letterSpacing: 1)),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w900,
+            color: color,
+            letterSpacing: -1.0,
+          ),
+        ),
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 9,
+            color: isDark ? Colors.white38 : Colors.black45,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.0,
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildSectionHeader(String title, IconData icon, Color color, {VoidCallback? action, bool showGenerateAll = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: 16, top: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(color: color.withOpacity(0.1), blurRadius: 10, spreadRadius: -2),
+                  ],
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -1.0,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    Text(
+                      title == "Event Winners" ? "RECOGNIZING EXCELLENCE" : "COMMUNITY BUILDING",
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                        color: color.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (showGenerateAll && !widget.isFacultyView && _eventStatus == 'completed') ...[
+                _buildActionChip(title == "Event Winners"),
+              ],
+              if (action != null) ...[
+                const SizedBox(width: 8),
+                _buildSmallActionButton(
+                  onPressed: action,
+                  label: _certsApproved ? "VIEW" : "SET WINNERS",
+                  color: Colors.orange.shade800,
+                  icon: _certsApproved ? Icons.visibility_rounded : Icons.add_circle_outline_rounded,
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.5),
-          ),
-          const Spacer(),
-          if (showGenerateAll && !widget.isFacultyView && _eventStatus == 'completed') ...[
-            _buildActionChip(title == "Event Winners"),
-          ],
-          if (action != null) ...[
-            const SizedBox(width: 8),
-            _buildSmallActionButton(
-              onPressed: action,
-              label: _certsApproved ? "VIEW" : "SET WINNERS",
-              color: Colors.orange.shade700,
-              icon: _certsApproved ? Icons.visibility : Icons.add_circle,
+            height: 4,
+            width: 40,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(2),
             ),
-          ],
+          ),
         ],
       ),
     );
   }
 
   Widget _buildSmallActionButton({required VoidCallback onPressed, required String label, required Color color, required IconData icon}) {
-    return Material(
-      color: color.withOpacity(0.1),
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 6),
-              Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: color)),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+        elevation: 0,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 14, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -490,21 +580,29 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
   }
 
   Widget _buildActionChip(bool isWinner) {
-    final color = isWinner ? Colors.orange.shade700 : Colors.green.shade700;
+    final color = isWinner ? Colors.orange.shade800 : Colors.green.shade800;
     return Material(
       color: color.withOpacity(0.1),
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: () => _handleGenerateAll(isWinner),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.auto_awesome, size: 14, color: color),
-              const SizedBox(width: 6),
-              const Text("GENERATE ALL", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.black87)),
+              Icon(Icons.auto_awesome_rounded, size: 14, color: color),
+              const SizedBox(width: 8),
+              Text(
+                "GENERATE ALL",
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                  letterSpacing: 0.5,
+                ),
+              ),
             ],
           ),
         ),
@@ -513,22 +611,44 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
   }
 
   Widget _buildBulkActionRow(List<QueryDocumentSnapshot> list, bool isCompleted, List<QueryDocumentSnapshot> allDocs) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool allParticipated = list.every((d) => (d.data() as Map<String, dynamic>)['participated'] == true);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? Colors.white12 : Colors.white),
       ),
-      child: CheckboxListTile(
-        value: allParticipated,
-        activeColor: Theme.of(context).primaryColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Mark all as participated", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-        subtitle: const Text("Checking this enables certificates for everyone", style: TextStyle(fontSize: 11)),
-        onChanged: isCompleted ? (val) { if (val != null) _markAllParticipated(allDocs, val); } : null,
-        controlAffinity: ListTileControlAffinity.leading,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: CheckboxListTile(
+            value: allParticipated,
+            activeColor: Theme.of(context).primaryColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            tileColor: Colors.transparent,
+            title: Text(
+              "Mark all as participated",
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white : Colors.black,
+              ),
+            ),
+            subtitle: Text(
+              "Checking this enables certificates for everyone",
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? Colors.white54 : Colors.black54,
+              ),
+            ),
+            onChanged: isCompleted ? (val) { if (val != null) _markAllParticipated(allDocs, val); } : null,
+            controlAffinity: ListTileControlAffinity.leading,
+          ),
+        ),
       ),
     );
   }
@@ -538,77 +658,110 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
     final name = data['studentName']?.toString() ?? 'Unknown';
     final rank = _getRankByName(name);
     final bool participated = data['participated'] ?? false;
-    final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
-      ),
-      child: ExpansionTile(
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
-        collapsedShape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: _buildLeading(doc, isWinner, participated, isCompleted),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: -0.3)),
-        subtitle: Row(
-          children: [
-            if (rank != null) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [Colors.orange.shade700, Colors.orange.shade400]),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(rank, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
-              ),
-              const SizedBox(width: 8),
-            ],
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: (participated || isWinner) ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                isWinner ? "WINNER" : (participated ? "PARTICIPATED" : "REGISTERED"),
-                style: TextStyle(
-                    fontSize: 9,
-                    color: (participated || isWinner) ? Colors.green.shade700 : Colors.grey.shade700,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5
-                ),
-              ),
-            ),
-          ],
-        ),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        children: [
-          const Divider(),
-          const SizedBox(height: 12),
-          _buildDetailGrid(data),
-          if (!widget.isFacultyView && isCompleted && (participated || isWinner)) ...[
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _handleGenerateIndividual(doc, isWinner),
-                icon: Icon(isWinner ? Icons.emoji_events : Icons.card_membership, size: 18),
-                label: Text("GENERATE ${isWinner ? 'WINNER' : 'PARTICIPATION'} CERTIFICATE"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isWinner ? Colors.orange.shade700 : Colors.green.shade700,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5),
-                ),
-              ),
-            ),
-          ],
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: isDark ? Colors.white12 : Colors.white),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: ExpansionTile(
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
+            collapsedShape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
+            tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            leading: _buildLeading(doc, isWinner, participated, isCompleted),
+            title: Text(
+              name,
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 16,
+                letterSpacing: -0.5,
+                color: isDark ? Colors.white : Colors.black,
+              ),
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                children: [
+                  if (rank != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [Color(0xFFFF8C00), Color(0xFFFFA500)]),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2)),
+                        ],
+                      ),
+                      child: Text(
+                        rank.toUpperCase(),
+                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: (participated || isWinner) ? Colors.green.withOpacity(0.12) : (isDark ? Colors.white10 : Colors.grey[100]),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: (participated || isWinner) ? Colors.green.withOpacity(0.2) : Colors.transparent),
+                    ),
+                    child: Text(
+                      isWinner ? "WINNER" : (participated ? "PARTICIPATED" : "REGISTERED"),
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: (participated || isWinner) ? (isDark ? Colors.greenAccent : Colors.green.shade700) : (isDark ? Colors.white38 : Colors.grey.shade600),
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            iconColor: isDark ? Colors.white70 : Colors.black54,
+            collapsedIconColor: isDark ? Colors.white38 : Colors.black38,
+            childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            children: [
+              Divider(color: isDark ? Colors.white10 : Colors.black12),
+              const SizedBox(height: 16),
+              _buildDetailGrid(data),
+              if (!widget.isFacultyView && isCompleted && (participated || isWinner)) ...[
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _handleGenerateIndividual(doc, isWinner),
+                    icon: Icon(isWinner ? Icons.emoji_events_rounded : Icons.card_membership_rounded, size: 18),
+                    label: Text("GENERATE ${isWinner ? 'WINNER' : 'PARTICIPATION'} CERTIFICATE"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isWinner ? Colors.orange.shade800 : Colors.green.shade800,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.05, curve: Curves.easeOutQuad);
   }
@@ -632,17 +785,37 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
   }
 
   Widget _buildDetailItem(IconData icon, String label, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       children: [
-        Icon(icon, size: 14, color: Colors.grey[400]),
-        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 12, color: isDark ? Colors.white38 : Colors.black38),
+        ),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.bold)),
-              Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.black87), overflow: TextOverflow.ellipsis),
+              Text(
+                label.toUpperCase(),
+                style: TextStyle(fontSize: 8, color: isDark ? Colors.white38 : Colors.grey[500], fontWeight: FontWeight.w900, letterSpacing: 0.5),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),
@@ -651,13 +824,20 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
   }
 
   Widget _buildLeading(QueryDocumentSnapshot doc, bool isWinner, bool participated, bool isCompleted) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (!isWinner && !widget.isFacultyView && !_certsApproved) {
-      return Transform.scale(
-        scale: 1.2,
+      return Container(
+        decoration: BoxDecoration(
+          color: participated ? Colors.green.withOpacity(0.12) : (isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100]),
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Checkbox(
           value: participated,
-          activeColor: Theme.of(context).primaryColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          activeColor: Colors.green.shade600,
+          checkColor: Colors.white,
+          side: BorderSide(color: isDark ? Colors.white38 : Colors.black26),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
           onChanged: isCompleted ? (val) {
             FirebaseFirestore.instance.collection('registrations').doc(doc.id).update({'participated': val});
           } : null,
@@ -665,56 +845,100 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
       );
     }
     return Container(
-      width: 44, height: 44,
+      width: 48,
+      height: 48,
       decoration: BoxDecoration(
-        color: (isWinner || participated) ? Colors.green.withOpacity(0.1) : Colors.grey[100],
-        borderRadius: BorderRadius.circular(14),
+        color: (isWinner || participated) ? Colors.green.withOpacity(0.12) : (isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100]),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: (isWinner || participated) ? Colors.green.withOpacity(0.2) : Colors.transparent),
       ),
       child: Icon(
         isWinner ? Icons.workspace_premium_rounded : (participated ? Icons.verified_rounded : Icons.person_outline_rounded),
-        color: (isWinner || participated) ? Colors.green.shade700 : Colors.grey.shade400,
+        color: (isWinner || participated) ? (isDark ? Colors.greenAccent : Colors.green.shade700) : (isDark ? Colors.white38 : Colors.grey.shade400),
         size: 24,
       ),
     );
   }
 
   Widget _buildEmptyState(String title, String subtitle) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 48),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.withOpacity(0.05)),
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: GlassCard(
+        borderRadius: 32,
+        blur: 15,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: (isDark ? Colors.white : Colors.blue).withOpacity(0.08),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: (isDark ? Colors.white : Colors.blue).withOpacity(0.1), width: 2),
+                ),
+                child: Icon(
+                  Icons.auto_awesome_motion_rounded,
+                  size: 52,
+                  color: isDark ? Colors.white24 : Colors.blue.withOpacity(0.3),
+                ),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.8,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? Colors.white38 : Colors.grey.shade600,
+                  fontWeight: FontWeight.w600,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      child: Column(
-        children: [
-          Icon(Icons.layers_clear_outlined, size: 48, color: Colors.grey[200]),
-          const SizedBox(height: 16),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54)),
-          const SizedBox(height: 4),
-          Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[400])),
-        ],
-      ),
-    );
+    ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.95, 0.95));
   }
 
   Widget _buildVerificationFooter() {
     return StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance.collection('events').doc(widget.eventId).snapshots(),
         builder: (context, eventSnap) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           final bool isApproved = (eventSnap.data?.data() as Map<String, dynamic>?)?['certsApproved'] == true;
 
           return Container(
             decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, -5))],
+              color: isApproved ? Colors.transparent : (isDark ? Colors.black.withOpacity(0.5) : Colors.white.withOpacity(0.7)),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -5)),
+              ],
             ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: isApproved
-                    ? _buildVerifiedState()
-                    : (widget.isFacultyView ? _buildFacultyApprovalBar() : _buildCoordinatorRequestBar()),
+            child: ClipRRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                    child: isApproved
+                        ? _buildVerifiedState()
+                        : (widget.isFacultyView ? _buildFacultyApprovalBar() : _buildCoordinatorRequestBar()),
+                  ),
+                ),
               ),
             ),
           );
@@ -724,22 +948,38 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
 
   Widget _buildVerifiedState() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [Colors.green.shade600, Colors.green.shade400]),
-        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [Colors.green.shade700, Colors.green.shade500],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: Colors.green.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
+        ],
       ),
       child: const Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.verified_user_rounded, color: Colors.white, size: 24),
-          SizedBox(width: 12),
-          Text("CERTIFICATES VERIFIED BY FACULTY",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)
+          Icon(Icons.verified_user_rounded, color: Colors.white, size: 28),
+          SizedBox(width: 14),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("OFFICIALLY VERIFIED",
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)
+              ),
+              Text("Certificates are ready for students",
+                  style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600)
+              ),
+            ],
           ),
         ],
       ),
-    );
+    ).animate().scale(begin: const Offset(0.95, 0.95), curve: Curves.easeOutBack).fadeIn();
   }
 
   Widget _buildFacultyApprovalBar() {
@@ -759,14 +999,15 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
               child: OutlinedButton(
                 onPressed: () => _handleFacultyApproval(false),
                 style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: Colors.red.shade300),
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  side: BorderSide(color: Colors.red.withOpacity(0.3), width: 1.5),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  foregroundColor: Colors.red.shade400,
                 ),
-                child: Text("REJECT", style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                child: const Text("REJECT", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.5)),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: ElevatedButton(
                 onPressed: () => _handleFacultyApproval(true),
@@ -774,10 +1015,11 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                   backgroundColor: Colors.green.shade600,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: const Text("VERIFY & APPROVE", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  shadowColor: Colors.green.withOpacity(0.4),
+                ).copyWith(elevation: ButtonStyleButton.allOrNull(0)),
+                child: const Text("VERIFY & APPROVE", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)),
               ),
             ),
           ],
@@ -787,6 +1029,8 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
   }
 
   Widget _buildCoordinatorRequestBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('certificate_approvals')
@@ -798,88 +1042,201 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
 
         return isPending
             ? Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.orange.shade700)),
-              const SizedBox(width: 12),
-              Text("PENDING FACULTY VERIFICATION", style: TextStyle(fontWeight: FontWeight.w900, color: Colors.orange.shade800, fontSize: 13)),
-            ],
-          ),
-        )
-            : SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => _requestUnifiedApproval(),
-            icon: const Icon(Icons.send_rounded, size: 18),
-            label: const Text("REQUEST FACULTY VERIFICATION"),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange.shade700,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                textStyle: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)
-            ),
-          ),
-        );
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.orange.withOpacity(0.2)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: Colors.orange.shade700,
+                        backgroundColor: Colors.orange.withOpacity(0.1),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "PENDING FACULTY VERIFICATION",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            color: Colors.orange.shade800,
+                            fontSize: 12,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const Text(
+                          "This usually takes 24-48 hours",
+                          style: TextStyle(fontSize: 9, color: Colors.orange, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.orange.withOpacity(0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _requestUnifiedApproval(),
+                    icon: const Icon(Icons.send_rounded, size: 20),
+                    label: const Text(
+                      "REQUEST FACULTY VERIFICATION",
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade700,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ).copyWith(elevation: ButtonStyleButton.allOrNull(0)),
+                  ),
+                ),
+              );
       },
     );
   }
 
   void _showDesignDialog() {
-    showDialog(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showGeneralDialog(
       context: context,
-      builder: (ctx) => DefaultTabController(
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (ctx, anim1, anim2) => DefaultTabController(
         length: 2,
-        child: AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-          title: const Text("Certificate Design", style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: -0.5)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TabBar(
-                  tabs: const [Tab(text: "Participation"), Tab(text: "Winners")],
-                  labelColor: Theme.of(context).primaryColor,
-                  unselectedLabelColor: Colors.grey,
-                  indicatorWeight: 4,
-                  indicatorColor: Theme.of(context).primaryColor,
-                  labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.45,
-                  child: TabBarView(
-                    children: [
-                      _buildTemplateForm(_certSettings, (val) => setState(() => _certSettings = val)),
-                      _buildTemplateForm(_winnerSettings, (val) => setState(() => _winnerSettings = val)),
-                    ],
-                  ),
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.5),
+                  blurRadius: 30,
+                  offset: const Offset(0, 15),
                 ),
               ],
             ),
-          ),
-          actionsPadding: const EdgeInsets.all(24),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text("Cancel", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w800))
-            ),
-            ElevatedButton(
-              onPressed: () { Navigator.pop(ctx); _saveSettings(); },
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Material(
+                  color: isDark ? Colors.black.withOpacity(0.85) : Colors.white.withOpacity(0.95),
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                "Certificate Design",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 22,
+                                  letterSpacing: -1,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              icon: const Icon(Icons.close_rounded),
+                              color: isDark ? Colors.white54 : Colors.black54,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        TabBar(
+                          tabs: const [Tab(text: "Participation"), Tab(text: "Winners")],
+                          labelColor: Colors.blueAccent,
+                          unselectedLabelColor: isDark ? Colors.white38 : Colors.black38,
+                          indicatorWeight: 4,
+                          indicatorSize: TabBarIndicatorSize.label,
+                          indicatorColor: Colors.blueAccent,
+                          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                          indicatorPadding: const EdgeInsets.only(top: 40),
+                        ),
+                        const SizedBox(height: 24),
+                        Expanded(
+                          child: TabBarView(
+                            children: [
+                              _buildTemplateForm(_certSettings, (val) => setState(() => _certSettings = val)),
+                              _buildTemplateForm(_winnerSettings, (val) => setState(() => _winnerSettings = val)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 18),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                  side: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+                                ),
+                                child: Text("CANCEL", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () { Navigator.pop(ctx); _saveSettings(); },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blueAccent,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 18),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                  elevation: 0,
+                                ),
+                                child: const Text("SAVE CHANGES", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              child: const Text("Save Changes", style: TextStyle(fontWeight: FontWeight.w900)),
             ),
-          ],
+          ),
+        ),
+      ),
+      transitionBuilder: (ctx, anim1, anim2, child) => FadeTransition(
+        opacity: anim1,
+        child: ScaleTransition(
+          scale: anim1.drive(CurveTween(curve: Curves.easeOutBack)),
+          child: child,
         ),
       ),
     );
@@ -1098,60 +1455,119 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
       String? s2 = _manualWinners['2nd'];
       String? s3 = _manualWinners['3rd'];
 
-      showDialog(
+      showGeneralDialog(
         context: context,
-        builder: (ctx) => StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-            title: Text((_certsApproved || widget.isFacultyView) ? "Winners List" : "Announce Winners", style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: -0.5)),
-            content: Container(
-              width: MediaQuery.of(context).size.width,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text("Select the top performers from the participants list to announce results.", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    const SizedBox(height: 24),
-                    IgnorePointer(
-                      ignoring: _certsApproved || widget.isFacultyView,
-                      child: Opacity(
-                        opacity: (_certsApproved || widget.isFacultyView) ? 0.7 : 1.0,
+        barrierDismissible: true,
+        barrierLabel: '',
+        barrierColor: Colors.black54,
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (ctx, anim1, anim2) {
+          final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          return Center(
+            child: Container(
+            margin: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 30, offset: const Offset(0, 15)),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Material(
+                  color: isDark ? Colors.black.withOpacity(0.85) : Colors.white.withOpacity(0.95),
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 500),
+                    padding: const EdgeInsets.all(24),
+                    child: StatefulBuilder(
+                      builder: (context, setDialogState) => SingleChildScrollView(
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            _buildWinnerDropdown("1st Place", Colors.amber.shade700, participants, s1, (val) => setDialogState(() => s1 = val)),
-                            const SizedBox(height: 16),
-                            _buildWinnerDropdown("2nd Place", Colors.blueGrey.shade700, participants, s2, (val) => setDialogState(() => s2 = val)),
-                            const SizedBox(height: 16),
-                            _buildWinnerDropdown("3rd Place", Colors.brown.shade700, participants, s3, (val) => setDialogState(() => s3 = val)),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    (_certsApproved || widget.isFacultyView) ? "Winners List" : "Announce Winners",
+                                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22, letterSpacing: -1),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  icon: const Icon(Icons.close_rounded),
+                                  color: isDark ? Colors.white54 : Colors.black54,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              "Select the top performers from the participants list to announce results.",
+                              style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.black54),
+                            ),
+                            const SizedBox(height: 24),
+                            IgnorePointer(
+                              ignoring: _certsApproved || widget.isFacultyView,
+                              child: Opacity(
+                                opacity: (_certsApproved || widget.isFacultyView) ? 0.7 : 1.0,
+                                child: Column(
+                                  children: [
+                                    _buildWinnerDropdown("1st Place", Colors.amber.shade700, participants, s1, (val) => setDialogState(() => s1 = val)),
+                                    const SizedBox(height: 16),
+                                    _buildWinnerDropdown("2nd Place", Colors.blueGrey.shade700, participants, s2, (val) => setDialogState(() => s2 = val)),
+                                    const SizedBox(height: 16),
+                                    _buildWinnerDropdown("3rd Place", Colors.brown.shade700, participants, s3, (val) => setDialogState(() => s3 = val)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            if (!(_certsApproved || widget.isFacultyView))
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _manualWinners['1st'] = s1 ?? '';
+                                      _manualWinners['2nd'] = s2 ?? '';
+                                      _manualWinners['3rd'] = s3 ?? '';
+                                    });
+                                    FirebaseFirestore.instance.collection('events').doc(widget.eventId).update({
+                                      'manualWinners': _manualWinners,
+                                    }).then((_) {
+                                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Winners saved!")));
+                                    });
+                                    Navigator.pop(ctx);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blueAccent,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 18),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                    elevation: 0,
+                                  ),
+                                  child: const Text("SAVE RESULTS", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+                                ),
+                              ),
                           ],
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: Text("Close", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w800))),
-              if (!(_certsApproved || widget.isFacultyView))
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _manualWinners['1st'] = s1 ?? '';
-                      _manualWinners['2nd'] = s2 ?? '';
-                      _manualWinners['3rd'] = s3 ?? '';
-                    });
-                    FirebaseFirestore.instance.collection('events').doc(widget.eventId).update({
-                      'manualWinners': _manualWinners,
-                    }).then((_) {
-                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Winners saved!")));
-                    });
-                    Navigator.pop(ctx);
-                  },
-                  style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: const Text("Save Results", style: TextStyle(fontWeight: FontWeight.w900)),
-                ),
-            ],
+          ),
+        );
+      },
+        transitionBuilder: (ctx, anim1, anim2, child) => FadeTransition(
+          opacity: anim1,
+          child: ScaleTransition(
+            scale: anim1.drive(CurveTween(curve: Curves.easeOutBack)),
+            child: child,
           ),
         ),
       );

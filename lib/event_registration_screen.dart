@@ -1,7 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:college_event_manager/vibrant_background.dart';
 
 class EventRegistrationScreen extends StatefulWidget {
   final DocumentSnapshot event;
@@ -12,12 +15,15 @@ class EventRegistrationScreen extends StatefulWidget {
   State<EventRegistrationScreen> createState() => _EventRegistrationScreenState();
 }
 
-class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
+class _EventRegistrationScreenState extends State<EventRegistrationScreen> with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   bool isLoading = true;
   bool isSubmitting = false;
+  bool _isReturningFromPayment = false;
+  bool _paymentCheckStarted = false;
   Map<String, dynamic>? studentData;
   String _registrationType = 'participant';
+  DateTime? _paymentStartTime;
 
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
@@ -33,7 +39,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize controllers immediately to avoid LateInitializationError
+    WidgetsBinding.instance.addObserver(this);
     _nameController = TextEditingController();
     _phoneController = TextEditingController();
     _deptController = TextEditingController();
@@ -41,6 +47,127 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
     _semController = TextEditingController();
     _ktuIdController = TextEditingController();
     _fetchStudentData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _nameController.dispose();
+    _phoneController.dispose();
+    _deptController.dispose();
+    _yearController.dispose();
+    _semController.dispose();
+    _ktuIdController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _isReturningFromPayment) {
+      setState(() {
+        _isReturningFromPayment = false;
+      });
+      _finalizeAfterPayment();
+    }
+  }
+
+  Future<void> _finalizeAfterPayment() async {
+    if (_paymentCheckStarted) return;
+    _paymentCheckStarted = true;
+
+    // Fallback: If _paymentStartTime is null, fetch from Firestore
+    if (_paymentStartTime == null) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final studentDoc = await FirebaseFirestore.instance.collection('student').doc(user.uid).get();
+        final lastAttempt = studentDoc.data()?['lastPaymentAttempt'] as Timestamp?;
+        if (lastAttempt != null) {
+          _paymentStartTime = lastAttempt.toDate();
+        }
+      }
+    }
+
+    if (_paymentStartTime != null) {
+      final difference = DateTime.now().difference(_paymentStartTime!);
+      if (difference.inMinutes >= 5) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: const Text("Payment Window Expired", style: TextStyle(fontWeight: FontWeight.w900)),
+              content: const Text("The 5-minute payment window has expired. If you have already paid, please contact the event coordinator with your transaction details. Otherwise, you can try registering again after 10 minutes."),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.pop(context);
+                  },
+                  child: const Text("OK")
+                ),
+              ],
+            ),
+          );
+        }
+        _paymentCheckStarted = false;
+        return;
+      }
+    }
+
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 24),
+              const Text("Verifying Payment...", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+              const SizedBox(height: 12),
+              Text("Please wait while we check your transaction.",
+                style: TextStyle(fontSize: 14, color: Colors.grey.withOpacity(0.8)), textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+      );
+
+      await Future.delayed(const Duration(seconds: 3));
+
+      if (mounted) {
+        Navigator.pop(context);
+
+        final confirmed = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Payment Confirmation", style: TextStyle(fontWeight: FontWeight.w900)),
+            content: const Text("Did you complete the payment successfully?"),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("No")),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text("Yes, Register Now")
+              ),
+            ],
+          ),
+        );
+
+        if (confirmed == true) {
+          _submitRegistration();
+        } else {
+          _paymentCheckStarted = false;
+        }
+      }
+    }
   }
 
   Future<void> _fetchStudentData() async {
@@ -102,31 +229,179 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _phoneController.dispose();
-    _deptController.dispose();
-    _yearController.dispose();
-    _semController.dispose();
-    _ktuIdController.dispose();
-    super.dispose();
-  }
-
   Future<void> _handleRegistration() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      isSubmitting = true;
-    });
+    final eventData = widget.event.data() as Map<String, dynamic>? ?? {};
+    final bool isPaid = eventData['isPaid'] == true;
+    final String upiId = (eventData['upiId'] ?? '').toString().trim();
+    final String fee = (eventData['eventFee'] ?? '0').toString();
+    final String eventTitle = eventData['title'] ?? eventData['name'] ?? 'Event';
+
+    if (isPaid) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final studentDoc = await FirebaseFirestore.instance.collection('student').doc(user.uid).get();
+        final lastAttempt = studentDoc.data()?['lastPaymentAttempt'] as Timestamp?;
+
+        if (lastAttempt != null) {
+          final difference = DateTime.now().difference(lastAttempt.toDate());
+          if (difference.inMinutes < 10) {
+            final remaining = 10 - difference.inMinutes;
+            if (mounted) {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  title: const Text("Cooldown Active", style: TextStyle(fontWeight: FontWeight.w900)),
+                  content: Text("Please wait $remaining more minutes before trying again. This is to ensure previous transactions are processed."),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK")),
+                  ],
+                ),
+              );
+            }
+            return;
+          }
+        }
+      }
+
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text("Payment Required", style: TextStyle(fontWeight: FontWeight.w900)),
+          content: Text("Proceed to pay ₹$fee via UPI?\n\nNOTE: You have 5 minutes to complete the payment once you leave the app."),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text("Proceed to Pay")
+            ),
+          ],
+        ),
+      );
+
+      if (proceed != true) return;
+
+      // Update attempt time in Firestore
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('student').doc(user.uid).update({
+          'lastPaymentAttempt': FieldValue.serverTimestamp(),
+          'lastPaymentEventId': widget.event.id,
+        });
+      }
+      _paymentStartTime = DateTime.now();
+
+      String formattedUpiId = upiId;
+      String cleanId = formattedUpiId.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+      if (cleanId.startsWith('+91')) cleanId = cleanId.substring(3);
+      else if (cleanId.startsWith('91') && cleanId.length == 12) cleanId = cleanId.substring(2);
+
+      if (RegExp(r'^\d{10}$').hasMatch(cleanId)) {
+        formattedUpiId = '$cleanId@okicici';
+      }
+
+      final String upiUri = 'upi://pay?pa=$formattedUpiId&pn=${Uri.encodeComponent(eventTitle)}&am=$fee&cu=INR&tn=${Uri.encodeComponent("Registration for $eventTitle")}';
+
+      final String gPayIntent = 'intent://pay?pa=$formattedUpiId&pn=${Uri.encodeComponent(eventTitle)}&am=$fee&cu=INR&tn=${Uri.encodeComponent("Registration for $eventTitle")}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end';
+
+      try {
+        bool launched = false;
+        if (Theme.of(context).platform == TargetPlatform.android) {
+          try {
+            final gPayUri = Uri.parse(gPayIntent);
+            await launchUrl(gPayUri, mode: LaunchMode.externalNonBrowserApplication);
+            launched = true;
+          } catch (e) {
+            debugPrint("Direct GPay intent failed: $e");
+          }
+        }
+
+        if (!launched) {
+          final upiUriParsed = Uri.parse(upiUri);
+          try {
+            if (await canLaunchUrl(upiUriParsed)) {
+              await launchUrl(upiUriParsed, mode: LaunchMode.externalNonBrowserApplication);
+              launched = true;
+            }
+          } catch (e) {
+            debugPrint("Generic UPI launch failed: $e");
+          }
+        }
+
+        if (launched) {
+          setState(() => _isReturningFromPayment = true);
+          return;
+        } else {
+          if (mounted) {
+            final manualConfirm = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                title: const Text("Scan to Pay", style: TextStyle(fontWeight: FontWeight.w900)),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text("Scan this QR code with any UPI app to pay:"),
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                        child: Image.network(
+                          'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${Uri.encodeComponent(upiUri)}',
+                          width: 200, height: 200,
+                          errorBuilder: (c, e, s) => const Icon(Icons.qr_code_2, size: 100, color: Colors.grey),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(color: Colors.blue.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
+                        child: Row(
+                          children: [
+                            Expanded(child: SelectableText(formattedUpiId, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+                            IconButton(icon: const Icon(Icons.copy, size: 20), onPressed: () {
+                              Clipboard.setData(ClipboardData(text: formattedUpiId));
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('UPI ID Copied!')));
+                            }),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+                  ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Confirmed Payment")),
+                ],
+              ),
+            );
+            if (manualConfirm != true) return;
+          }
+        }
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Launch Error: $e')));
+        return;
+      }
+    }
+
+    _submitRegistration();
+  }
+
+  Future<void> _submitRegistration() async {
+    final eventData = widget.event.data() as Map<String, dynamic>? ?? {};
+    setState(() => isSubmitting = true);
 
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      final eventData = widget.event.data() as Map<String, dynamic>? ?? {};
-
-      // 🔹 Check if already registered
       final existingReg = await FirebaseFirestore.instance
           .collection('registrations')
           .where('userId', isEqualTo: user.uid)
@@ -138,16 +413,11 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
           showDialog(
             context: context,
             builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               title: const Text("Already Registered"),
               content: const Text("You have already registered for this event."),
               actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(ctx); // Close dialog
-                    Navigator.pop(context); // Go back to event details
-                  },
-                  child: const Text("OK"),
-                ),
+                TextButton(onPressed: () { Navigator.pop(ctx); Navigator.pop(context); }, child: const Text("OK")),
               ],
             ),
           );
@@ -167,18 +437,12 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
       final bool requiresVolunteers = eventData['requiresVolunteers'] == true;
       final String regType = requiresVolunteers ? _registrationType : 'participant';
       final bool isTeamEvent = eventData['isTeamEvent'] == true;
-      final dynamic teamSizeRaw = eventData['teamSize'];
-      final int maxTeamSize = (teamSizeRaw is int)
-          ? teamSizeRaw
-          : int.tryParse(teamSizeRaw?.toString() ?? '') ?? 1;
 
-      // 1. Update Profile if changed
       await FirebaseFirestore.instance
           .collection('student')
           .doc(user.uid)
           .set(updatedData, SetOptions(merge: true));
 
-      // 2. Register for Event
       final String teamId = (isTeamEvent && regType == 'participant') ? "${widget.event.id}_${user.uid}" : "";
 
       await FirebaseFirestore.instance.collection('registrations').add({
@@ -192,7 +456,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
         'year': updatedData['year'],
         'semester': updatedData['semester'],
         'ktuId': updatedData['ktuId'],
-        'college': studentData?['college'], // Added college field
+        'college': studentData?['college'],
         'registrationType': regType,
         'registeredAt': FieldValue.serverTimestamp(),
         if (isTeamEvent && regType == 'participant') 'teamId': teamId,
@@ -200,52 +464,49 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
         if (isTeamEvent && regType == 'participant') 'status': 'confirmed',
       });
 
-      // 3. Register added team members dynamically
       if (isTeamEvent && regType == 'participant' && _selectedTeamMembers.isNotEmpty) {
         for (var memberData in _selectedTeamMembers) {
-             final pendingRegRef = await FirebaseFirestore.instance.collection('registrations').add({
-               'userId': memberData['id'],
-               'eventId': widget.event.id,
-               'eventTitle': eventData['title'] ?? eventData['name'] ?? 'Untitled Event',
-               'studentName': memberData['name'] ?? 'Team Member',
-               'studentEmail': memberData['email'] ?? '',
-               'studentPhone': memberData['phone'] ?? '',
-               'department': memberData['department'] ?? '',
-               'year': memberData['year'] ?? '',
-               'semester': memberData['semester'] ?? '',
-               'ktuId': memberData['ktuId'] ?? '',
-               'college': memberData['college'] ?? '',
-               'registrationType': 'participant',
-               'registeredAt': FieldValue.serverTimestamp(),
-               'teamId': teamId,
-               'isTeamLeader': false,
-               'status': 'pending', 
-             });
+           final pendingRegRef = await FirebaseFirestore.instance.collection('registrations').add({
+             'userId': memberData['id'],
+             'eventId': widget.event.id,
+             'eventTitle': eventData['title'] ?? eventData['name'] ?? 'Untitled Event',
+             'studentName': memberData['name'] ?? 'Team Member',
+             'studentEmail': memberData['email'] ?? '',
+             'studentPhone': memberData['phone'] ?? '',
+             'department': memberData['department'] ?? '',
+             'year': memberData['year'] ?? '',
+             'semester': memberData['semester'] ?? '',
+             'ktuId': memberData['ktuId'] ?? '',
+             'college': memberData['college'] ?? '',
+             'registrationType': 'participant',
+             'registeredAt': FieldValue.serverTimestamp(),
+             'teamId': teamId,
+             'isTeamLeader': false,
+             'status': 'pending',
+           });
 
-             await FirebaseFirestore.instance.collection('student').doc(memberData['id']).collection('notifications').add({
-               'type': 'team_invite',
-               'title': 'Team Invitation',
-               'message': '${updatedData['name']} invited you to join their team for ${eventData['title'] ?? 'an event'}.',
-               'eventId': widget.event.id,
-               'regId': pendingRegRef.id,
-               'read': false,
-               'timestamp': FieldValue.serverTimestamp(),
-             });
+           await FirebaseFirestore.instance.collection('student').doc(memberData['id']).collection('notifications').add({
+             'type': 'team_invite',
+             'title': 'Team Invitation',
+             'message': '${updatedData['name']} invited you to join their team for ${eventData['title'] ?? 'an event'}.',
+             'eventId': widget.event.id,
+             'regId': pendingRegRef.id,
+             'read': false,
+             'timestamp': FieldValue.serverTimestamp(),
+           });
 
-             await FirebaseFirestore.instance
-                .collection('events')
-                .doc(widget.event.id)
-                .update({'filledSeats': FieldValue.increment(1)});
+           await FirebaseFirestore.instance
+              .collection('events')
+              .doc(widget.event.id)
+              .update({'filledSeats': FieldValue.increment(1)});
         }
       }
 
-      // Increment filledSeats count
       await FirebaseFirestore.instance
           .collection('events')
           .doc(widget.event.id)
           .update({'filledSeats': FieldValue.increment(1)});
 
-      // Decrement volunteers needed when a volunteer registers
       if (regType == 'volunteer') {
         await FirebaseFirestore.instance.runTransaction((tx) async {
           final eventRef = FirebaseFirestore.instance.collection('events').doc(widget.event.id);
@@ -258,73 +519,48 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
       }
 
       if (mounted) {
-        // Show Confirmation Dialog
         await showDialog(
           context: context,
           barrierDismissible: false,
           builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            contentPadding: const EdgeInsets.all(24),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.check_circle, color: Colors.green, size: 60),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  "Registration Successful!",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "You have successfully registered for\n${eventData['title'] ?? eventData['name'] ?? 'Untitled Event'}",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.grey),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), shape: BoxShape.circle),
+                  child: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 64),
                 ),
                 const SizedBox(height: 24),
+                const Text("Registration Successful!", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 12),
+                const Text("You've been successfully registered.", style: TextStyle(color: Colors.grey, fontSize: 15), textAlign: TextAlign.center),
+                const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).primaryColor,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      elevation: 0,
                     ),
-                    onPressed: () {
-                      Navigator.pop(context); // Close dialog
-                    },
-                    child: const Text("OK", style: TextStyle(fontSize: 16)),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Done", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
             ),
           ),
         );
-        
-        if (mounted) {
-          Navigator.pop(context); // Go back to event details
-        }
+        if (mounted) Navigator.pop(context);
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
-      if (mounted) {
-        setState(() {
-          isSubmitting = false;
-        });
-      }
+      if (mounted) setState(() => isSubmitting = false);
     }
   }
 
@@ -336,77 +572,117 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
     final String volunteerCount = (eventData['volunteerCount'] ?? '').toString();
     final bool isTeamEvent = eventData['isTeamEvent'] == true;
     final dynamic teamSizeRaw = eventData['teamSize'];
-    final int maxTeamSize = (teamSizeRaw is int)
-        ? teamSizeRaw
-        : int.tryParse(teamSizeRaw?.toString() ?? '') ?? 1;
+    final int maxTeamSize = (teamSizeRaw is int) ? teamSizeRaw : int.tryParse(teamSizeRaw?.toString() ?? '') ?? 1;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Confirm Details'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(color: Colors.white.withOpacity(0.05)),
+          ),
+        ),
+        title: const Text('Confirm Details', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: -0.8, fontSize: 24)),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (requiresVolunteers) ...[
-                      _buildRegisterTypeCard(volunteerCount, volunteerRole),
-                      const SizedBox(height: 20),
-                    ],
-                    const Text(
-                      "Please review and confirm your details for registration.",
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildTextField(_nameController, "Full Name", Icons.person_outline),
-                    const SizedBox(height: 16),
-                    _buildTextField(_phoneController, "Phone Number", Icons.phone_outlined,
-                        keyboardType: TextInputType.phone,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)]),
-                    const SizedBox(height: 16),
-                    _buildTextField(_deptController, "Department", Icons.business_outlined),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildTextField(_yearController, "Year", Icons.calendar_today_outlined,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)]),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildTextField(_semController, "Semester", Icons.format_list_numbered_outlined,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)]),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(_ktuIdController, "KTU ID", Icons.badge_outlined,
-                        inputFormatters: [UpperCaseTextFormatter()]),
-                    if (isTeamEvent && _registrationType == 'participant') ...[
-                      const SizedBox(height: 24),
-                      _buildTeamSection(maxTeamSize),
-                    ],
-                    const SizedBox(height: 32),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 55,
-                      child: ElevatedButton(
-                        onPressed: isSubmitting ? null : _handleRegistration,
-                        child: isSubmitting
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text("Confirm & Register", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      body: Stack(
+        children: [
+          const VibrantBackground(),
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SafeArea(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (requiresVolunteers) ...[
+                            _buildRegisterTypeCard(volunteerCount, volunteerRole),
+                            const SizedBox(height: 24),
+                          ],
+                          GlassCard(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Review Details", style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+                                  const SizedBox(height: 8),
+                                  Text("Please confirm your information for registration.",
+                                    style: TextStyle(fontSize: 14, color: Colors.grey.withOpacity(0.8))),
+                                  const SizedBox(height: 32),
+                                  _buildTextField(_nameController, "Full Name", Icons.person_rounded),
+                                  const SizedBox(height: 18),
+                                  _buildTextField(_phoneController, "Phone Number", Icons.phone_android_rounded,
+                                      keyboardType: TextInputType.phone,
+                                      inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)]),
+                                  const SizedBox(height: 18),
+                                  _buildTextField(_deptController, "Department", Icons.school_rounded),
+                                  const SizedBox(height: 18),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildTextField(_yearController, "Year", Icons.calendar_month_rounded,
+                                            keyboardType: TextInputType.number,
+                                            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)]),
+                                      ),
+                                      const SizedBox(width: 18),
+                                      Expanded(
+                                        child: _buildTextField(_semController, "Semester", Icons.layers_rounded,
+                                            keyboardType: TextInputType.number,
+                                            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)]),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 18),
+                                  _buildTextField(_ktuIdController, "KTU ID", Icons.badge_rounded,
+                                      inputFormatters: [UpperCaseTextFormatter()]),
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (isTeamEvent && _registrationType == 'participant') ...[
+                            const SizedBox(height: 24),
+                            _buildTeamSection(maxTeamSize),
+                          ],
+                          const SizedBox(height: 48),
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Theme.of(context).primaryColor.withOpacity(0.4),
+                                  blurRadius: 30, offset: const Offset(0, 15),
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).primaryColor,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(double.infinity, 68),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                elevation: 0,
+                              ),
+                              onPressed: isSubmitting ? null : _handleRegistration,
+                              child: isSubmitting
+                                  ? const CircularProgressIndicator(color: Colors.white)
+                                  : Text(eventData['isPaid'] == true ? "PAY & CONFIRM" : "CONFIRM REGISTRATION",
+                                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+                            ),
+                          ),
+                          const SizedBox(height: 60),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+        ],
+      ),
     );
   }
 
@@ -419,10 +695,11 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
             .toList();
 
         return AlertDialog(
-          title: const Text("Select Team Member"),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text("Select Team Member", style: TextStyle(fontWeight: FontWeight.w900)),
           content: SizedBox(
             width: double.maxFinite,
-            height: 300,
+            height: 350,
             child: availableStudents.isEmpty
                 ? const Center(child: Text("No more students available in your college."))
                 : ListView.builder(
@@ -430,13 +707,14 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
                     itemBuilder: (context, index) {
                       final s = availableStudents[index];
                       return ListTile(
-                        leading: CircleAvatar(child: Text((s['name'] ?? '?')[0].toUpperCase())),
-                        title: Text(s['name'] ?? 'Unknown'),
-                        subtitle: Text(s['department'] ?? ''),
+                        leading: CircleAvatar(
+                          backgroundColor: Colors.blue.withOpacity(0.1),
+                          child: Text((s['name'] ?? '?')[0].toUpperCase(), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                        ),
+                        title: Text(s['name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w700)),
+                        subtitle: Text(s['department'] ?? '', style: const TextStyle(fontSize: 12)),
                         onTap: () {
-                          setState(() {
-                            _selectedTeamMembers.add(s);
-                          });
+                          setState(() => _selectedTeamMembers.add(s));
                           Navigator.pop(ctx);
                         },
                       );
@@ -444,10 +722,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
                   ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("Cancel"),
-            ),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           ],
         );
       },
@@ -456,183 +731,194 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> {
 
   Widget _buildTeamSection(int maxTeamSize) {
     if (maxTeamSize <= 1) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return GlassCard(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Team Members (Max ${maxTeamSize - 1} more)", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            if (_selectedTeamMembers.length < maxTeamSize - 1 && !_isLoadingStudents)
-              TextButton.icon(
-                icon: const Icon(Icons.add),
-                label: const Text("Add Member"),
-                onPressed: _collegeStudents.isEmpty ? null : _showAddMemberDialog,
-              )
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text("Team Members (Max ${maxTeamSize - 1} more)",
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, letterSpacing: -0.5)),
+                ),
+                if (_selectedTeamMembers.length < maxTeamSize - 1 && !_isLoadingStudents)
+                  IconButton(
+                    icon: const Icon(Icons.add_circle_rounded, color: Colors.blue, size: 28),
+                    onPressed: _collegeStudents.isEmpty ? null : _showAddMemberDialog,
+                  )
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text("Invite teammates from your college.",
+              style: TextStyle(fontSize: 12, color: Colors.grey.withOpacity(0.8))),
+            const SizedBox(height: 20),
+            if (_isLoadingStudents)
+                const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
+            ...List.generate(_selectedTeamMembers.length, (index) {
+              final member = _selectedTeamMembers[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                ),
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.blue.withOpacity(0.1),
+                    child: Text((member['name'] ?? '?')[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  title: Text(member['name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  subtitle: Text(member['email'] ?? '', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.remove_circle_outline_rounded, color: Colors.redAccent, size: 22),
+                    onPressed: () => setState(() => _selectedTeamMembers.removeAt(index)),
+                  ),
+                ),
+              );
+            }),
           ],
         ),
-        const SizedBox(height: 10),
-        const Text("Select teammates from your college. They will receive an invite to confirm. You do not need to fill all spots.", style: TextStyle(fontSize: 12, color: Colors.grey)),
-        const SizedBox(height: 10),
-        if (_isLoadingStudents)
-            const Center(child: CircularProgressIndicator()),
-        ...List.generate(_selectedTeamMembers.length, (index) {
-          final member = _selectedTeamMembers[index];
-          return Card(
-            elevation: 1,
-            margin: const EdgeInsets.only(bottom: 8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: ListTile(
-              leading: CircleAvatar(child: Text((member['name'] ?? '?')[0].toUpperCase())),
-              title: Text(member['name'] ?? 'Unknown'),
-              subtitle: Text(member['email'] ?? ''),
-              trailing: IconButton(
-                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                onPressed: () {
-                  setState(() {
-                    _selectedTeamMembers.removeAt(index);
-                  });
-                },
-              ),
-            ),
-          );
-        }),
-      ],
+      ),
     );
   }
 
   Widget _buildTextField(TextEditingController controller, String label, IconData icon,
       {TextInputType? keyboardType, List<TextInputFormatter>? inputFormatters, bool isRequired = true}) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      decoration: InputDecoration(
-        labelText: isRequired ? '$label *' : label,
-        prefixIcon: Icon(icon),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
-      validator: (value) {
-        if (isRequired && (value == null || value.trim().isEmpty)) {
-          return '$label is required';
-        }
-        return null;
-      },
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: 0.2),
+        decoration: InputDecoration(
+          labelText: isRequired ? '$label *' : label,
+          labelStyle: TextStyle(fontSize: 13, color: Colors.grey.withOpacity(0.8), fontWeight: FontWeight.w500),
+          prefixIcon: Icon(icon, size: 22, color: Colors.blueAccent.withOpacity(0.7)),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: BorderSide(color: Colors.blueAccent.withOpacity(0.5), width: 1.5),
+          ),
+          filled: false,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        ),
+        validator: (value) {
+          if (isRequired && (value == null || value.trim().isEmpty)) {
+            return '$label is required';
+          }
+          return null;
+        },
+      ),
     );
   }
 
   Widget _buildRegisterTypeCard(String volunteerCount, String? volunteerRole) {
     final String? roleText = (volunteerRole != null && volunteerRole.trim().isNotEmpty) ? volunteerRole.trim() : null;
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE6E9F2)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F1FF),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.how_to_reg_outlined, size: 20, color: Color(0xFF4B3CC9)),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  "Register As",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF6F7FB),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE3E7F0)),
-            ),
-            child: Row(
+    return GlassCard(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Expanded(
-                  child: _RegisterTypePill(
-                    label: "Participant",
-                    icon: Icons.person_outline,
-                    isSelected: _registrationType == 'participant',
-                    onTap: () => setState(() => _registrationType = 'participant'),
-                  ),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
+                  child: const Icon(Icons.how_to_reg_rounded, size: 22, color: Colors.blue),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _RegisterTypePill(
-                    label: "Volunteer",
-                    icon: Icons.volunteer_activism_outlined,
-                    isSelected: _registrationType == 'volunteer',
-                    onTap: () => setState(() => _registrationType = 'volunteer'),
-                  ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Text("Registration Type",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF7FAFF),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE1ECFF)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.volunteer_activism_outlined, size: 18, color: Color(0xFF2B6CB0)),
-                const SizedBox(width: 8),
-                Text(
-                  volunteerCount.isNotEmpty ? "Volunteers Needed: $volunteerCount" : "Volunteers Needed",
-                  style: const TextStyle(color: Color(0xFF2B6CB0), fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ),
-          if (roleText != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 24),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF7E6),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFFFE2B3)),
+                color: Colors.white.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.list_alt_outlined, size: 18, color: Color(0xFFB7791F)),
+                  Expanded(
+                    child: _RegisterTypePill(
+                      label: "Participant",
+                      icon: Icons.person_rounded,
+                      isSelected: _registrationType == 'participant',
+                      onTap: () => setState(() => _registrationType = 'participant'),
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      "Role: $roleText",
-                      style: const TextStyle(color: Color(0xFFB7791F), fontWeight: FontWeight.w600),
+                    child: _RegisterTypePill(
+                      label: "Volunteer",
+                      icon: Icons.volunteer_activism_rounded,
+                      isSelected: _registrationType == 'volunteer',
+                      onTap: () => setState(() => _registrationType = 'volunteer'),
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.blue.withOpacity(0.1)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.volunteer_activism_rounded, size: 20, color: Colors.blue),
+                  const SizedBox(width: 10),
+                  Text(
+                    volunteerCount.isNotEmpty ? "Volunteers Needed: $volunteerCount" : "Volunteers Needed",
+                    style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+            if (roleText != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.orange.withOpacity(0.1)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.list_alt_rounded, size: 20, color: Colors.orange),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text("Role: $roleText",
+                        style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -645,48 +931,33 @@ class _RegisterTypePill extends StatelessWidget {
   final VoidCallback onTap;
 
   const _RegisterTypePill({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
+    required this.label, required this.icon, required this.isSelected, required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF4B3CC9) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? const Color(0xFF4B3CC9) : const Color(0xFFE3E7F0)),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF4B3CC9).withOpacity(0.25),
-                    blurRadius: 10,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : [],
+          color: isSelected ? Theme.of(context).primaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: isSelected ? [
+            BoxShadow(color: Theme.of(context).primaryColor.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4)),
+          ] : [],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: isSelected ? Colors.white : const Color(0xFF667085)),
-            const SizedBox(width: 6),
+            Icon(icon, size: 18, color: isSelected ? Colors.white : Colors.grey.withOpacity(0.8)),
+            const SizedBox(width: 8),
             Flexible(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF667085),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: Text(label, overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: isSelected ? Colors.white : Colors.grey.withOpacity(0.8), fontWeight: FontWeight.w900, fontSize: 13)),
             ),
           ],
         ),

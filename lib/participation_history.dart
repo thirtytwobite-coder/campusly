@@ -311,48 +311,80 @@ class ParticipationHistoryScreen extends StatelessWidget {
               children: [
                 if (bgImg != null) pw.Positioned.fill(child: pw.Image(bgImg!, fit: pw.BoxFit.fill)),
                 pw.Container(
-                  margin: const pw.EdgeInsets.all(40),
-                  padding: const pw.EdgeInsets.all(20),
+                  margin: const pw.EdgeInsets.all(30),
+                  padding: const pw.EdgeInsets.all(15),
                   decoration: bgImg == null ? pw.BoxDecoration(
-                    border: pw.Border.all(color: isWinner ? PdfColors.orange : PdfColors.indigo, width: 5),
+                    border: pw.Border.all(color: isWinner ? PdfColors.orange700 : PdfColors.indigo700, width: 2),
                   ) : null,
-                  child: pw.Column(
-                    mainAxisAlignment: pw.MainAxisAlignment.center,
-                    children: [
-                      if (logoImg != null) pw.Container(height: 70, width: 70, child: pw.Image(logoImg!)),
-                      pw.SizedBox(height: 10),
-                      pw.Text(settings['title'] ?? 'CERTIFICATE', 
-                        style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold, color: bgImg == null ? (isWinner ? PdfColors.orange : PdfColors.indigo) : PdfColors.black)),
-                      pw.SizedBox(height: 10),
-                      pw.Text(settings['subtitle'] ?? '', style: const pw.TextStyle(fontSize: 16)),
-                      pw.SizedBox(height: 15),
-                      pw.Text(reg['studentName']?.toString().toUpperCase() ?? '', 
-                        style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, decoration: pw.TextDecoration.underline)),
-                      pw.SizedBox(height: 15),
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.symmetric(horizontal: 40),
-                        child: _buildBodyText(settings['body'] ?? '', eventData['title'] ?? eventData['name'] ?? '', eventData['date'] ?? '', rank ?? "participant"),
-                      ),
-                      pw.SizedBox(height: 30),
-                      pw.Row(
-                        mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
-                        crossAxisAlignment: pw.CrossAxisAlignment.end,
-                        children: [
-                          pw.Column(children: [
-                            if (sig1Img != null) pw.Container(height: 40, width: 100, child: pw.Image(sig1Img!)),
-                            pw.Container(width: 140, height: 1, color: PdfColors.black),
-                            pw.Text(settings['signatory1Name'] ?? '', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                            pw.Text(settings['signatory1Title'] ?? '', style: const pw.TextStyle(fontSize: 10)),
-                          ]),
-                          pw.Column(children: [
-                            if (sig2Img != null) pw.Container(height: 40, width: 100, child: pw.Image(sig2Img!)),
-                            pw.Container(width: 140, height: 1, color: PdfColors.black),
-                            pw.Text(settings['signatory2Name'] ?? '', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                            pw.Text(settings['signatory2Title'] ?? '', style: const pw.TextStyle(fontSize: 10)),
-                          ]),
-                        ],
-                      ),
-                    ],
+                  child: pw.Container(
+                    padding: const pw.EdgeInsets.all(20),
+                    decoration: bgImg == null ? pw.BoxDecoration(
+                      border: pw.Border.all(color: isWinner ? PdfColors.orange400 : PdfColors.indigo400, width: 6),
+                    ) : null,
+                    child: pw.Stack(
+                      children: [
+                        // Corner Ornaments
+                        pw.Positioned(top: 0, left: 0, child: pw.Container(width: 40, height: 40, decoration: pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(color: isWinner ? PdfColors.orange : PdfColors.indigo, width: 2), left: pw.BorderSide(color: isWinner ? PdfColors.orange : PdfColors.indigo, width: 2))))),
+                        pw.Positioned(top: 0, right: 0, child: pw.Container(width: 40, height: 40, decoration: pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(color: isWinner ? PdfColors.orange : PdfColors.indigo, width: 2), right: pw.BorderSide(color: isWinner ? PdfColors.orange : PdfColors.indigo, width: 2))))),
+                        pw.Positioned(bottom: 0, left: 0, child: pw.Container(width: 40, height: 40, decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: isWinner ? PdfColors.orange : PdfColors.indigo, width: 2), left: pw.BorderSide(color: isWinner ? PdfColors.orange : PdfColors.indigo, width: 2))))),
+                        pw.Positioned(bottom: 0, right: 0, child: pw.Container(width: 40, height: 40, decoration: pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: isWinner ? PdfColors.orange : PdfColors.indigo, width: 2), right: pw.BorderSide(color: isWinner ? PdfColors.orange : PdfColors.indigo, width: 2))))),
+                        
+                        pw.Column(
+                          mainAxisAlignment: pw.MainAxisAlignment.center,
+                          children: [
+                            if (logoImg != null) pw.Container(height: 80, width: 80, child: pw.Image(logoImg!)),
+                            pw.SizedBox(height: 15),
+                            pw.Text(settings['title'] ?? 'CERTIFICATE', 
+                              style: pw.TextStyle(fontSize: 34, fontWeight: pw.FontWeight.bold, color: isWinner ? PdfColors.orange800 : PdfColors.indigo800, letterSpacing: 2)),
+                            pw.SizedBox(height: 5),
+                            pw.Text(settings['subtitle'] ?? 'This is to certify that', 
+                              style: pw.TextStyle(fontSize: 14, fontStyle: pw.FontStyle.italic, color: PdfColors.grey700)),
+                            pw.SizedBox(height: 20),
+                            pw.Text(reg['studentName']?.toString().toUpperCase() ?? '', 
+                              style: pw.TextStyle(fontSize: 30, fontWeight: pw.FontWeight.bold, color: PdfColors.black)),
+                            pw.Container(width: 300, height: 1.5, color: PdfColors.grey400, margin: const pw.EdgeInsets.symmetric(vertical: 5)),
+                            pw.SizedBox(height: 15),
+                            pw.Padding(
+                              padding: const pw.EdgeInsets.symmetric(horizontal: 60),
+                              child: _buildBodyText(settings['body'] ?? '', eventData['title'] ?? eventData['name'] ?? '', eventData['date'] ?? '', rank ?? "participant"),
+                            ),
+                            pw.SizedBox(height: 40),
+                            pw.Row(
+                              mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                              crossAxisAlignment: pw.CrossAxisAlignment.end,
+                              children: [
+                                pw.Column(children: [
+                                  if (sig1Img != null) pw.Container(height: 45, width: 110, child: pw.Image(sig1Img!)),
+                                  pw.Container(width: 150, height: 1, color: PdfColors.black),
+                                  pw.SizedBox(height: 4),
+                                  pw.Text(settings['signatory1Name'] ?? '', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                                  pw.Text(settings['signatory1Title'] ?? '', style: pw.TextStyle(fontSize: 10, color: PdfColors.grey800)),
+                                ]),
+                                // Seal
+                                pw.Container(
+                                  width: 70, height: 70,
+                                  decoration: pw.BoxDecoration(
+                                    color: isWinner ? PdfColors.orange100 : PdfColors.indigo100,
+                                    shape: pw.BoxShape.circle,
+                                    border: pw.Border.all(color: isWinner ? PdfColors.orange700 : PdfColors.indigo700, width: 2),
+                                  ),
+                                  child: pw.Center(
+                                    child: pw.Text("OFFICIAL\nSEAL", textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: isWinner ? PdfColors.orange900 : PdfColors.indigo900)),
+                                  ),
+                                ),
+                                pw.Column(children: [
+                                  if (sig2Img != null) pw.Container(height: 45, width: 110, child: pw.Image(sig2Img!)),
+                                  pw.Container(width: 150, height: 1, color: PdfColors.black),
+                                  pw.SizedBox(height: 4),
+                                  pw.Text(settings['signatory2Name'] ?? '', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                                  pw.Text(settings['signatory2Title'] ?? '', style: pw.TextStyle(fontSize: 10, color: PdfColors.grey800)),
+                                ]),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -411,7 +443,7 @@ class ParticipationHistoryScreen extends StatelessWidget {
     return pw.RichText(
       textAlign: pw.TextAlign.center,
       text: pw.TextSpan(
-        style: const pw.TextStyle(fontSize: 16),
+        style: pw.TextStyle(fontSize: 16, color: PdfColors.black),
         children: spans,
       ),
     );

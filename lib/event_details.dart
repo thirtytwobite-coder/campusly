@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:convert';
 import 'event_registration_screen.dart';
 import 'vibrant_background.dart';
+import 'profile_screen.dart';
 
 class EventDetailsScreen extends StatelessWidget {
   final DocumentSnapshot event;
@@ -18,42 +20,53 @@ class EventDetailsScreen extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       barrierLabel: '',
-      barrierColor: Colors.black.withOpacity(0.95),
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (ctx, anim1, anim2) => Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Stack(
-          alignment: Alignment.center,
-          children: [
-            GestureDetector(
-              onTap: () => Navigator.pop(ctx),
-              child: Container(color: Colors.transparent),
-            ),
-            InteractiveViewer(
-              minScale: 0.5,
-              maxScale: 4.0,
-              child: Hero(
-                tag: 'event_poster',
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: url.startsWith('data:image')
-                      ? Image.memory(base64Decode(url.split(',').last), fit: BoxFit.contain)
-                      : Image.network(url, fit: BoxFit.contain),
-                ),
+      barrierColor: Colors.black.withOpacity(0.9),
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (ctx, anim1, anim2) => FadeTransition(
+        opacity: anim1,
+        child: ScaleTransition(
+          scale: anim1.drive(Tween(begin: 0.9, end: 1.0).chain(CurveTween(curve: Curves.easeOutCubic))),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              body: Stack(
+                alignment: Alignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Container(color: Colors.transparent),
+                  ),
+                  InteractiveViewer(
+                    minScale: 0.5,
+                    maxScale: 4.0,
+                    child: Hero(
+                      tag: 'event_poster',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 40, offset: const Offset(0, 10))],
+                          ),
+                          child: url.startsWith('data:image')
+                              ? Image.memory(base64Decode(url.split(',').last), fit: BoxFit.contain)
+                              : Image.network(url, fit: BoxFit.contain),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 50,
+                    right: 25,
+                    child: IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Colors.white, size: 32),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ),
+                ],
               ),
             ),
-            Positioned(
-              top: 40,
-              right: 20,
-              child: CircleAvatar(
-                backgroundColor: Colors.white24,
-                child: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () => Navigator.pop(ctx),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -92,22 +105,38 @@ class EventDetailsScreen extends StatelessWidget {
               final String volunteerRole = data['volunteerRole']?.toString() ?? '';
               final Map<String, dynamic>? manualWinners = data['manualWinners'] as Map<String, dynamic>?;
 
+              final bool hasHeader = imageUrl != null && imageUrl.trim().isNotEmpty;
+
               return CustomScrollView(
                 physics: const BouncingScrollPhysics(),
                 slivers: [
                   SliverAppBar(
-                    expandedHeight: 420, 
+                    expandedHeight: hasHeader ? 420 : kToolbarHeight + 32,
                     pinned: true,
                     stretch: true,
-                    backgroundColor: theme.colorScheme.surface,
+                    backgroundColor: Colors.transparent,
+                    centerTitle: !hasHeader,
+                    title: !hasHeader
+                      ? Text(title, style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: -1.0, fontSize: 24))
+                      : null,
                     leading: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: CircleAvatar(
-                        backgroundColor: Colors.black38,
-                        child: const BackButton(color: Colors.white),
+                      padding: const EdgeInsets.all(10.0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: (isDark ? Colors.white : Colors.black).withOpacity(0.1), width: 1),
+                            ),
+                            child: BackButton(color: isDark ? Colors.white : Colors.black87),
+                          ),
+                        ),
                       ),
                     ),
-                    flexibleSpace: FlexibleSpaceBar(
+                    flexibleSpace: hasHeader ? FlexibleSpaceBar(
                       stretchModes: const [StretchMode.zoomBackground],
                       background: GestureDetector(
                         onTap: () => _showFullImage(context, imageUrl),
@@ -153,22 +182,18 @@ class EventDetailsScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                    ),
+                    ) : null,
                   ),
                   SliverToBoxAdapter(
                     child: Transform.translate(
-                      offset: const Offset(0, -32),
-                      child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -10))
-                          ],
-                        ),
+                      offset: Offset(0, hasHeader ? -32 : 0),
+                      child: GlassCard(
+                        borderRadius: 32,
+                        blur: 20,
+                        color: theme.colorScheme.surface.withOpacity(0.1),
+                        border: Border.all(color: (isDark ? Colors.white : Colors.black).withOpacity(0.1), width: 1.5),
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 32, 20, 120),
+                          padding: const EdgeInsets.fromLTRB(24, 32, 24, 120),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -177,7 +202,10 @@ class EventDetailsScreen extends StatelessWidget {
                                   if (isTeamEvent) _coloredBadge("TEAM", Colors.deepPurple),
                                   if (requiresVolunteers) _coloredBadge("VOLUNTEER", Colors.orange.shade800),
                                   const Spacer(),
-                                  Icon(Icons.share_rounded, color: theme.colorScheme.primary.withOpacity(0.6), size: 20),
+                                  IconButton(
+                                    icon: Icon(Icons.share_rounded, color: theme.colorScheme.primary.withOpacity(0.6), size: 22),
+                                    onPressed: () {}, // Share functionality
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 24),
@@ -185,13 +213,13 @@ class EventDetailsScreen extends StatelessWidget {
                               
                               if (manualWinners != null && manualWinners.values.any((v) => v.toString().isNotEmpty)) ...[
                                 const SizedBox(height: 32),
-                                _sectionHeader(theme, "Event Winners", Colors.orange.shade700),
+                                _sectionHeader(theme, "Winners", Colors.orange.shade700),
                                 const SizedBox(height: 12),
                                 _buildWinnersSection(manualWinners, theme),
                               ],
 
                               const SizedBox(height: 32),
-                              _sectionHeader(theme, "About Event", Colors.blue),
+                              _sectionHeader(theme, "About", Colors.blue),
                               const SizedBox(height: 12),
                               Text(description,
                                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -199,13 +227,13 @@ class EventDetailsScreen extends StatelessWidget {
                                       height: 1.7,
                                       fontSize: 15)),
                               const SizedBox(height: 32),
-                              _sectionHeader(theme, "Organizer Information", Colors.indigo),
+                              _sectionHeader(theme, "Organizer", Colors.indigo),
                               const SizedBox(height: 12),
                               
                               // 🔹 Display Club Logo here
                               _buildClubInfoRow(clubId, clubName, theme),
                               const SizedBox(height: 8),
-                              _infoCardDecorated(theme, null, Icons.person_rounded, "Event Coordinator", coordinatorName, Colors.indigo),
+                              _infoCardDecorated(theme, null, Icons.person_rounded, "Coordinator", coordinatorName, Colors.indigo),
                               
                               if (requiresVolunteers) ...[
                                 const SizedBox(height: 32),
@@ -214,6 +242,9 @@ class EventDetailsScreen extends StatelessWidget {
                                 _volunteerSectionVibrant(theme, volunteerCount, volunteerRole),
                               ],
                               
+                              const SizedBox(height: 32),
+                              _buildParticipantsRow(event.id, theme, context),
+
                               const SizedBox(height: 32),
                               _buildParticipationDetails(context, user?.uid, event.id, theme, isTeamEvent),
                             ],
@@ -240,8 +271,8 @@ class EventDetailsScreen extends StatelessWidget {
       builder: (context, snapshot) {
         String? logo;
         if (snapshot.hasData && snapshot.data!.exists) {
-          final clubData = snapshot.data!.data() as Map<String, dynamic>?;
-          logo = clubData?['profilePic'];
+          final data = snapshot.data!.data() as Map<String, dynamic>?;
+          logo = data != null && data.containsKey('profilePic') ? data['profilePic'] : null;
         }
         return _infoCardDecorated(theme, logo, Icons.hub_rounded, "Organizing Club", clubName, Colors.indigo);
       },
@@ -317,13 +348,21 @@ class EventDetailsScreen extends StatelessWidget {
   Widget _coloredBadge(String text, Color color) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.25), width: 1.5),
       ),
-      child: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 10)),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w900,
+          fontSize: 10,
+          letterSpacing: 0.5,
+        )
+      ),
     );
   }
 
@@ -350,24 +389,33 @@ class EventDetailsScreen extends StatelessWidget {
   }
 
   Widget _metricItemVibrant(ThemeData theme, IconData icon, String label, String value, Color color) {
+    final isDark = theme.brightness == Brightness.dark;
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.15)),
+          color: (isDark ? Colors.white : Colors.black).withOpacity(0.04),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: (isDark ? Colors.white : Colors.black).withOpacity(0.08), width: 1),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 18, color: color),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: color.withOpacity(0.7))),
-                  Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis),
+                  Text(label, style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w900, color: color, letterSpacing: 0.5)),
+                  const SizedBox(height: 2),
+                  Text(value, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900), overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
@@ -378,28 +426,31 @@ class EventDetailsScreen extends StatelessWidget {
   }
 
   Widget _infoCardDecorated(ThemeData theme, String? imageUrl, IconData fallbackIcon, String label, String value, Color color) {
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.1)),
+        color: (isDark ? Colors.white : Colors.black).withOpacity(0.03),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: (isDark ? Colors.white : Colors.black).withOpacity(0.06), width: 1),
       ),
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 54,
+            height: 54,
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: color.withOpacity(0.2), width: 1.5),
             ),
-            child: ClipOval(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
               child: imageUrl != null && imageUrl.isNotEmpty
                   ? (imageUrl.startsWith('data:image')
                       ? Image.memory(base64Decode(imageUrl.split(',').last), fit: BoxFit.cover)
-                      : Image.network(_convertGoogleDriveLink(imageUrl), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(fallbackIcon, size: 20, color: color)))
-                  : Icon(fallbackIcon, size: 20, color: color),
+                      : Image.network(_convertGoogleDriveLink(imageUrl), fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(fallbackIcon, size: 24, color: color)))
+                  : Icon(fallbackIcon, size: 24, color: color),
             ),
           ),
           const SizedBox(width: 16),
@@ -407,8 +458,9 @@ class EventDetailsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(color: color.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.w700)),
-                Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.8)),
+                const SizedBox(height: 2),
+                Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, letterSpacing: -0.2)),
               ],
             ),
           ),
@@ -427,40 +479,51 @@ class EventDetailsScreen extends StatelessWidget {
   }
 
   Widget _volunteerSectionVibrant(ThemeData theme, int count, String role) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.green.shade600, Colors.green.shade800],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(color: Colors.green.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.volunteer_activism_rounded, size: 24, color: Colors.white),
-              const SizedBox(width: 12),
-              Text("$count Positions Open", 
-                style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 16)),
-            ],
-          ),
-          if (role.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-              child: Text(role, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5, fontWeight: FontWeight.w500)),
+    return GlassCard(
+      borderRadius: 24,
+      blur: 15,
+      color: Colors.green.withOpacity(0.1),
+      border: Border.all(color: Colors.green.withOpacity(0.2), width: 1.5),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.green.withOpacity(0.2), shape: BoxShape.circle),
+                  child: const Icon(Icons.volunteer_activism_rounded, size: 22, color: Colors.green),
+                ),
+                const SizedBox(width: 14),
+                Text("$count Open Positions",
+                  style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 17)),
+              ],
             ),
-          ]
-        ],
+            if (role.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.green.withOpacity(0.1)),
+                ),
+                child: Text(
+                  role,
+                  style: TextStyle(
+                    color: (theme.brightness == Brightness.dark ? theme.focusColor : Colors.black).withOpacity(0.8),
+                    fontSize: 14,
+                    height: 1.6,
+                    fontWeight: FontWeight.w600
+                  )
+                ),
+              ),
+            ]
+          ],
+        ),
       ),
     );
   }
@@ -542,22 +605,31 @@ class EventDetailsScreen extends StatelessWidget {
               final String name = memberDoc['studentName'] ?? 'Unknown';
               final bool isLeader = memberDoc['isTeamLeader'] ?? false;
               return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white, 
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5)],
+                  color: (theme.brightness == Brightness.dark ? Colors.white : Colors.black).withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: (theme.brightness == Brightness.dark ? Colors.white : Colors.black).withOpacity(0.08), width: 1.5),
                 ),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 18, 
-                      backgroundColor: theme.primaryColor.withOpacity(0.1), 
-                      child: Text(name.isNotEmpty ? name[0] : '?', style: TextStyle(color: theme.primaryColor, fontSize: 16, fontWeight: FontWeight.bold))
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: theme.primaryColor.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: theme.primaryColor.withOpacity(0.2), width: 1.5),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : '?',
+                        style: TextStyle(color: theme.primaryColor, fontSize: 18, fontWeight: FontWeight.bold)
+                      ),
                     ),
                     const SizedBox(width: 16),
-                    Expanded(child: Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700))),
+                    Expanded(child: Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900))),
                     if (isLeader) _coloredBadge("LEADER", Colors.amber.shade900),
                   ],
                 ),
@@ -599,30 +671,178 @@ class EventDetailsScreen extends StatelessWidget {
         final data = eventDoc.data() as Map<String, dynamic>? ?? {};
         final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
 
-        return Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -5)),
-            ],
+        bool isRegistrationClosed = false;
+        final deadlineDateStr = data['registrationDeadlineDate'];
+        final deadlineTimeStr = data['registrationDeadlineTime'];
+        if (deadlineDateStr != null && deadlineDateStr.isNotEmpty && deadlineTimeStr != null && deadlineTimeStr.isNotEmpty) {
+          try {
+            final deadline = DateTime.parse('$deadlineDateStr $deadlineTimeStr:00');
+            if (DateTime.now().isAfter(deadline)) {
+              isRegistrationClosed = true;
+            }
+          } catch (e) {
+            debugPrint("Error parsing deadline: $e");
+          }
+        }
+        final bool isPaid = data['isPaid'] == true;
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: GlassCard(
+            borderRadius: 32,
+            blur: 20,
+            color: theme.colorScheme.surface.withOpacity(0.05),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isPaid)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.amber.withOpacity(0.2))
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.payments_rounded, size: 18, color: Colors.amber),
+                          const SizedBox(width: 10),
+                          Text("ENTRY FEE: ₹${data['eventFee'] ?? '0'}",
+                            style: const TextStyle(color: Colors.amber, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: (isRegistered || isRegistrationClosed) ? [] : [
+                          BoxShadow(
+                            color: theme.primaryColor.withOpacity(0.4),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 70),
+                          backgroundColor: (isRegistered || isRegistrationClosed) ? Colors.grey.withOpacity(0.2) : theme.primaryColor,
+                          foregroundColor: (isRegistered || isRegistrationClosed) ? Colors.grey : Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                          elevation: 0,
+                        ),
+                        onPressed: (isRegistered || isRegistrationClosed) ? null : () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => EventRegistrationScreen(event: eventDoc)));
+                        },
+                        child: Text(
+                          isRegistered
+                            ? "ALREADY REGISTERED"
+                            : (isRegistrationClosed ? "REGISTRATION CLOSED" : (isTeamEvent ? "REGISTER YOUR TEAM" : "CLAIM MY SPOT")),
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 1.0),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 64),
-              backgroundColor: isRegistered ? Colors.grey.shade200 : theme.primaryColor,
-              foregroundColor: isRegistered ? Colors.grey : Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              elevation: isRegistered ? 0 : 12,
-              shadowColor: theme.primaryColor.withOpacity(0.5),
-            ),
-            onPressed: isRegistered ? null : () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => EventRegistrationScreen(event: eventDoc)));
-            },
-            child: Text(
-              isRegistered ? "ALREADY REGISTERED" : (isTeamEvent ? "REGISTER YOUR TEAM" : "RESERVE MY SPOT"),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5),
-            ),
+        );
+      },
+    );
+  }
+
+  Widget _buildParticipantsRow(String eventId, ThemeData theme, BuildContext context) {
+    final isDark = theme.brightness == Brightness.dark;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader(theme, "Registered Students", Colors.orange),
+        const SizedBox(height: 16),
+        StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('registrations')
+              .where('eventId', isEqualTo: eventId)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return const SizedBox(height: 60, child: Center(child: CircularProgressIndicator()));
+            final docs = snapshot.data!.docs;
+            if (docs.isEmpty) {
+              return Text("No registrations yet. Be the first one!",
+                  style: TextStyle(color: (isDark ? Colors.white : Colors.black).withOpacity(0.4), fontSize: 13, fontStyle: FontStyle.italic));
+            }
+
+            return SizedBox(
+              height: 100,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: docs.length,
+                itemBuilder: (context, index) {
+                  final regData = docs[index].data() as Map<String, dynamic>;
+                  final String userId = regData['userId'] ?? '';
+                  final String name = regData['studentName'] ?? 'Student';
+
+                  return GestureDetector(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProfileScreen(uid: userId))),
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 20.0),
+                      child: Column(
+                        children: [
+                          _participantAvatar(userId, theme),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: 60,
+                            child: Text(
+                              name.split(' ')[0],
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _participantAvatar(String userId, ThemeData theme) {
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('student').doc(userId).get(),
+      builder: (context, snapshot) {
+        String profilePic = '';
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>?;
+          profilePic = data?['profilePic'] ?? '';
+        }
+
+        return Container(
+          width: 55,
+          height: 55,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: theme.primaryColor.withOpacity(0.2), width: 2),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4))],
+          ),
+          child: ClipOval(
+            child: profilePic.isNotEmpty
+                ? (profilePic.startsWith('data:image')
+                    ? Image.memory(base64Decode(profilePic.split(',').last), fit: BoxFit.cover)
+                    : Image.network(profilePic, fit: BoxFit.cover))
+                : Container(
+                    color: theme.primaryColor.withOpacity(0.1),
+                    child: Icon(Icons.person_rounded, color: theme.primaryColor, size: 28),
+                  ),
           ),
         );
       },

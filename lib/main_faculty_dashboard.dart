@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,7 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_nav_bar/google_nav_bar.dart';
+import 'package:college_event_manager/scooped_navbar.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:path_provider/path_provider.dart';
@@ -406,14 +407,27 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
         },
         child: Scaffold(
           appBar: AppBar(
-            title: Text(widget.collegeName),
-            actions: [
-            ],
+            title: Text(
+              widget.collegeName,
+              style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: -1.0),
+            ),
+            backgroundColor: Colors.transparent,
+            flexibleSpace: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Container(
+                  color: (Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white).withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.6),
+                ),
+              ),
+            ),
+            elevation: 0,
+            scrolledUnderElevation: 0,
           ),
           body: Stack(
             children: [
               const VibrantBackground(),
               GridView.count(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(20),
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
@@ -439,51 +453,18 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                       ),
                     );
                   }),
-                ].animate(interval: 200.ms).fadeIn(duration: 300.ms).slideY(),
-              ),
+                ],
+              ).animate().fadeIn(duration: 300.ms).slideY(),
             ],
           ),
-          bottomNavigationBar: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              boxShadow: [
-                BoxShadow(
-                  blurRadius: 20,
-                  color: Colors.black.withOpacity(.1),
-                )
-              ],
-            ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
-                child: GNav(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  rippleColor: Colors.grey[300]!,
-                  hoverColor: Colors.grey[100]!,
-                  gap: 8,
-                  activeColor: Theme.of(context).colorScheme.primary,
-                  iconSize: 24,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  duration: const Duration(milliseconds: 400),
-                  tabBackgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                  color: Theme.of(context).iconTheme.color ?? Colors.grey,
-                  tabs: [
-                    GButton(
-                      icon: Icons.home,
-                      text: 'Home',
-                    ),
-                    GButton(
-                      icon: Icons.person,
-                      text: 'Profile',
-                    ),
-                  ],
-                  selectedIndex: _selectedIndex,
-                  onTabChange: (index) {
-                    _onItemTapped(index);
-                  },
-                ),
-              ),
-            ),
+          bottomNavigationBar: ScoopedNavigationBar(
+            currentIndex: _selectedIndex > 1 ? 0 : _selectedIndex,
+            onTap: _onItemTapped,
+            activeColor: Theme.of(context).colorScheme.primary,
+            items: const [
+              ScoopedNavItem(icon: Icons.home_rounded, label: 'Home'),
+              ScoopedNavItem(icon: Icons.person_outline_rounded, label: 'Profile'),
+            ],
           ),
         ));
   }

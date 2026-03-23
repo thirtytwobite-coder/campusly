@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'add_faculty.dart' as add_fac;
 import 'change_password.dart';
@@ -27,6 +29,59 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
   final _loginPass = TextEditingController();
   bool _isLoading = false;
   bool _isPasswordObscured = true;
+  bool _biometricEnabled = false;
+  final _localAuth = LocalAuthentication();
+  final _secureStorage = FlutterSecureStorage();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometricStatus();
+  }
+
+  Future<void> _checkBiometricStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isEnabled = prefs.getBool('biometric_enabled') ?? false;
+    if (isEnabled) {
+      final canCheck = await _localAuth.canCheckBiometrics;
+      final isDeviceSupported = await _localAuth.isDeviceSupported();
+      if (canCheck && isDeviceSupported) {
+        setState(() => _biometricEnabled = true);
+      }
+    }
+  }
+
+  Future<void> _loginWithBiometrics() async {
+    if (!_biometricEnabled) return;
+
+    try {
+      final authenticated = await _localAuth.authenticate(
+        localizedReason: 'Authenticate to sign in to Campusly',
+        options: AuthenticationOptions(
+          stickyAuth: true,
+          biometricOnly: true,
+        ),
+      );
+
+      if (authenticated) {
+        setState(() => _isLoading = true);
+        final email = await _secureStorage.read(key: 'saved_email');
+        final password = await _secureStorage.read(key: 'saved_password');
+
+        if (email != null && password != null) {
+          _loginEmail.text = email;
+          _loginPass.text = password;
+          await _login();
+        } else {
+          _showErrorDialog('Saved credentials not found. Please login manually first.');
+        }
+      }
+    } catch (e) {
+      _showErrorDialog('Biometric authentication failed: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   Future<void> _login() async {
     if (_loginEmail.text.isEmpty || _loginPass.text.isEmpty) {
@@ -112,6 +167,12 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
           _showErrorDialog('No user record found. Please register.');
         }
       }
+
+      // If login successful and biometric enabled, update stored credentials
+      if (_biometricEnabled) {
+        await _secureStorage.write(key: 'saved_email', value: _loginEmail.text.trim());
+        await _secureStorage.write(key: 'saved_password', value: _loginPass.text.trim());
+      }
     } on FirebaseAuthException catch (e) {
       _showErrorDialog(e.message ?? 'Login failed');
     } catch (e) {
@@ -152,17 +213,54 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
   }
 
   Future<void> _handleForgotPassword() async {
-    if (_loginEmail.text.isEmpty) {
+    final email = _loginEmail.text.trim();
+    if (email.isEmpty) {
       _showErrorDialog('Please enter your email to reset the password.');
       return;
     }
+
+    setState(() => _isLoading = true);
+
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(
-        email: _loginEmail.text.trim(),
-      );
-      _showErrorDialog('Password reset email sent. Please check your inbox.');
+      // Check Admin (Hardcoded)
+      if (email == 'admin@test.com') {
+        await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+        _showErrorDialog('Password reset email sent (Admin account).');
+        return;
+      }
+
+      // Check Faculty
+      final facultyQuery = await FirebaseFirestore.instance
+          .collection('faculty')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+
+      if (facultyQuery.docs.isNotEmpty) {
+        await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+        _showErrorDialog('Password reset email sent. Please check your inbox.');
+        return;
+      }
+
+      // Check Student
+      final studentQuery = await FirebaseFirestore.instance
+          .collection('student')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+
+      if (studentQuery.docs.isNotEmpty) {
+        await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+        _showErrorDialog('Password reset email sent. Please check your inbox.');
+        return;
+      }
+
+      // Not found
+      _showErrorDialog('Email not registered. Please register first.');
     } catch (e) {
       _showErrorDialog('Error: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -200,34 +298,20 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final wide = constraints.maxWidth > 760;
-                      return Container(
-                        decoration: BoxDecoration(
+                      return GlassCard(
+                          borderRadius: 35,
+                          blur: 25,
                           color: isDark
-                              ? const Color(0xE6172233)
-                              : const Color(0xEEFFFFFF),
-                          borderRadius: BorderRadius.circular(28),
-                          border: Border.all(
-                            color: isDark
-                                ? Colors.white12
-                                : const Color(0x1A0F172A),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDark
-                                  ? Colors.black38
-                                  : const Color(0x1A0F172A),
-                              blurRadius: 34,
-                              offset: const Offset(0, 16),
-                            ),
-                          ],
-                        ),
-                        child: wide
-                            ? _buildWideLayout(theme)
-                            : _buildCompactLayout(theme),
-                      ).animate().fadeIn(duration: 300.ms).slideY(
-                        begin: 0.05,
-                        end: 0,
-                      );
+                              ? Colors.white.withOpacity(0.04)
+                              : Colors.white.withOpacity(0.4),
+                          child: wide
+                              ? _buildWideLayout(theme)
+                              : _buildCompactLayout(theme),
+                        ).animate().fadeIn(duration: 400.ms).scale(
+                          begin: const Offset(0.98, 0.98),
+                          end: const Offset(1, 1),
+                          curve: Curves.easeOutCubic,
+                        );
                     },
                   ),
                 ),
@@ -270,9 +354,11 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
               isPasswordObscured: _isPasswordObscured,
               onTogglePassword: () =>
                   setState(() => _isPasswordObscured = !_isPasswordObscured),
-              onForgotPassword: _handleForgotPassword,
-              onLogin: _login,
-            ),
+               onForgotPassword: _handleForgotPassword,
+               onLogin: _login,
+               biometricEnabled: _biometricEnabled,
+               onBiometricLogin: _loginWithBiometrics,
+             ),
           ),
         ),
       ],
@@ -316,6 +402,8 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
                 setState(() => _isPasswordObscured = !_isPasswordObscured),
             onForgotPassword: _handleForgotPassword,
             onLogin: _login,
+            biometricEnabled: _biometricEnabled,
+            onBiometricLogin: _loginWithBiometrics,
           ),
         ],
       ),
@@ -333,38 +421,40 @@ class _LeftPromo extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.18),
+            color: Colors.white.withOpacity(0.12),
             shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 15,
-                offset: const Offset(0, 5),
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 25,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: const Icon(Icons.school_rounded, color: Colors.white, size: 52),
+          child: const Icon(Icons.school_rounded, color: Colors.white, size: 64),
         )
             .animate(onPlay: (controller) => controller.repeat(reverse: true))
-            .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 2.seconds, curve: Curves.easeInOut)
+            .shimmer(duration: 3.seconds, color: Colors.white24)
+            .scale(begin: const Offset(1, 1), end: const Offset(1.08, 1.08), duration: 2.seconds, curve: Curves.easeInOut)
             .animate()
             .fadeIn(duration: 800.ms)
-            .slideY(begin: -0.2, end: 0, curve: Curves.easeOutCubic),
-        const SizedBox(height: 28),
+            .slideY(begin: -0.3, end: 0, curve: Curves.easeOutBack),
+        const SizedBox(height: 32),
         Text(
-          'Campusly',
+          'CAMPUSLY',
           style: theme.textTheme.headlineLarge?.copyWith(
             color: Colors.white,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 2.0,
           ),
           textAlign: TextAlign.center,
         )
             .animate()
             .fadeIn(duration: 600.ms, delay: 300.ms)
-            .slideY(begin: 0.2, end: 0, duration: 600.ms, curve: Curves.easeOutCirc),
+            .slideY(begin: 0.3, end: 0, duration: 600.ms, curve: Curves.easeOutQuart),
         const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -393,22 +483,27 @@ class _AuthForm extends StatelessWidget {
   final bool isLoading;
   final bool isPasswordObscured;
   final VoidCallback onTogglePassword;
-  final VoidCallback onForgotPassword;
-  final VoidCallback onLogin;
+   final VoidCallback onForgotPassword;
+   final VoidCallback onLogin;
+   final bool biometricEnabled;
+   final VoidCallback onBiometricLogin;
 
-  const _AuthForm({
-    required this.theme,
-    required this.emailController,
-    required this.passController,
-    required this.isLoading,
-    required this.isPasswordObscured,
-    required this.onTogglePassword,
-    required this.onForgotPassword,
-    required this.onLogin,
-  });
+   const _AuthForm({
+     required this.theme,
+     required this.emailController,
+     required this.passController,
+     required this.isLoading,
+     required this.isPasswordObscured,
+     required this.onTogglePassword,
+     required this.onForgotPassword,
+     required this.onLogin,
+     required this.biometricEnabled,
+     required this.onBiometricLogin,
+   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -452,20 +547,32 @@ class _AuthForm extends StatelessWidget {
         TextField(
           controller: emailController,
           keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Email Address',
+            labelStyle: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary.withOpacity(0.8)),
             hintText: 'example@college.edu',
-            prefixIcon: Icon(Icons.alternate_email_rounded),
+            prefixIcon: Icon(Icons.alternate_email_rounded, color: theme.colorScheme.primary),
+            filled: true,
+            fillColor: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: theme.colorScheme.primary.withOpacity(0.5), width: 1)),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         TextField(
           controller: passController,
           obscureText: isPasswordObscured,
           decoration: InputDecoration(
             labelText: 'Password',
+            labelStyle: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary.withOpacity(0.8)),
             hintText: 'Enter your password',
-            prefixIcon: const Icon(Icons.lock_outline_rounded),
+            prefixIcon: Icon(Icons.lock_outline_rounded, color: theme.colorScheme.primary),
+            filled: true,
+            fillColor: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: theme.colorScheme.primary.withOpacity(0.5), width: 1)),
             suffixIcon: IconButton(
               onPressed: onTogglePassword,
               icon: Icon(
@@ -480,20 +587,50 @@ class _AuthForm extends StatelessWidget {
           alignment: Alignment.centerRight,
           child: TextButton(
             onPressed: onForgotPassword,
-            child: const Text('Forgot Password?'),
+            child: Text('Forgot Password?', style: TextStyle(fontWeight: FontWeight.w700, color: theme.colorScheme.primary)),
           ),
         ),
         const SizedBox(height: 4),
         SizedBox(
           width: double.infinity,
           child: isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : ElevatedButton.icon(
-                  onPressed: onLogin,
-                  icon: const Icon(Icons.login_rounded),
-                  label: const Text('Sign In to Campusly'),
-                ),
-        ),
+               ? const Center(child: CircularProgressIndicator())
+               : Row(
+                   children: [
+                     Expanded(
+                       child: ElevatedButton.icon(
+                         onPressed: onLogin,
+                         icon: const Icon(Icons.login_rounded),
+                         label: const Text('SIGN IN', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                         style: ElevatedButton.styleFrom(
+                           padding: const EdgeInsets.symmetric(vertical: 18),
+                           backgroundColor: theme.colorScheme.primary,
+                           foregroundColor: Colors.white,
+                           elevation: 8,
+                           shadowColor: theme.colorScheme.primary.withOpacity(0.4),
+                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                         ),
+                       ),
+                     ),
+                     if (biometricEnabled) ...[
+                       const SizedBox(width: 12),
+                       Container(
+                         height: 50,
+                         width: 50,
+                         decoration: BoxDecoration(
+                           color: theme.colorScheme.primary.withOpacity(0.1),
+                           borderRadius: BorderRadius.circular(15),
+                         ),
+                         child: IconButton(
+                           onPressed: onBiometricLogin,
+                           icon: Icon(Icons.fingerprint_rounded, color: theme.colorScheme.primary),
+                           tooltip: 'Login with Biometrics',
+                         ),
+                       ),
+                     ],
+                   ],
+                 ),
+         ),
         const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,

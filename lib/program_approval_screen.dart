@@ -275,6 +275,11 @@ class _ApprovalCard extends StatelessWidget {
           // Team event details
           'isTeamEvent': data['isTeamEvent'] ?? false,
           'teamSize': data['teamSize'],
+          'registrationDeadlineDate': data['registrationDeadlineDate'],
+          'registrationDeadlineTime': data['registrationDeadlineTime'],
+          'isPaid': data['isPaid'] ?? false,
+          'eventFee': data['eventFee'],
+          'upiId': data['upiId'],
           'createdAt': FieldValue.serverTimestamp(),
         };
 

@@ -1,8 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:math';
 import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'vibrant_background.dart';
 
 class AnalyticsDashboardScreen extends StatefulWidget {
@@ -191,12 +193,21 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
       appBar: AppBar(
         title: Text(
           widget.clubName != null ? '${widget.clubName} Analytics' : '${widget.collegeName} Analytics',
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: -1.0),
         ),
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: true,
-        backgroundColor: isDark ? Colors.black : theme.primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: Container(
+              color: (isDark ? Colors.black : Colors.white).withOpacity(isDark ? 0.4 : 0.6),
+            ),
+          ),
+        ),
+        foregroundColor: isDark ? Colors.white : Colors.black,
       ),
       body: Stack(
         children: [
@@ -226,7 +237,10 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSummarySection(isDark),
+                      const SizedBox(height: 8),
+                      _buildRegistrationChart(isDark, theme),
+                      const SizedBox(height: 32),
+                      _buildSummarySection(isDark, theme),
                       const SizedBox(height: 32),
                       Text(
                         "Filter by Status", 
@@ -335,7 +349,113 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     );
   }
 
-  Widget _buildSummarySection(bool isDark) {
+  Widget _buildRegistrationChart(bool isDark, ThemeData theme) {
+    if (_allEventStats.isEmpty) return const SizedBox.shrink();
+
+    // Get top 5 events for the chart
+    final topEvents = _allEventStats.take(5).toList();
+    final maxY = topEvents.isEmpty ? 10.0 : topEvents[0]['count'].toDouble() * 1.2;
+
+    return GlassCard(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.analytics_outlined, color: theme.primaryColor, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  "Registration Trends",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              height: 200,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: maxY,
+                  barTouchData: BarTouchData(
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipColor: (_) => theme.primaryColor.withOpacity(0.8),
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        return BarTooltipItem(
+                          '${topEvents[groupIndex]['title']}\n',
+                          const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
+                          children: [
+                            TextSpan(
+                              text: (rod.toY).toString(),
+                              style: const TextStyle(color: Color(0xFFFFD700), fontSize: 14, fontWeight: FontWeight.w900),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          if (value.toInt() >= topEvents.length) return const SizedBox.shrink();
+                          final title = topEvents[value.toInt()]['title'];
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              title.length > 5 ? '${title.substring(0, 5)}..' : title,
+                              style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 10, fontWeight: FontWeight.w600),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  gridData: const FlGridData(show: false),
+                  borderData: FlBorderData(show: false),
+                  barGroups: List.generate(topEvents.length, (i) {
+                    final color = i == 0 ? theme.primaryColor : (isDark ? Colors.white24 : Colors.black12);
+                    return BarChartGroupData(
+                      x: i,
+                      barRods: [
+                        BarChartRodData(
+                          toY: topEvents[i]['count'].toDouble(),
+                          color: color,
+                          width: 28,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                          gradient: LinearGradient(
+                            colors: [color, color.withOpacity(0.7)],
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummarySection(bool isDark, ThemeData theme) {
     return Column(
       children: [
         Row(
@@ -345,8 +465,9 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                 "Total Events",
                 _totalEvents.toString(),
                 Icons.event_note_rounded,
-                const Color(0xFFA855F7), // Vibrant Purple
+                isDark ? const Color(0xFFA855F7) : const Color(0xFF9333EA),
                 isDark,
+                const [Color(0xFFA855F7), Color(0xFF7C3AED)],
               ),
             ),
             const SizedBox(width: 12),
@@ -355,8 +476,9 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                 "Registrations",
                 _totalRegistrations.toString(),
                 Icons.people_alt_rounded,
-                const Color(0xFF10B981), // Light Vibrant Green
+                isDark ? const Color(0xFF10B981) : const Color(0xFF059669),
                 isDark,
+                const [Color(0xFF10B981), Color(0xFF0D9488)],
               ),
             ),
           ],
@@ -366,8 +488,9 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
           "Low Participation (<5)",
           _lowParticipationCount.toString(),
           Icons.trending_down_rounded,
-          const Color(0xFFEF4444), // Vibrant Red
+          isDark ? const Color(0xFFEF4444) : const Color(0xFFDC2626),
           isDark,
+          const [Color(0xFFEF4444), Color(0xFFB91C1C)],
           fullWidth: true,
           onTap: () {
             setState(() {
@@ -380,7 +503,9 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1);
   }
 
-  Widget _buildModernSummaryCard(String title, String value, IconData icon, Color color, bool isDark, {bool fullWidth = false, VoidCallback? onTap}) {
+  Widget _buildModernSummaryCard(
+      String title, String value, IconData icon, Color color, bool isDark, List<Color> gradient,
+      {bool fullWidth = false, VoidCallback? onTap}) {
     return GlassCard(
       borderRadius: 24,
       child: InkWell(
@@ -388,6 +513,13 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
         borderRadius: BorderRadius.circular(24),
         child: Container(
           padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [gradient[0].withOpacity(0.1), gradient[1].withOpacity(0.05)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
           child: Row(
             children: [
               Container(
@@ -405,11 +537,11 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                   children: [
                     Text(
                       value, 
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87)
                     ),
                     Text(
                       title, 
-                      style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.w600)
+                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white54 : Colors.black54, fontWeight: FontWeight.bold, letterSpacing: 0.5)
                     ),
                   ],
                 ),
@@ -437,6 +569,13 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
       borderRadius: 24,
       child: Container(
         padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [color.withOpacity(0.05), Colors.transparent],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -444,34 +583,41 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
               alignment: Alignment.center,
               children: [
                 SizedBox(
-                  height: 70,
-                  width: 70,
+                  height: 65,
+                  width: 65,
                   child: CircularProgressIndicator(
                     value: _maxEventCount > 0 ? count / _maxEventCount : 0,
-                    strokeWidth: 8,
-                    backgroundColor: color.withOpacity(0.1),
+                    strokeWidth: 10,
+                    backgroundColor: color.withOpacity(0.08),
                     valueColor: AlwaysStoppedAnimation<Color>(color),
                     strokeCap: StrokeCap.round,
                   ),
                 ),
                 Text(
                   count.toString(),
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: color),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             Text(
               stat['title'],
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black87),
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: isDark ? Colors.white : Colors.black87, height: 1.2),
             ),
-            const SizedBox(height: 4),
-            Text(
-              stat['date'] != null ? DateFormat('MMM d, yyyy').format(stat['date']) : 'Date TBD',
-              style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.black38, fontWeight: FontWeight.w500),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                stat['date'] != null ? DateFormat('MMM d').format(stat['date']) : 'TBD',
+                style: TextStyle(fontSize: 9, color: isDark ? Colors.white38 : Colors.black38, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),

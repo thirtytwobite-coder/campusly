@@ -96,14 +96,14 @@ class GlassCard extends StatelessWidget {
     
     // Achieving a real "glass" look: very low opacity background + blur
     final defaultColor = color ?? (isDark 
-        ? Colors.white.withOpacity(0.05)
-        : Colors.white.withOpacity(0.2));
+        ? Colors.white.withOpacity(0.03)
+        : Colors.white.withOpacity(0.15));
     
     final defaultBorder = border ?? Border.all(
       color: isDark 
-          ? Colors.white.withOpacity(0.1)
-          : Colors.white.withOpacity(0.4),
-      width: 1.5,
+          ? Colors.white.withOpacity(0.08)
+          : Colors.white.withOpacity(0.3),
+      width: 1.0,
     );
 
     return Container(
@@ -111,9 +111,16 @@ class GlassCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: boxShadow ?? [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+            blurRadius: 30,
+            spreadRadius: -5,
+            offset: const Offset(0, 15),
+          ),
+          if (!isDark) BoxShadow(
+            color: Colors.white.withOpacity(0.5),
+            blurRadius: 1,
+            spreadRadius: 1,
+            offset: const Offset(0, 0),
           ),
         ],
       ),
@@ -126,6 +133,14 @@ class GlassCard extends StatelessWidget {
               color: defaultColor,
               borderRadius: BorderRadius.circular(borderRadius),
               border: defaultBorder,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(isDark ? 0.05 : 0.2),
+                  Colors.white.withOpacity(isDark ? 0.01 : 0.05),
+                ],
+              ),
             ),
             child: child,
           ),

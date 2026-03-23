@@ -1,9 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_nav_bar/google_nav_bar.dart';
+import 'package:college_event_manager/scooped_navbar.dart';
 import 'package:flutter/rendering.dart';
 
 import 'main.dart';
@@ -12,6 +13,7 @@ import 'profile_screen.dart';
 import 'program_approval_screen.dart';
 import 'program_status_screen.dart';
 import 'certificate_approval_screen.dart';
+import 'change_password.dart';
 import 'analytics_screen.dart';
 import 'vibrant_background.dart';
 
@@ -110,11 +112,22 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
       onWillPop: _onWillPop,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text("FACULTY DASHBOARD"),
-          backgroundColor: isDark ? Colors.black : Theme.of(context).primaryColor,
-          foregroundColor: Colors.white,
-          actions: [
-          ],
+          title: const Text(
+            "FACULTY DASHBOARD",
+            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: -1.0),
+          ),
+          backgroundColor: Colors.transparent,
+          flexibleSpace: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: Container(
+                color: (isDark ? Colors.black : Colors.white).withOpacity(isDark ? 0.4 : 0.6),
+              ),
+            ),
+          ),
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          foregroundColor: isDark ? Colors.white : Colors.black,
         ),
         body: NotificationListener<UserScrollNotification>(
           onNotification: (notification) {
@@ -144,125 +157,93 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                         final docs = snapshot.data?.docs ?? [];
   
                         return CustomScrollView(
-                          slivers: [
-                            SliverToBoxAdapter(
-                              child: GlassCard(
-                                borderRadius: 15,
-                                child: Container(
-                                  margin: const EdgeInsets.all(16),
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: !isDark ? BoxDecoration(
-                                    color: Theme.of(context).primaryColor.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(15),
-                                    border: Border.all(
-                                      color: Theme.of(context).primaryColor.withOpacity(0.3),
-                                    ),
-                                  ) : null,
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.account_balance,
-                                        color: Colors.blueAccent,
-                                        size: 24,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            slivers: [
+                              SliverToBoxAdapter(
+                                child: GlassCard(
+                                  borderRadius: 15,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: !isDark ? BoxDecoration(
+                                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(15),
+                                      border: Border.all(
+                                        color: Theme.of(context).primaryColor.withOpacity(0.3),
                                       ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          facultyCollege ?? "Institution Unknown",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 18,
-                                            color: isDark ? Colors.white : Colors.black,
+                                    ) : null,
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.account_balance,
+                                          color: Colors.blueAccent,
+                                          size: 24,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            facultyCollege ?? "Institution Unknown",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18,
+                                              color: isDark ? Colors.white : Colors.black,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
+                                  ),
+                                ).animate().fadeIn().slideY(begin: -0.1),
+                              ),
+  
+                              if (docs.isEmpty)
+                                SliverFillRemaining(
+                                  hasScrollBody: false,
+                                  child: Center(child: Text("No Clubs Assigned", style: TextStyle(color: isDark ? Colors.white70 : Colors.black54))),
+                                ),
+  
+                              if (docs.isNotEmpty)
+                                SliverPadding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  sliver: SliverList(
+                                    delegate: SliverChildBuilderDelegate((
+                                      context,
+                                      index,
+                                    ) {
+                                      var doc = docs[index];
+                                      var data = doc.data() as Map<String, dynamic>;
+                                      String clubName = data['clubName'] ?? "My Club";
+                                      String clubId = data['clubId'];
+  
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 16),
+                                        child: _buildClubOptionsCard(
+                                          clubName: clubName,
+                                          clubId: clubId,
+                                          clubMappingDoc: doc,
+                                        ),
+                                      );
+                                    }, childCount: docs.length),
                                   ),
                                 ),
-                              ).animate().fadeIn().slideY(begin: -0.1),
-                            ),
-  
-                            if (docs.isEmpty)
-                              SliverFillRemaining(
-                                hasScrollBody: false,
-                                child: Center(child: Text("No Clubs Assigned", style: TextStyle(color: isDark ? Colors.white70 : Colors.black54))),
-                              ),
-  
-                            if (docs.isNotEmpty)
-                              SliverPadding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                sliver: SliverList(
-                                  delegate: SliverChildBuilderDelegate((
-                                    context,
-                                    index,
-                                  ) {
-                                    var doc = docs[index];
-                                    var data = doc.data() as Map<String, dynamic>;
-                                    String clubName = data['clubName'] ?? "My Club";
-                                    String clubId = data['clubId'];
-  
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 16),
-                                      child: _buildClubOptionsCard(
-                                        clubName: clubName,
-                                        clubId: clubId,
-                                        clubMappingDoc: doc,
-                                      ),
-                                    );
-                                  }, childCount: docs.length),
-                                ),
-                              ),
-                          ],
-                        );
+                            ],
+                          );
                       },
                     ),
-            ],
-          ),
-        ),
-        bottomNavigationBar: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          height: 80,
-          clipBehavior: Clip.hardEdge,
-          decoration: const BoxDecoration(),
-          child: Wrap(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E1E1E).withOpacity(0.8) : Theme.of(context).cardColor,
-                  boxShadow: [
-                    BoxShadow(
-                      blurRadius: 20,
-                      color: Colors.black.withOpacity(.1),
-                    )
                   ],
                 ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8),
-                    child: GNav(
-                      rippleColor: isDark ? Colors.white10 : Colors.grey[300]!,
-                      hoverColor: isDark ? Colors.white24 : Colors.grey[100]!,
-                      gap: 8,
-                      activeColor: Theme.of(context).primaryColor,
-                      iconSize: 24,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      duration: const Duration(milliseconds: 400),
-                      tabBackgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-                      color: isDark ? Colors.white60 : Theme.of(context).iconTheme.color?.withOpacity(0.6) ?? Colors.grey,
-                      tabs: [
-                        GButton(icon: Icons.home, text: 'Home'),
-                        GButton(icon: Icons.person, text: 'Profile'),
-                      ],
-                      selectedIndex: _selectedIndex,
-                      onTabChange: (index) {
-                        _onItemTapped(index);
-                      },
-                    ),
-                  ),
-                ),
               ),
+        bottomNavigationBar: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: _isNavbarVisible ? 100 : 0,
+          child: _isNavbarVisible ? ScoopedNavigationBar(
+            currentIndex: _selectedIndex > 1 ? 0 : _selectedIndex,
+            onTap: _onItemTapped,
+            activeColor: Theme.of(context).primaryColor,
+            items: const [
+              ScoopedNavItem(icon: Icons.home_rounded, label: 'Home'),
+              ScoopedNavItem(icon: Icons.person_outline_rounded, label: 'Profile'),
             ],
-          ),
+          ) : const SizedBox.shrink(),
         ),
       ),
     );

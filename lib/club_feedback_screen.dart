@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -142,11 +143,23 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.clubName} Feedback'),
+        title: Text(
+          widget.clubName.toLowerCase().contains("mulearn") ? "µLearn Feedback" : "${widget.clubName} Feedback",
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22, letterSpacing: -1),
+        ),
+        centerTitle: true,
         elevation: 0,
-        backgroundColor: theme.primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              color: theme.brightness == Brightness.dark ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.2),
+            ),
+          ),
+        ),
       ),
+      extendBodyBehindAppBar: true,
       body: Stack(
         children: [
           const VibrantBackground(),
@@ -213,87 +226,222 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
       );
     }
 
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: 0.85,
-      ),
-      itemCount: _eventsWithFeedback.length,
-      itemBuilder: (context, index) {
-        final event = _eventsWithFeedback[index];
-        return _buildEventFeedbackCard(event, index);
-      },
+    return Column(
+      children: [
+        _buildSummaryHeader(theme),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: _eventsWithFeedback.length,
+            itemBuilder: (context, index) {
+              final event = _eventsWithFeedback[index];
+              return _buildEventFeedbackCard(event, index);
+            },
+          ),
+        ),
+      ],
     );
+  }
+
+  Widget _buildSummaryHeader(ThemeData theme) {
+    if (_eventsWithFeedback.isEmpty) return const SizedBox.shrink();
+
+    double totalWeightedRating = 0;
+    int totalReviews = 0;
+    for (var event in _eventsWithFeedback) {
+      totalWeightedRating += (event['avgRating'] as double) * (event['feedbackCount'] as int);
+      totalReviews += (event['feedbackCount'] as int);
+    }
+    final overallAvg = totalReviews > 0 ? (totalWeightedRating / totalReviews) : 0.0;
+    final isDark = theme.brightness == Brightness.dark;
+    final isMuLearn = widget.clubName.toLowerCase().contains("mulearn");
+    final accentColor = isMuLearn ? const Color(0xFFFFB200) : theme.primaryColor;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+      child: GlassCard(
+        borderRadius: 24,
+        blur: 20,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Overall Performance",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white70 : Colors.black54,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.clubName,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? Colors.white : Colors.black87,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                height: 50,
+                width: 1,
+                color: isDark ? Colors.white10 : Colors.black12,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.star_rounded, color: Colors.amber, size: 24),
+                      const SizedBox(width: 4),
+                      Text(
+                        overallAvg.toStringAsFixed(1),
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    "$totalReviews Reviews",
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: accentColor.withOpacity(0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.2, end: 0);
+  }
+
+  Color _getSentimentColor(double rating) {
+    if (rating >= 4.0) return Colors.greenAccent;
+    if (rating >= 3.0) return Colors.amberAccent;
+    return Colors.redAccent;
   }
 
   Widget _buildEventFeedbackCard(Map<String, dynamic> event, int index) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final String eventTitle = event['eventTitle'];
     final double avgRating = event['avgRating'];
     final int feedbackCount = event['feedbackCount'];
+    final sentimentColor = _getSentimentColor(avgRating);
+    final isMuLearn = widget.clubName.toLowerCase().contains("mulearn");
+    final accentColor = isMuLearn ? const Color(0xFFFFB200) : theme.primaryColor;
 
-    return InkWell(
-      onTap: () => _showFeedbackDetails(event),
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: GlassCard(
+        borderRadius: 24,
+        blur: 15,
+        child: InkWell(
+          onTap: () => _showFeedbackDetails(event),
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5)),
-          ],
-          border: Border.all(color: theme.primaryColor.withOpacity(0.05)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(
-              alignment: Alignment.center,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                SizedBox(
-                  height: 60,
-                  width: 60,
-                  child: CircularProgressIndicator(
-                    value: avgRating / 5,
-                    strokeWidth: 6,
-                    backgroundColor: Colors.amber.withOpacity(0.1),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
-                    strokeCap: StrokeCap.round,
-                  ),
-                ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
+                Stack(
+                  alignment: Alignment.center,
                   children: [
+                    SizedBox(
+                      height: 54,
+                      width: 54,
+                      child: CircularProgressIndicator(
+                        value: avgRating / 5,
+                        strokeWidth: 5,
+                        backgroundColor: sentimentColor.withOpacity(0.1),
+                        valueColor: AlwaysStoppedAnimation<Color>(sentimentColor.withOpacity(0.8)),
+                        strokeCap: StrokeCap.round,
+                      ),
+                    ),
                     Text(
                       avgRating.toStringAsFixed(1),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
                     ),
-                    const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
                   ],
                 ),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        eventTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                          letterSpacing: -0.5,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: accentColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              "$feedbackCount Reviews",
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isDark ? Colors.white70 : Colors.black87,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (avgRating >= 4.5)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                "Top Rated",
+                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.greenAccent),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: isDark ? Colors.white24 : Colors.black12, size: 28),
               ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              eventTitle,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "$feedbackCount Reviews",
-              style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.bold),
-            ),
-          ],
+          ),
         ),
       ),
-    ).animate().fadeIn(delay: (50 * index).ms).scale(begin: const Offset(0.9, 0.9));
+    ).animate().fadeIn(delay: (40 * index).ms, duration: 400.ms).slideX(begin: 0.1, end: 0, curve: Curves.easeOutCubic);
   }
 
   void _showFeedbackDetails(Map<String, dynamic> event) {
@@ -304,44 +452,63 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(event['eventTitle'], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                        Text("${event['feedbackCount']} Student Reviews", style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-                      ],
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.8,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, spreadRadius: 5),
+            ],
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: isDark ? Colors.white10 : Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            event['eventTitle'], 
+                            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87, letterSpacing: -0.5)
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "${event['feedbackCount']} Student Reviews", 
+                            style: TextStyle(color: isDark ? Colors.white38 : Colors.grey[600], fontSize: 14, fontWeight: FontWeight.w600)
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(color: Colors.amber.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
-                        const SizedBox(width: 4),
-                        Text(event['avgRating'].toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.1), 
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.amber.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
+                          const SizedBox(width: 6),
+                          Text(
+                            event['avgRating'].toStringAsFixed(1), 
+                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: isDark ? Colors.white : Colors.black87)
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const Divider(height: 1),
+              const Divider(height: 1, thickness: 1, color: Colors.white10),
             Expanded(
               child: ListView.separated(
                 padding: const EdgeInsets.all(24),
@@ -353,9 +520,10 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
                 },
               ),
             ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -363,61 +531,86 @@ class _ClubFeedbackScreenState extends State<ClubFeedbackScreen> {
     final int rating = feedback['rating'].toInt();
     final String text = feedback['feedback'];
     final Timestamp? timestamp = feedback['feedbackAt'] as Timestamp?;
+    final isDark = theme.brightness == Brightness.dark;
+    final sentimentColor = _getSentimentColor(feedback['rating'].toDouble());
     
     String dateStr = 'Unknown date';
     if (timestamp != null) {
       dateStr = DateFormat('MMM d, yyyy').format(timestamp.toDate());
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: theme.primaryColor.withOpacity(0.1),
-              child: Text(
-                (feedback['studentName'][0] as String).toUpperCase(),
-                style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold, fontSize: 14),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[50],
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: sentimentColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: sentimentColor.withOpacity(0.2)),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  (feedback['studentName'][0] as String).toUpperCase(),
+                  style: TextStyle(color: sentimentColor, fontWeight: FontWeight.w900, fontSize: 18),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      feedback['studentName'], 
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: isDark ? Colors.white : Colors.black87)
+                    ),
+                    Text(dateStr, style: TextStyle(color: isDark ? Colors.white38 : Colors.grey[500], fontSize: 11, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(feedback['studentName'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  Text(dateStr, style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                  Row(
+                    children: List.generate(5, (i) => Icon(
+                      Icons.star_rounded, 
+                      size: 14, 
+                      color: i < rating ? Colors.amber : (isDark ? Colors.white12 : Colors.grey[300])
+                    )),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    rating == 5 ? "Excellent" : rating >= 4 ? "Great" : rating >= 3 ? "Good" : "Needs Work",
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: sentimentColor.withOpacity(0.8)),
+                  ),
                 ],
               ),
-            ),
-            Row(
-              children: List.generate(5, (i) => Icon(
-                Icons.star_rounded, 
-                size: 16, 
-                color: i < rating ? Colors.amber : Colors.grey[200]
-              )),
+            ],
+          ),
+          if (text.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 14, 
+                color: isDark ? Colors.white70 : Colors.black87, 
+                height: 1.5,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
-        ),
-        if (text.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey[100]!),
-            ),
-            child: Text(
-              text,
-              style: TextStyle(fontSize: 14, color: Colors.grey[800], height: 1.4),
-            ),
-          ),
         ],
-      ],
+      ),
     );
   }
 }

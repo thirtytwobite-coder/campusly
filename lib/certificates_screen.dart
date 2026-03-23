@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -76,17 +77,29 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? Colors.black : Colors.grey[50],
+      backgroundColor: Colors.transparent, // Let the background show through
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text("${widget.clubName} Certificates"),
+        title: Text(
+          widget.clubName.toLowerCase().contains("mulearn") ? "µLearn Certificates" : "${widget.clubName} Certificates",
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22, letterSpacing: -1),
+        ),
+        centerTitle: true,
         elevation: 0,
-        backgroundColor: isDark ? Colors.black : theme.primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              color: isDark ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.2),
+            ),
+          ),
+        ),
         actions: [
           if (widget.isFaculty)
             IconButton(
-              icon: const Icon(Icons.playlist_add_check),
-              tooltip: 'Approve Participant/Winner Lists',
+              icon: const Icon(Icons.playlist_add_check_rounded),
+              tooltip: 'Approve Lists',
               onPressed: () {
                 Navigator.push(
                   context,
@@ -118,12 +131,14 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
 
                     return Column(
                       children: [
+                        const SizedBox(height: 100), // Space for AppBar
                         Padding(
-                          padding: const EdgeInsets.all(16.0),
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12),
                           child: GlassCard(
-                            borderRadius: 15,
+                            borderRadius: 20,
+                            blur: 10,
                             child: TextField(
-                              style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                              style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.w600),
                               onChanged: (value) {
                                 setState(() {
                                   _searchQuery = value.toLowerCase();
@@ -131,14 +146,12 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
                               },
                               decoration: InputDecoration(
                                 hintText: "Search events...",
-                                hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
-                                prefixIcon: Icon(Icons.search, color: isDark ? Colors.white54 : Colors.black54),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(15),
-                                  borderSide: BorderSide.none,
-                                ),
+                                hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontSize: 14),
+                                prefixIcon: Icon(Icons.search_rounded, color: isDark ? Colors.blueAccent : theme.primaryColor, size: 22),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                                 filled: true,
-                                fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.02),
+                                fillColor: Colors.transparent,
                               ),
                             ),
                           ),
@@ -175,22 +188,31 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.event_busy, size: 80, color: isDark ? Colors.white24 : Colors.grey[300]),
-                                      const SizedBox(height: 16),
-                                      Text("No events found", style: TextStyle(color: isDark ? Colors.white54 : Colors.grey[600], fontSize: 16)),
+                                      Container(
+                                        padding: const EdgeInsets.all(24),
+                                        decoration: BoxDecoration(
+                                          color: (isDark ? Colors.blueAccent : theme.primaryColor).withOpacity(0.05),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(Icons.event_busy_rounded, size: 64, color: isDark ? Colors.white24 : Colors.grey[300]),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      Text(
+                                        "No events found",
+                                        style: TextStyle(
+                                          color: isDark ? Colors.white54 : Colors.grey[600],
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 );
                               }
 
-                              return GridView.builder(
-                                padding: const EdgeInsets.all(16),
-                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: 16,
-                                  mainAxisSpacing: 16,
-                                  childAspectRatio: 0.85,
-                                ),
+                              return ListView.builder(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 itemCount: events.length,
                                 itemBuilder: (context, index) {
                                   final event = events[index];
@@ -198,7 +220,7 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
                                   final title = data['title'] ?? 'Untitled Event';
                                   final date = data['date'] ?? 'N/A';
 
-                                  return _buildCertificateGridItem(event.id, title, date, index, isDark, clubLogo);
+                                  return _buildCertificateListItem(event.id, title, date, index, isDark, clubLogo);
                                 },
                               );
                             },
@@ -213,65 +235,131 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
     );
   }
 
-  Widget _buildCertificateGridItem(String eventId, String title, String date, int index, bool isDark, String? clubLogo) {
-    final theme = Theme.of(context);
-    return GlassCard(
-      borderRadius: 24,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EventRegistrationsListScreen(
-                eventId: eventId,
-                eventName: title,
+  Widget _buildCertificateListItem(String eventId, String title, String date, int index, bool isDark, String? clubLogo) {
+    final muOrange = const Color(0xFFFFB200);
+    final muBlue = const Color(0xFF00B2FF);
+    final accentColor = isDark ? muOrange : muBlue;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: GlassCard(
+        borderRadius: 24,
+        blur: 15,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => EventRegistrationsListScreen(
+                  eventId: eventId,
+                  eventName: title,
+                ),
               ),
+            );
+          },
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Hero(
+                  tag: 'cert-logo-$eventId',
+                  child: Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: accentColor.withOpacity(0.1),
+                          blurRadius: 15,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                      border: Border.all(color: accentColor.withOpacity(0.2), width: 1.5),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(3),
+                      child: ClipOval(
+                        child: (clubLogo != null && clubLogo.isNotEmpty)
+                            ? (clubLogo.startsWith('data:image')
+                                ? Image.memory(base64Decode(clubLogo.split(',').last), fit: BoxFit.cover)
+                                : Image.network(
+                                    _convertGoogleDriveLink(clubLogo),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Icon(Icons.workspace_premium_rounded, color: accentColor, size: 30)
+                                  ))
+                            : Icon(Icons.workspace_premium_rounded, color: accentColor, size: 30),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 17,
+                          letterSpacing: -0.5,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: accentColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.calendar_today_rounded, size: 10, color: accentColor),
+                                const SizedBox(width: 5),
+                                Text(
+                                  date,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isDark ? Colors.white70 : Colors.black87,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (widget.clubName.toLowerCase().contains("mulearn"))
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: muOrange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: muOrange.withOpacity(0.2)),
+                              ),
+                              child: const Text(
+                                "µLearn",
+                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFFFFB200)),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: isDark ? Colors.white24 : Colors.black12, size: 28),
+              ],
             ),
-          );
-        },
-        borderRadius: BorderRadius.circular(24),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: theme.primaryColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05)),
-                ),
-                child: ClipOval(
-                  child: (clubLogo != null && clubLogo.isNotEmpty)
-                      ? (clubLogo.startsWith('data:image')
-                          ? Image.memory(base64Decode(clubLogo.split(',').last), fit: BoxFit.cover)
-                          : Image.network(
-                              _convertGoogleDriveLink(clubLogo),
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Icon(Icons.workspace_premium_rounded, color: isDark ? Colors.blueAccent : theme.primaryColor, size: 28)
-                            ))
-                      : Icon(Icons.workspace_premium_rounded, color: isDark ? Colors.blueAccent : theme.primaryColor, size: 28),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black87),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                date,
-                style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.black38, fontWeight: FontWeight.w500),
-              ),
-            ],
           ),
         ),
       ),
-    ).animate().fadeIn(delay: (50 * index).ms).scale(begin: const Offset(0.9, 0.9));
+    ).animate().fadeIn(delay: (40 * index).ms, duration: 400.ms).slideX(begin: 0.1, end: 0, curve: Curves.easeOutCubic);
   }
 }
