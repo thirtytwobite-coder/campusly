@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -92,8 +93,6 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 🔹 Workaround for the Pigeon codec mismatch error:
-      // The login often succeeds natively even if the return value fails to decode.
       try {
         await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: _loginEmail.text.trim(),
@@ -110,6 +109,8 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
           message: 'Authentication failed.',
         );
       }
+
+      final prefs = await SharedPreferences.getInstance();
 
       // Check Admin
       if (_loginEmail.text.trim() == 'admin@test.com') {
@@ -137,6 +138,10 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
         }
 
         if (mounted) {
+          await prefs.setString('role', data['role']);
+          await prefs.setString('college', data['college']);
+          if (data['name'] != null) await prefs.setString('name', data['name']);
+
           if (data['role'] == 'Main Faculty') {
             Navigator.pushReplacement(
               context,
@@ -168,7 +173,6 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
         }
       }
 
-      // If login successful and biometric enabled, update stored credentials
       if (_biometricEnabled) {
         await _secureStorage.write(key: 'saved_email', value: _loginEmail.text.trim());
         await _secureStorage.write(key: 'saved_password', value: _loginPass.text.trim());
@@ -300,17 +304,18 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
                       final wide = constraints.maxWidth > 760;
                       return GlassCard(
                           borderRadius: 35,
-                          blur: 25,
+                          blur: 40,
+                          border: Border.all(color: Colors.white.withOpacity(isDark ? 0.08 : 0.2)),
                           color: isDark
-                              ? Colors.white.withOpacity(0.04)
-                              : Colors.white.withOpacity(0.4),
+                              ? Colors.black.withOpacity(0.4)
+                              : Colors.white.withOpacity(0.6),
                           child: wide
                               ? _buildWideLayout(theme)
                               : _buildCompactLayout(theme),
-                        ).animate().fadeIn(duration: 400.ms).scale(
-                          begin: const Offset(0.98, 0.98),
+                        ).animate().fadeIn(duration: 600.ms).scale(
+                          begin: const Offset(0.95, 0.95),
                           end: const Offset(1, 1),
-                          curve: Curves.easeOutCubic,
+                          curve: Curves.easeOutBack,
                         );
                     },
                   ),
@@ -322,6 +327,7 @@ class _UnifiedLoginScreenState extends State<UnifiedLoginScreen> {
       ),
     );
   }
+
 
   Widget _buildWideLayout(ThemeData theme) {
     return Row(
@@ -421,56 +427,66 @@ class _LeftPromo extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.12),
+            color: Colors.white.withOpacity(0.1),
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 25,
-                offset: const Offset(0, 10),
+                color: Colors.black.withOpacity(0.25),
+                blurRadius: 30,
+                offset: const Offset(0, 15),
               ),
             ],
           ),
-          child: const Icon(Icons.school_rounded, color: Colors.white, size: 64),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(100),
+            child: Image.asset(
+              'assets/images/campusly_new_icon.png',
+              width: 140,
+              height: 140,
+              fit: BoxFit.cover,
+            ),
+          ),
         )
             .animate(onPlay: (controller) => controller.repeat(reverse: true))
             .shimmer(duration: 3.seconds, color: Colors.white24)
-            .scale(begin: const Offset(1, 1), end: const Offset(1.08, 1.08), duration: 2.seconds, curve: Curves.easeInOut)
+            .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 2.seconds, curve: Curves.easeInOut)
             .animate()
             .fadeIn(duration: 800.ms)
-            .slideY(begin: -0.3, end: 0, curve: Curves.easeOutBack),
+            .slideY(begin: -0.2, curve: Curves.easeOutBack),
         const SizedBox(height: 32),
         Text(
           'CAMPUSLY',
           style: theme.textTheme.headlineLarge?.copyWith(
             color: Colors.white,
             fontWeight: FontWeight.w900,
-            letterSpacing: 2.0,
+            letterSpacing: 4.0,
+            fontSize: 32,
           ),
           textAlign: TextAlign.center,
         )
             .animate()
             .fadeIn(duration: 600.ms, delay: 300.ms)
-            .slideY(begin: 0.3, end: 0, duration: 600.ms, curve: Curves.easeOutQuart),
-        const SizedBox(height: 12),
+            .slideY(begin: 0.2, duration: 600.ms, curve: Curves.easeOutQuart),
+        const SizedBox(height: 16),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Text(
-            'A simpler way to connect, discover events, and experience college life.',
+            'The next generation of campus connectivity and event management.',
             style: theme.textTheme.titleMedium?.copyWith(
-              color: Colors.white.withOpacity(0.9),
-              fontWeight: FontWeight.w400,
+              color: Colors.white.withOpacity(0.85),
+              fontWeight: FontWeight.w500,
               height: 1.5,
+              fontSize: 14,
             ),
             textAlign: TextAlign.center,
           ),
         )
             .animate()
             .fadeIn(duration: 600.ms, delay: 500.ms)
-            .slideY(begin: 0.2, end: 0, duration: 600.ms, curve: Curves.easeOutCirc),
+            .slideY(begin: 0.1, duration: 600.ms, curve: Curves.easeOutCirc),
       ],
     );
   }
@@ -510,32 +526,36 @@ class _AuthForm extends StatelessWidget {
         Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.14),
-                borderRadius: BorderRadius.circular(12),
+                color: theme.colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
               ),
               child: Icon(
-                Icons.account_circle_rounded,
+                Icons.shield_moon_rounded,
                 color: theme.colorScheme.primary,
+                size: 28,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Sign In',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
+                    'Welcome Back',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
                     ),
                   ),
                   Text(
-                    'Continue with your college email',
+                    'Sign in to access your portal',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.72),
+                      color: theme.colorScheme.onSurface.withOpacity(0.5),
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -543,54 +563,42 @@ class _AuthForm extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 18),
-        TextField(
+        const SizedBox(height: 32),
+        _buildInputField(
           controller: emailController,
-          keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(
-            labelText: 'Email Address',
-            labelStyle: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary.withOpacity(0.8)),
-            hintText: 'example@college.edu',
-            prefixIcon: Icon(Icons.alternate_email_rounded, color: theme.colorScheme.primary),
-            filled: true,
-            fillColor: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: theme.colorScheme.primary.withOpacity(0.5), width: 1)),
-          ),
+          label: 'EMAIL ADDRESS',
+          hint: 'Enter your college email',
+          icon: Icons.alternate_email_rounded,
+          theme: theme,
+          isDark: isDark,
         ),
-        const SizedBox(height: 16),
-        TextField(
+        const SizedBox(height: 20),
+        _buildInputField(
           controller: passController,
-          obscureText: isPasswordObscured,
-          decoration: InputDecoration(
-            labelText: 'Password',
-            labelStyle: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary.withOpacity(0.8)),
-            hintText: 'Enter your password',
-            prefixIcon: Icon(Icons.lock_outline_rounded, color: theme.colorScheme.primary),
-            filled: true,
-            fillColor: isDark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: theme.colorScheme.primary.withOpacity(0.5), width: 1)),
-            suffixIcon: IconButton(
-              onPressed: onTogglePassword,
-              icon: Icon(
-                isPasswordObscured
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-              ),
-            ),
-          ),
+          label: 'PASSWORD',
+          hint: '••••••••',
+          icon: Icons.lock_outline_rounded,
+          theme: theme,
+          isDark: isDark,
+          isPassword: true,
+          isObscured: isPasswordObscured,
+          onToggle: onTogglePassword,
         ),
         Align(
           alignment: Alignment.centerRight,
           child: TextButton(
             onPressed: onForgotPassword,
-            child: Text('Forgot Password?', style: TextStyle(fontWeight: FontWeight.w700, color: theme.colorScheme.primary)),
+            child: Text(
+              'Forgot Password?', 
+              style: TextStyle(
+                fontWeight: FontWeight.w800, 
+                color: theme.colorScheme.primary,
+                fontSize: 13,
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 12),
         SizedBox(
           width: double.infinity,
           child: isLoading
@@ -663,6 +671,71 @@ class _AuthForm extends StatelessWidget {
       ],
     );
   }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    required ThemeData theme,
+    required bool isDark,
+    bool isPassword = false,
+    bool isObscured = false,
+    VoidCallback? onToggle,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              color: theme.colorScheme.primary.withOpacity(0.8),
+              letterSpacing: 1.5,
+            ),
+          ),
+        ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: (isDark ? Colors.white : Colors.black).withOpacity(0.08)),
+              ),
+              child: TextField(
+                controller: controller,
+                obscureText: isObscured,
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: hint,
+                  hintStyle: TextStyle(color: (isDark ? Colors.white : Colors.black).withOpacity(0.3), fontWeight: FontWeight.w500),
+                  prefixIcon: Icon(icon, color: theme.colorScheme.primary.withOpacity(0.7), size: 22),
+                  suffixIcon: isPassword
+                      ? IconButton(
+                          icon: Icon(
+                            isObscured ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                            color: theme.colorScheme.primary.withOpacity(0.5),
+                            size: 20,
+                          ),
+                          onPressed: onToggle,
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class AdminDashboard extends StatelessWidget {
@@ -670,25 +743,28 @@ class AdminDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+        title: const Text('Admin Dashboard', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.brightness_6),
-            onPressed: () async {
-              themeNotifier.value = themeNotifier.value == ThemeMode.light
-                  ? ThemeMode.dark
-                  : ThemeMode.light;
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setBool(
-                'isDarkMode',
-                themeNotifier.value == ThemeMode.dark,
-              );
-            },
+          ValueListenableBuilder<ThemeMode>(
+            valueListenable: themeNotifier,
+            builder: (context, mode, _) => IconButton(
+              icon: Icon(mode == ThemeMode.dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded, color: Colors.white),
+              onPressed: () async {
+                themeNotifier.value = mode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('isDarkMode', themeNotifier.value == ThemeMode.dark);
+              },
+            ),
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout_rounded, color: Colors.white),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
               if (context.mounted) {
@@ -704,98 +780,153 @@ class AdminDashboard extends StatelessWidget {
       body: Stack(
         children: [
           const VibrantBackground(),
-          GridView.count(
-            padding: const EdgeInsets.all(16),
-            crossAxisCount: 2,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            children: [
-              _card(
-                context,
-                'Add Main Faculty',
-                Icons.person_add,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        const add_fac.AddFacultyScreen(role: 'Main Faculty'),
+          SingleChildScrollView(
+            child: Column(
+              children: [
+                // Premium Header
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(24, 120, 24, 40),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        theme.colorScheme.primary.withOpacity(0.8),
+                        theme.colorScheme.secondary.withOpacity(0.6),
+                      ],
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(40),
+                      bottomRight: Radius.circular(40),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Welcome Back,",
+                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                      ),
+                      const Text(
+                        "Super Admin",
+                        style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                   ),
                 ),
-              ),
-              _card(
-                context,
-                'Manage Clubs',
-                Icons.group_work,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AdminClubsScreen()),
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 20,
+                    mainAxisSpacing: 20,
+                    children: [
+                      _buildPremiumCard(
+                        context,
+                        'Add Main Faculty',
+                        'Register college admins',
+                        Icons.person_add_rounded,
+                        [Colors.blue, Colors.lightBlueAccent],
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const add_fac.AddFacultyScreen(role: 'Main Faculty'),
+                          ),
+                        ),
+                        0,
+                      ),
+                      _buildPremiumCard(
+                        context,
+                        'Manage Clubs',
+                        'All college clubs',
+                        Icons.group_work_rounded,
+                        [Colors.purple, Colors.deepPurpleAccent],
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AdminClubsScreen()),
+                        ),
+                        1,
+                      ),
+                      _buildPremiumCard(
+                        context,
+                        'Colleges & Status',
+                        'System wide analytics',
+                        Icons.analytics_rounded,
+                        [Colors.orange, Colors.amberAccent],
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CollegeListView()),
+                        ),
+                        2,
+                      ),
+                      _buildPremiumCard(
+                        context,
+                        'Security',
+                        'Update credentials',
+                        Icons.security_rounded,
+                        [Colors.red, Colors.orangeAccent],
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => ChangePasswordScreen()),
+                        ),
+                        3,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              _card(
-                context,
-                'Colleges & Status',
-                Icons.list_alt,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CollegeListView()),
-                ),
-              ),
-              _card(
-                context,
-                'Change Password',
-                Icons.lock_reset,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => ChangePasswordScreen()),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _card(
-    BuildContext context,
-    String title,
-    IconData icon,
-    VoidCallback onTap,
-  ) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Card(
+  Widget _buildPremiumCard(BuildContext context, String title, String subtitle, IconData icon, List<Color> colors, VoidCallback onTap, int index) {
+    return GlassCard(
+      padding: EdgeInsets.zero,
+      borderRadius: 24,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(20),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 52,
-                height: 52,
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.14),
-                  borderRadius: BorderRadius.circular(14),
+                  gradient: LinearGradient(colors: colors),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(color: colors[0].withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4)),
+                  ],
                 ),
-                child: Icon(icon, size: 26, color: theme.colorScheme.primary),
+                child: Icon(icon, color: Colors.white, size: 28),
               ),
-              const SizedBox(height: 12),
+              const Spacer(),
               Text(
                 title,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: -0.5),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 10, color: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black54),
               ),
             ],
           ),
         ),
       ),
-    );
+    ).animate().fadeIn(delay: (100 * index).ms).scale(begin: const Offset(0.9, 0.9));
   }
 }
+
 
 class AdminClubsScreen extends StatefulWidget {
   const AdminClubsScreen({super.key});
@@ -811,43 +942,63 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
 
     await showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Add New Club'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: clubName,
-              decoration: const InputDecoration(labelText: 'Club Name'),
+      builder: (_) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: AlertDialog(
+          backgroundColor: Theme.of(context).cardColor.withOpacity(0.9),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          title: const Text('Add New Club', style: TextStyle(fontWeight: FontWeight.w900)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: clubName,
+                decoration: InputDecoration(
+                  labelText: 'Club Name',
+                  filled: true,
+                  fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                  prefixIcon: const Icon(Icons.business_rounded),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: clubDesc,
+                decoration: InputDecoration(
+                  labelText: 'Description',
+                  filled: true,
+                  fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                  prefixIcon: const Icon(Icons.description_rounded),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: clubDesc,
-              decoration: const InputDecoration(labelText: 'Description'),
-              maxLines: 3,
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              onPressed: () async {
+                if (clubName.text.isEmpty) return;
+                await FirebaseFirestore.instance.collection('clubs').add({
+                  'clubName': clubName.text.trim(),
+                  'description': clubDesc.text.trim(),
+                  'createdBy': FirebaseAuth.instance.currentUser?.email ?? 'admin',
+                  'createdAt': FieldValue.serverTimestamp(),
+                });
+                if (mounted) Navigator.pop(context);
+              },
+              child: const Text('Add Club', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (clubName.text.isEmpty) return;
-              await FirebaseFirestore.instance.collection('clubs').add({
-                'clubName': clubName.text.trim(),
-                'description': clubDesc.text.trim(),
-                'createdBy':
-                    FirebaseAuth.instance.currentUser?.email ?? 'admin',
-                'createdAt': FieldValue.serverTimestamp(),
-              });
-              if (mounted) Navigator.pop(context);
-            },
-            child: const Text('Add'),
-          ),
-        ],
       ),
     );
   }
@@ -855,12 +1006,22 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Clubs')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddClubDialog,
-        child: const Icon(Icons.add),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Manage Clubs', style: TextStyle(fontWeight: FontWeight.w900)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddClubDialog,
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text("New Club", style: TextStyle(fontWeight: FontWeight.bold)),
+      ).animate().scale(delay: 400.ms),
       body: Stack(
         children: [
           const VibrantBackground(),
@@ -871,36 +1032,75 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
               final docs = snapshot.data!.docs;
+              if (docs.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.business_center_rounded, size: 64, color: isDark ? Colors.white24 : Colors.black12),
+                      const SizedBox(height: 16),
+                      Text("No clubs found", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white38 : Colors.black38)),
+                    ],
+                  ),
+                );
+              }
               return ListView.builder(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
+                padding: const EdgeInsets.fromLTRB(20, 120, 20, 100),
                 itemCount: docs.length,
                 itemBuilder: (context, index) {
                   final data = docs[index].data() as Map<String, dynamic>;
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 10),
+                  return GlassCard(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    borderRadius: 24,
                     child: ListTile(
+                      contentPadding: const EdgeInsets.all(16),
+                      leading: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.group_work_rounded, color: theme.colorScheme.primary),
+                      ),
                       title: Text(
-                        data['clubName'] ?? '',
+                        data['clubName'] ?? 'Unnamed Club',
                         style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
                         ),
                       ),
                       subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(data['description'] ?? ''),
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          data['description'] ?? 'No description provided',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? Colors.white54 : Colors.black54,
+                            height: 1.3,
+                          ),
+                        ),
                       ),
                       trailing: IconButton(
-                        icon: const Icon(
-                          Icons.delete_outline_rounded,
-                          color: Colors.redAccent,
-                        ),
-                        onPressed: () => FirebaseFirestore.instance
-                            .collection('clubs')
-                            .doc(docs[index].id)
-                            .delete(),
+                        icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent),
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text("Delete Club?"),
+                              content: const Text("This action cannot be undone."),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+                                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await FirebaseFirestore.instance.collection('clubs').doc(docs[index].id).delete();
+                          }
+                        },
                       ),
                     ),
-                  );
+                  ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);
                 },
               );
             },

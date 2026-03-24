@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 class VibrantBackground extends StatelessWidget {
@@ -17,8 +17,8 @@ class VibrantBackground extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: isDark
-                      ? const [Color(0xFF0F172A), Color(0xFF1E293B)]
-                      : const [Color(0xFFF0F4F8), Color(0xFFE2E8F0)],
+                      ? const [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF0F172A)]
+                      : const [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFE2E8F0)],
                 ),
               ),
             ),
@@ -49,8 +49,40 @@ class VibrantBackground extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: isDark
-                      ? const [Color(0x2210B981), Color(0x0010B981)]
-                      : const [Color(0x2210B981), Color(0x0010B981)],
+                      ? const [Color(0x1A10B981), Color(0x0010B981)]
+                      : const [Color(0x1510B981), Color(0x0010B981)],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: -50,
+            bottom: 100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: isDark
+                      ? const [Color(0x1A6366F1), Color(0x006366F1)]
+                      : const [Color(0x156366F1), Color(0x006366F1)],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 20,
+            top: 200,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: isDark
+                      ? const [Color(0x1AEC4899), Color(0x00EC4899)]
+                      : const [Color(0x15EC4899), Color(0x00EC4899)],
                 ),
               ),
             ),
@@ -79,6 +111,8 @@ class GlassCard extends StatelessWidget {
   final double blur;
   final BoxBorder? border;
   final List<BoxShadow>? boxShadow;
+  final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? margin;
 
   const GlassCard({
     super.key,
@@ -88,6 +122,8 @@ class GlassCard extends StatelessWidget {
     this.blur = 15,
     this.border,
     this.boxShadow,
+    this.padding,
+    this.margin,
   });
 
   @override
@@ -107,6 +143,7 @@ class GlassCard extends StatelessWidget {
     );
 
     return Container(
+      margin: margin,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: boxShadow ?? [
@@ -127,8 +164,9 @@ class GlassCard extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+          filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
           child: Container(
+            padding: padding,
             decoration: BoxDecoration(
               color: defaultColor,
               borderRadius: BorderRadius.circular(borderRadius),

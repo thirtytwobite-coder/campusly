@@ -19,11 +19,8 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
   final _formKey = GlobalKey<FormState>();
   bool isLoading = true;
   bool isSubmitting = false;
-  bool _isReturningFromPayment = false;
-  bool _paymentCheckStarted = false;
   Map<String, dynamic>? studentData;
   String _registrationType = 'participant';
-  DateTime? _paymentStartTime;
 
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
@@ -61,114 +58,9 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _isReturningFromPayment) {
-      setState(() {
-        _isReturningFromPayment = false;
-      });
-      _finalizeAfterPayment();
-    }
-  }
 
-  Future<void> _finalizeAfterPayment() async {
-    if (_paymentCheckStarted) return;
-    _paymentCheckStarted = true;
 
-    // Fallback: If _paymentStartTime is null, fetch from Firestore
-    if (_paymentStartTime == null) {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final studentDoc = await FirebaseFirestore.instance.collection('student').doc(user.uid).get();
-        final lastAttempt = studentDoc.data()?['lastPaymentAttempt'] as Timestamp?;
-        if (lastAttempt != null) {
-          _paymentStartTime = lastAttempt.toDate();
-        }
-      }
-    }
 
-    if (_paymentStartTime != null) {
-      final difference = DateTime.now().difference(_paymentStartTime!);
-      if (difference.inMinutes >= 5) {
-        if (mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (ctx) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              title: const Text("Payment Window Expired", style: TextStyle(fontWeight: FontWeight.w900)),
-              content: const Text("The 5-minute payment window has expired. If you have already paid, please contact the event coordinator with your transaction details. Otherwise, you can try registering again after 10 minutes."),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    Navigator.pop(context);
-                  },
-                  child: const Text("OK")
-                ),
-              ],
-            ),
-          );
-        }
-        _paymentCheckStarted = false;
-        return;
-      }
-    }
-
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 24),
-              const Text("Verifying Payment...", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-              const SizedBox(height: 12),
-              Text("Please wait while we check your transaction.",
-                style: TextStyle(fontSize: 14, color: Colors.grey.withOpacity(0.8)), textAlign: TextAlign.center),
-            ],
-          ),
-        ),
-      );
-
-      await Future.delayed(const Duration(seconds: 3));
-
-      if (mounted) {
-        Navigator.pop(context);
-
-        final confirmed = await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            title: const Text("Payment Confirmation", style: TextStyle(fontWeight: FontWeight.w900)),
-            content: const Text("Did you complete the payment successfully?"),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("No")),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                ),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text("Yes, Register Now")
-              ),
-            ],
-          ),
-        );
-
-        if (confirmed == true) {
-          _submitRegistration();
-        } else {
-          _paymentCheckStarted = false;
-        }
-      }
-    }
-  }
 
   Future<void> _fetchStudentData() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -232,164 +124,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
   Future<void> _handleRegistration() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final eventData = widget.event.data() as Map<String, dynamic>? ?? {};
-    final bool isPaid = eventData['isPaid'] == true;
-    final String upiId = (eventData['upiId'] ?? '').toString().trim();
-    final String fee = (eventData['eventFee'] ?? '0').toString();
-    final String eventTitle = eventData['title'] ?? eventData['name'] ?? 'Event';
 
-    if (isPaid) {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final studentDoc = await FirebaseFirestore.instance.collection('student').doc(user.uid).get();
-        final lastAttempt = studentDoc.data()?['lastPaymentAttempt'] as Timestamp?;
-
-        if (lastAttempt != null) {
-          final difference = DateTime.now().difference(lastAttempt.toDate());
-          if (difference.inMinutes < 10) {
-            final remaining = 10 - difference.inMinutes;
-            if (mounted) {
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                  title: const Text("Cooldown Active", style: TextStyle(fontWeight: FontWeight.w900)),
-                  content: Text("Please wait $remaining more minutes before trying again. This is to ensure previous transactions are processed."),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK")),
-                  ],
-                ),
-              );
-            }
-            return;
-          }
-        }
-      }
-
-      final proceed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text("Payment Required", style: TextStyle(fontWeight: FontWeight.w900)),
-          content: Text("Proceed to pay ₹$fee via UPI?\n\nNOTE: You have 5 minutes to complete the payment once you leave the app."),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text("Proceed to Pay")
-            ),
-          ],
-        ),
-      );
-
-      if (proceed != true) return;
-
-      // Update attempt time in Firestore
-      if (user != null) {
-        await FirebaseFirestore.instance.collection('student').doc(user.uid).update({
-          'lastPaymentAttempt': FieldValue.serverTimestamp(),
-          'lastPaymentEventId': widget.event.id,
-        });
-      }
-      _paymentStartTime = DateTime.now();
-
-      String formattedUpiId = upiId;
-      String cleanId = formattedUpiId.replaceAll(RegExp(r'[\s\-\(\)]'), '');
-      if (cleanId.startsWith('+91')) cleanId = cleanId.substring(3);
-      else if (cleanId.startsWith('91') && cleanId.length == 12) cleanId = cleanId.substring(2);
-
-      if (RegExp(r'^\d{10}$').hasMatch(cleanId)) {
-        formattedUpiId = '$cleanId@okicici';
-      }
-
-      final String upiUri = 'upi://pay?pa=$formattedUpiId&pn=${Uri.encodeComponent(eventTitle)}&am=$fee&cu=INR&tn=${Uri.encodeComponent("Registration for $eventTitle")}';
-
-      final String gPayIntent = 'intent://pay?pa=$formattedUpiId&pn=${Uri.encodeComponent(eventTitle)}&am=$fee&cu=INR&tn=${Uri.encodeComponent("Registration for $eventTitle")}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end';
-
-      try {
-        bool launched = false;
-        if (Theme.of(context).platform == TargetPlatform.android) {
-          try {
-            final gPayUri = Uri.parse(gPayIntent);
-            await launchUrl(gPayUri, mode: LaunchMode.externalNonBrowserApplication);
-            launched = true;
-          } catch (e) {
-            debugPrint("Direct GPay intent failed: $e");
-          }
-        }
-
-        if (!launched) {
-          final upiUriParsed = Uri.parse(upiUri);
-          try {
-            if (await canLaunchUrl(upiUriParsed)) {
-              await launchUrl(upiUriParsed, mode: LaunchMode.externalNonBrowserApplication);
-              launched = true;
-            }
-          } catch (e) {
-            debugPrint("Generic UPI launch failed: $e");
-          }
-        }
-
-        if (launched) {
-          setState(() => _isReturningFromPayment = true);
-          return;
-        } else {
-          if (mounted) {
-            final manualConfirm = await showDialog<bool>(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                title: const Text("Scan to Pay", style: TextStyle(fontWeight: FontWeight.w900)),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text("Scan this QR code with any UPI app to pay:"),
-                      const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-                        child: Image.network(
-                          'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${Uri.encodeComponent(upiUri)}',
-                          width: 200, height: 200,
-                          errorBuilder: (c, e, s) => const Icon(Icons.qr_code_2, size: 100, color: Colors.grey),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: Colors.blue.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-                        child: Row(
-                          children: [
-                            Expanded(child: SelectableText(formattedUpiId, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-                            IconButton(icon: const Icon(Icons.copy, size: 20), onPressed: () {
-                              Clipboard.setData(ClipboardData(text: formattedUpiId));
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('UPI ID Copied!')));
-                            }),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
-                  ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Confirmed Payment")),
-                ],
-              ),
-            );
-            if (manualConfirm != true) return;
-          }
-        }
-      } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Launch Error: $e')));
-        return;
-      }
-    }
 
     _submitRegistration();
   }
@@ -671,7 +406,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
                               onPressed: isSubmitting ? null : _handleRegistration,
                               child: isSubmitting
                                   ? const CircularProgressIndicator(color: Colors.white)
-                                  : Text(eventData['isPaid'] == true ? "PAY & CONFIRM" : "CONFIRM REGISTRATION",
+                                  : const Text("CONFIRM REGISTRATION",
                                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
                             ),
                           ),

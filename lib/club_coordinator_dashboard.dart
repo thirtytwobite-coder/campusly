@@ -677,7 +677,10 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
               child: Material(
                 color: isDark ? Colors.black.withOpacity(0.85) : Colors.white.withOpacity(0.92),
                 child: Container(
-                  constraints: const BoxConstraints(maxWidth: 500),
+                  constraints: BoxConstraints(
+                    maxWidth: 500,
+                    maxHeight: MediaQuery.of(context).size.height * 0.8,
+                  ),
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -906,12 +909,33 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 if (hasImage)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.memory(
-                      base64Decode(controller.text.split(',').last),
-                      width: 40,
-                      height: 40,
-                      fit: BoxFit.cover,
-                      errorBuilder: (ctx, err, stack) => Icon(Icons.broken_image, size: 20, color: Colors.grey),
+                    child: Builder(
+                      builder: (context) {
+                        try {
+                          final imageData = controller.text;
+                          if (imageData.startsWith('data:image')) {
+                            return Image.memory(
+                              base64Decode(imageData.split(',').last),
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, stack) => Icon(Icons.broken_image, size: 20, color: Colors.grey),
+                            );
+                          } else if (imageData.isNotEmpty) {
+                            // Fallback for legacy URLs
+                            return Image.network(
+                              imageData,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, stack) => Icon(Icons.broken_image, size: 20, color: Colors.grey),
+                            );
+                          }
+                        } catch (e) {
+                          debugPrint("Image decoding error: $e");
+                        }
+                        return Icon(Icons.broken_image, size: 20, color: Colors.grey);
+                      },
                     ),
                   ),
               ],
@@ -1147,9 +1171,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     final teamSizeController = TextEditingController();
     final deadlineDateController = TextEditingController();
     final deadlineTimeController = TextEditingController();
-    bool isPaid = false;
-    final eventFeeController = TextEditingController();
-    final upiIdController = TextEditingController();
+
 
     bool isUploadingPoster = false;
 
@@ -1456,18 +1478,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                                   ],
                                 ),
 
-                                const SizedBox(height: 12),
-                                SwitchListTile(
-                                  value: isPaid,
-                                  title: const Text('Paid Event', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
-                                  contentPadding: EdgeInsets.zero,
-                                  activeColor: Colors.blueAccent,
-                                  onChanged: (v) => setDialogState(() => isPaid = v),
-                                ),
-                                if (isPaid) ...[
-                                  _buildProposalField(eventFeeController, 'Event Fee (₹) *', isDark, keyboardType: TextInputType.number),
-                                  _buildProposalField(upiIdController, 'GPay / UPI ID *', isDark, keyboardType: TextInputType.text),
-                                ],
+
                                 const SizedBox(height: 24),
                               ],
                             ),
@@ -1513,9 +1524,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                                     totalSeatsController.text,
                                     deadlineDateController.text,
                                     deadlineTimeController.text,
-                                    isPaid,
-                                    eventFeeController.text,
-                                    upiIdController.text,
                                   ),
                                   child: const Center(
                                     child: Text(
@@ -1594,9 +1602,6 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       String totalSeats,
       String deadlineDate,
       String deadlineTime,
-      bool isPaid,
-      String eventFee,
-      String upiId,
       ) async {
     if (name.trim().isEmpty ||
         desc.trim().isEmpty ||
@@ -1607,12 +1612,11 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         deadlineDate.isEmpty ||
         deadlineTime.isEmpty ||
         cat == null ||
-        mode == null ||
-        (isPaid && (eventFee.isEmpty || upiId.isEmpty))) {
+        mode == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Please fill all required fields (Name, Description, Total Seats, Date, Time, Venue, Category, Event Mode, Deadline, and Payment Info if applicable)',
+            'Please fill all required fields (Name, Description, Total Seats, Date, Time, Venue, Category, Event Mode, and Deadline)',
           ),
         ),
       );
@@ -1688,11 +1692,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         'filledSeats': 0,
         'isTeamEvent': isTeamEvent,
         'teamSize': isTeamEvent ? int.tryParse(teamSize.trim()) ?? 0 : null,
-        'registrationDeadlineDate': deadlineDate,
         'registrationDeadlineTime': deadlineTime,
-        'isPaid': isPaid,
-        'eventFee': isPaid ? eventFee.trim() : null,
-        'upiId': isPaid ? upiId.trim() : null,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -1970,9 +1970,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     final teamSizeController = TextEditingController(text: (data['teamSize'] ?? '').toString());
     final deadlineDateController = TextEditingController(text: data['registrationDeadlineDate'] ?? '');
     final deadlineTimeController = TextEditingController(text: data['registrationDeadlineTime'] ?? '');
-    bool isPaid = data['isPaid'] ?? false;
-    final eventFeeController = TextEditingController(text: data['eventFee'] ?? '');
-    final upiIdController = TextEditingController(text: data['upiId'] ?? '');
+
 
     bool isUploadingPoster = false;
 
@@ -2153,20 +2151,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                     if (t != null) deadlineTimeController.text = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
                 }),
                 const SizedBox(height: 16),
-                const Divider(),
-                Text('Payment Details', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
-                CheckboxListTile(
-                  value: isPaid,
-                  title: Text('Paid Event', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
-                  contentPadding: EdgeInsets.zero,
-                  onChanged: (v) => setDialogState(() => isPaid = v ?? false),
-                ),
-                if (isPaid) ...[
-                  _buildProposalField(eventFeeController, 'Event Fee (₹) *', isDark, keyboardType: TextInputType.number),
-                  const SizedBox(height: 12),
-                  _buildProposalField(upiIdController, 'GPay Number / UPI ID *', isDark, keyboardType: TextInputType.text),
-                  const Text('Enter GPay Phone Number or full UPI ID', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                ],
+
                 const Divider(),
                 const SizedBox(height: 8),
                 Text('Event Visibility', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: isDark ? Colors.white : Colors.black)),
@@ -2239,11 +2224,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   volunteerRoleController.text,
                   isTeamEvent,
                   teamSizeController.text,
-                  deadlineDateController.text,
                   deadlineTimeController.text,
-                  isPaid,
-                  eventFeeController.text,
-                  upiIdController.text,
                 );
               },
               child: const Text('Update'),
@@ -2297,18 +2278,11 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       String volunteerRole,
       bool isTeamEvent,
       String teamSize,
-      String deadlineDate,
       String deadlineTime,
-      bool isPaid,
-      String eventFee,
-      String upiId,
       ) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    if (isPaid && (eventFee.isEmpty || upiId.isEmpty)) {
-      messenger.showSnackBar(const SnackBar(content: Text('Please fill Payment Info for paid events.')));
-      return;
-    }
+
     try {
       if (isTeamEvent && (int.tryParse(teamSize.trim()) ?? 0) < 2) {
         messenger.showSnackBar(
@@ -2346,11 +2320,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
             : null,
         'isTeamEvent': isTeamEvent,
         'teamSize': isTeamEvent ? int.tryParse(teamSize.trim()) ?? 0 : null,
-        'registrationDeadlineDate': deadlineDate,
         'registrationDeadlineTime': deadlineTime,
-        'isPaid': isPaid,
-        'eventFee': isPaid ? eventFee.trim() : null,
-        'upiId': isPaid ? upiId.trim() : null,
         'status': 'pending',
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -2948,7 +2918,7 @@ class ProgramCard extends StatelessWidget {
                         const SizedBox(height: 20),
                         _buildDetailGrid(ctx, isDark),
                         const SizedBox(height: 24),
-                        if (programData['isPaid'] == true || programData['hasPrizePool'] == true) ...[
+                        if (programData['hasPrizePool'] == true) ...[
                           _buildPremiumMetaSection(isDark),
                         ],
                         const SizedBox(height: 24),
@@ -3022,10 +2992,7 @@ class ProgramCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          if (programData['isPaid'] == true)
-            _buildDetailRow(Icons.payments_rounded, "Entry Fee", "₹${programData['eventFee'] ?? '0'}", isDark, isHighlight: true),
           if (programData['hasPrizePool'] == true) ...[
-            if (programData['isPaid'] == true) const SizedBox(height: 12),
             _buildDetailRow(Icons.emoji_events_rounded, "Prize Pool", "₹${programData['prizeAmount'] ?? 'TBD'}", isDark, isHighlight: true),
           ],
         ],

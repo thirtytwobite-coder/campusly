@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'dart:ui' as ui;
 import 'dart:convert';
 import 'dart:io';
 
@@ -19,6 +19,7 @@ import 'change_password.dart';
 import 'login_screen.dart';
 import 'main.dart';
 import 'profile_screen.dart';
+import 'student_directory_screen.dart';
 import 'vibrant_background.dart';
 
 class MainFacultyDashboard extends StatefulWidget {
@@ -32,6 +33,33 @@ class MainFacultyDashboard extends StatefulWidget {
 class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
   // --- Navigation Logic ---
   int _selectedIndex = 0;
+  String? facultyName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStoredName();
+    _fetchFacultyName();
+  }
+
+  Future<void> _loadStoredName() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        facultyName = prefs.getString('name');
+      });
+    }
+  }
+
+  Future<void> _fetchFacultyName() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance.collection('faculty').doc(user.uid).get();
+      if (doc.exists && mounted) {
+        setState(() => facultyName = doc.data()?['name']);
+      }
+    }
+  }
 
   Future<void> _handleLogout() async {
     await FirebaseAuth.instance.signOut();
@@ -217,49 +245,76 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
 
     await showDialog(
       context: context,
-      builder: (c) => AlertDialog(
-        title: Text("Map Faculty to $clubName"),
-        content: DropdownButtonFormField<String>(
-          decoration: const InputDecoration(labelText: "Select Faculty Member"),
-          items: facultySnap.docs
-              .map((d) => DropdownMenuItem(
-                    value: d['email'] as String,
-                    child: Text(d['name'] ?? d['email']),
-                  ))
-              .toList(),
-          onChanged: (v) {
-            selectedEmail = v;
-            final selectedDoc = facultySnap.docs.firstWhere(
-              (doc) => doc['email'] == v,
-              orElse: () => throw Exception('Faculty not found'),
-            );
-            selectedName = selectedDoc['name'] as String?;
-          },
+      builder: (c) => BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: AlertDialog(
+          backgroundColor: Theme.of(context).cardColor.withOpacity(0.9),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          title: Text("Map Faculty to $clubName", style: const TextStyle(fontWeight: FontWeight.w900)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Select a registered faculty member to manage this club's activities.",
+                style: TextStyle(fontSize: 12, color: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black54),
+              ),
+              const SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: "Select Faculty Member",
+                  filled: true,
+                  fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                  prefixIcon: const Icon(Icons.person_search_rounded),
+                ),
+                dropdownColor: Theme.of(context).cardColor,
+                items: facultySnap.docs
+                    .map((d) => DropdownMenuItem(
+                          value: d['email'] as String,
+                          child: Text(d['name'] ?? d['email']),
+                        ))
+                    .toList(),
+                onChanged: (v) {
+                  selectedEmail = v;
+                  final selectedDoc = facultySnap.docs.firstWhere(
+                    (doc) => doc['email'] == v,
+                    orElse: () => throw Exception('Faculty not found'),
+                  );
+                  selectedName = selectedDoc['name'] as String?;
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(c), 
+                child: Text("Cancel", style: TextStyle(color: Theme.of(context).colorScheme.primary))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              onPressed: () async {
+                if (selectedEmail == null || selectedName == null) return;
+
+                await FirebaseFirestore.instance
+                    .collection('club_mappings')
+                    .doc("${widget.collegeName}_$clubId")
+                    .set({
+                  'clubId': clubId,
+                  'clubName': clubName,
+                  'college': widget.collegeName,
+                  'facultyEmail': selectedEmail,
+                  'facultyName': selectedName,
+                  'lastUpdated': FieldValue.serverTimestamp(),
+                });
+
+                if (mounted) Navigator.pop(c);
+              },
+              child: const Text("Save Mapping"),
+            )
+          ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(c), child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () async {
-              if (selectedEmail == null || selectedName == null) return;
-
-              await FirebaseFirestore.instance
-                  .collection('club_mappings')
-                  .doc("${widget.collegeName}_$clubId")
-                  .set({
-                'clubId': clubId,
-                'clubName': clubName,
-                'college': widget.collegeName,
-                'facultyEmail': selectedEmail,
-                'facultyName': selectedName,
-                'lastUpdated': FieldValue.serverTimestamp(),
-              });
-
-              if (mounted) Navigator.pop(c);
-            },
-            child: const Text("Save Mapping"),
-          )
-        ],
       ),
     );
   }
@@ -354,15 +409,37 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
     final nameController = TextEditingController();
     await showDialog(
       context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('Add Local Club'),
-        content: TextField(
-            controller: nameController,
-            decoration: const InputDecoration(labelText: 'Club Name')),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
-          ElevatedButton(
+      builder: (c) => BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: AlertDialog(
+          backgroundColor: Theme.of(context).cardColor.withOpacity(0.9),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          title: const Text('Add Local Club', style: TextStyle(fontWeight: FontWeight.w900)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Enter the name of the new club for your college."),
+              const SizedBox(height: 20),
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: 'Club Name',
+                  filled: true,
+                  fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                  prefixIcon: const Icon(Icons.business_rounded),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(c), 
+                child: Text('Cancel', style: TextStyle(color: Theme.of(context).colorScheme.primary))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
               onPressed: () async {
                 if (nameController.text.isEmpty) return;
                 await FirebaseFirestore.instance.collection('clubs').add({
@@ -372,8 +449,9 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                 });
                 if (mounted) Navigator.pop(c);
               },
-              child: const Text('Add')),
-        ],
+              child: const Text('Add Club')),
+          ],
+        ),
       ),
     );
   }
@@ -382,6 +460,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return PopScope(
         canPop: false,
         onPopInvoked: (bool didPop) async {
@@ -408,13 +487,18 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
         child: Scaffold(
           appBar: AppBar(
             title: Text(
-              widget.collegeName,
-              style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: -1.0),
+              (facultyName ?? widget.collegeName).toUpperCase(),
+              style: const TextStyle(
+                fontWeight: FontWeight.w900, 
+                letterSpacing: 2.0,
+                fontSize: 20,
+              ),
             ),
+            centerTitle: false,
             backgroundColor: Colors.transparent,
             flexibleSpace: ClipRect(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                 child: Container(
                   color: (Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white).withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.6),
                 ),
@@ -422,39 +506,139 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
             ),
             elevation: 0,
             scrolledUnderElevation: 0,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.logout_rounded),
+                onPressed: _handleLogout,
+              ),
+            ],
           ),
           body: Stack(
             children: [
               const VibrantBackground(),
-              GridView.count(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(20),
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                children: [
-                  _buildCard("Mapping Dashboard", Icons.rule_folder_outlined, _openMappingDashboard),
-                  _buildCard("Manage Clubs", Icons.business_center_outlined, _openManageClubs),
-                  _buildCard("Add Local Club", Icons.add_business_outlined, _addClubDialog),
-                  _buildCard("Register Faculty", Icons.person_add_alt_1_outlined, () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (c) =>
-                                AddFacultyScreen(collegeName: widget.collegeName)));
-                  }),
-                  _buildCard("College Analytics", Icons.analytics_outlined, () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (c) => AnalyticsDashboardScreen(
-                          collegeName: widget.collegeName,
-                        ),
+              SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 24),
+                    // Immersive Header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 8),
+                          Text(
+                            "Welcome Back,",
+                            style: TextStyle(
+                              color: isDark ? Colors.white38 : Colors.black38,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                            ),
+                          ).animate().fadeIn(duration: 600.ms, delay: 100.ms),
+                          Text(
+                            (facultyName ?? widget.collegeName).toLowerCase(),
+                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1.0,
+                              color: isDark ? Colors.white : Colors.black87,
+                              fontSize: 32,
+                            ),
+                          ).animate().fadeIn(duration: 600.ms, delay: 200.ms),
+                        ],
                       ),
-                    );
-                  }),
-                ],
-              ).animate().fadeIn(duration: 300.ms).slideY(),
+                    ),
+                    const SizedBox(height: 32),
+                    // Functional Cards Grid
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 1.15,
+                        children: [
+                          _buildPremiumCard(
+                            "Mapping", 
+                            "Assign Faculty to Clubs",
+                            Icons.rule_folder_rounded, 
+                            const [Color(0xFF6366F1), Color(0xFF4F46E5)],
+                            _openMappingDashboard,
+                            0
+                          ),
+                          _buildPremiumCard(
+                            "Clubs", 
+                            "Manage Local Groups",
+                            Icons.business_center_rounded, 
+                            const [Color(0xFF0EA5E9), Color(0xFF0284C7)],
+                            _openManageClubs,
+                            1
+                          ),
+                          _buildPremiumCard(
+                            "Add Club", 
+                            "Create New Entries",
+                            Icons.add_business_rounded, 
+                            const [Color(0xFF10B981), Color(0xFF059669)],
+                            _addClubDialog,
+                            2
+                          ),
+                          _buildPremiumCard(
+                            "Register", 
+                            "Manual/Bulk Faculty Add",
+                            Icons.person_add_rounded, 
+                            const [Color(0xFFF59E0B), Color(0xFFD97706)],
+                            () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (c) =>
+                                          AddFacultyScreen(collegeName: widget.collegeName)));
+                            },
+                            3
+                          ),
+                          _buildPremiumCard(
+                            "Analytics", 
+                            "College Usage Trends",
+                            Icons.analytics_rounded, 
+                            const [Color(0xFFEC4899), Color(0xFFDB2777)],
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (c) => AnalyticsDashboardScreen(
+                                    collegeName: widget.collegeName,
+                                  ),
+                                ),
+                              );
+                            },
+                            4
+                          ),
+                          _buildPremiumCard(
+                            "Directory", 
+                            "View All Students",
+                            Icons.folder_shared_rounded, 
+                            const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (c) => const StudentDirectoryScreen(),
+                                ),
+                              );
+                            },
+                            5
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 120),
+                  ],
+                ),
+              ),
             ],
           ),
           bottomNavigationBar: ScoopedNavigationBar(
@@ -463,45 +647,82 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
             activeColor: Theme.of(context).colorScheme.primary,
             items: const [
               ScoopedNavItem(icon: Icons.home_rounded, label: 'Home'),
-              ScoopedNavItem(icon: Icons.person_outline_rounded, label: 'Profile'),
+              ScoopedNavItem(icon: Icons.person_rounded, label: 'Profile'),
             ],
           ),
         ));
   }
 
-  Widget _buildCard(String title, IconData icon, VoidCallback onTap) {
+  Widget _buildPremiumCard(String title, String subtitle, IconData icon, List<Color> colors, VoidCallback onTap, int index) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return GlassCard(
-      borderRadius: 20,
-      child: Card(
-        elevation: 0,
-        color: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
+      borderRadius: 32,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(32),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [colors[0].withOpacity(0.15), colors[1].withOpacity(0.05)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                child: Icon(icon, size: 28, color: Theme.of(context).colorScheme.primary),
-              ),
-              const SizedBox(height: 15),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: colors),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors[0].withOpacity(0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    )
+                  ],
                 ),
+                child: Icon(icon, color: Colors.white, size: 24),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: isDark ? Colors.white : Colors.black87,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white54 : Colors.black54,
+                      letterSpacing: 0.1,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
-    );
+    ).animate().fadeIn(delay: (100 * index).ms).slideY(begin: 0.1, duration: 400.ms).scale(begin: const Offset(0.95, 0.95));
   }
 }
 
@@ -612,29 +833,123 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Register Faculty")),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(controller: _name, decoration: const InputDecoration(labelText: "Full Name")),
-            const SizedBox(height: 16),
-            TextField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: "Email")),
-            const SizedBox(height: 16),
-            TextField(controller: _pass, decoration: const InputDecoration(labelText: "Password"), obscureText: true),
-            const SizedBox(height: 16),
-            TextField(controller: _phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: "Phone Number")),
-            const SizedBox(height: 32),
-            ElevatedButton(onPressed: _handleManualRegister, child: const Text("Create Faculty Account")),
-            const SizedBox(height: 20),
-            const Divider(),
-            const SizedBox(height: 20),
-            OutlinedButton.icon(onPressed: _uploadCsv, icon: const Icon(Icons.upload_file_outlined), label: const Text("Upload CSV File")),
-            const SizedBox(height: 10),
-            TextButton(onPressed: _openTemplate, child: const Text("Open CSV Template")),
-          ],
-        ),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text("Register Faculty", style: TextStyle(fontWeight: FontWeight.w900)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          const VibrantBackground(),
+          SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 120, 24, 40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                GlassCard(
+                  borderRadius: 32,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.person_add_rounded, size: 48, color: Colors.blue),
+                        const SizedBox(height: 16),
+                        const Text(
+                          "Manual Entry",
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 24),
+                        _buildTextField(_name, "Full Name", Icons.person_outline_rounded),
+                        const SizedBox(height: 16),
+                        _buildTextField(_email, "Email Address", Icons.email_outlined, keyboardType: TextInputType.emailAddress),
+                        const SizedBox(height: 16),
+                        _buildTextField(_pass, "Password", Icons.lock_outline_rounded, obscureText: true),
+                        const SizedBox(height: 16),
+                        _buildTextField(_phone, "Phone Number", Icons.phone_android_rounded, keyboardType: TextInputType.phone),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton(
+                            onPressed: _handleManualRegister,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: const Text("Create Faculty Account", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          ).animate().scale(delay: 200.ms),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 40),
+                GlassCard(
+                  borderRadius: 32,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.upload_file_rounded, size: 48, color: Colors.green),
+                        const SizedBox(height: 16),
+                        const Text(
+                          "Bulk Upload",
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "Upload a CSV file to register multiple faculty members at once.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: OutlinedButton.icon(
+                            onPressed: _uploadCsv,
+                            icon: const Icon(Icons.publish_rounded),
+                            label: const Text("Select & Upload CSV"),
+                            style: OutlinedButton.styleFrom(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              side: const BorderSide(color: Colors.green),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextButton.icon(
+                          onPressed: _openTemplate,
+                          icon: const Icon(Icons.download_rounded, size: 18),
+                          label: const Text("Download CSV Template"),
+                          style: TextButton.styleFrom(foregroundColor: Colors.green),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, 
+      {bool obscureText = false, TextInputType keyboardType = TextInputType.text}) {
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, size: 20),
+        filled: true,
+        fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
       ),
     );
   }

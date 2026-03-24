@@ -238,9 +238,10 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 8),
-                      _buildRegistrationChart(isDark, theme),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 8),
                       _buildSummarySection(isDark, theme),
+                      const SizedBox(height: 32),
+                      _buildChartSection(isDark),
                       const SizedBox(height: 32),
                       Text(
                         "Filter by Status", 
@@ -349,109 +350,154 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     );
   }
 
-  Widget _buildRegistrationChart(bool isDark, ThemeData theme) {
+  Widget _buildChartSection(bool isDark) {
     if (_allEventStats.isEmpty) return const SizedBox.shrink();
+    
+    // Sort by count descending and take top 5
+    final topEvents = List<Map<String, dynamic>>.from(_allEventStats)
+      ..sort((a, b) => (b['count'] as int).compareTo(a['count'] as int));
+    final displayEvents = topEvents.take(5).toList();
 
-    // Get top 5 events for the chart
-    final topEvents = _allEventStats.take(5).toList();
-    final maxY = topEvents.isEmpty ? 10.0 : topEvents[0]['count'].toDouble() * 1.2;
+    double maxY = displayEvents.isEmpty ? 10.0 : (displayEvents.first['count'] as int).toDouble() * 1.2;
+    if (maxY < 5) maxY = 5;
 
-    return GlassCard(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: theme.primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.analytics_outlined, color: theme.primaryColor, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  "Registration Trends",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: isDark ? Colors.white : Colors.black87),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              height: 200,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: maxY,
-                  barTouchData: BarTouchData(
-                    touchTooltipData: BarTouchTooltipData(
-                      getTooltipColor: (_) => theme.primaryColor.withOpacity(0.8),
-                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                        return BarTooltipItem(
-                          '${topEvents[groupIndex]['title']}\n',
-                          const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
-                          children: [
-                            TextSpan(
-                              text: (rod.toY).toString(),
-                              style: const TextStyle(color: Color(0xFFFFD700), fontSize: 14, fontWeight: FontWeight.w900),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Top Performing Events",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 16),
+        GlassCard(
+          borderRadius: 24,
+          child: Container(
+            height: 250,
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: maxY,
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (group) => isDark ? Colors.black.withOpacity(0.8) : Colors.white.withOpacity(0.9),
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      return BarTooltipItem(
+                        '${displayEvents[group.x.toInt()]['title']}\n',
+                        TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                        children: <TextSpan>[
+                          TextSpan(
+                            text: rod.toY.toInt().toString(),
+                            style: TextStyle(
+                              color: isDark ? const Color(0xFF10B981) : const Color(0xFF059669),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
                             ),
-                          ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 32,
+                      getTitlesWidget: (value, meta) {
+                        int index = value.toInt();
+                        if (index >= 0 && index < displayEvents.length) {
+                          String title = displayEvents[index]['title'];
+                          if (title.length > 7) title = title.substring(0, 6) + '..';
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              title,
+                              style: TextStyle(
+                                color: isDark ? Colors.white70 : Colors.black87,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 28,
+                      getTitlesWidget: (value, meta) {
+                        if (value == maxY || value % (maxY / 4).ceil() != 0) return const SizedBox.shrink();
+                        return Text(
+                          value.toInt().toString(),
+                          style: TextStyle(
+                            color: isDark ? Colors.white54 : Colors.black54,
+                            fontSize: 10,
+                          ),
                         );
                       },
                     ),
                   ),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          if (value.toInt() >= topEvents.length) return const SizedBox.shrink();
-                          final title = topEvents[value.toInt()]['title'];
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              title.length > 5 ? '${title.substring(0, 5)}..' : title,
-                              style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 10, fontWeight: FontWeight.w600),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  ),
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  barGroups: List.generate(topEvents.length, (i) {
-                    final color = i == 0 ? theme.primaryColor : (isDark ? Colors.white24 : Colors.black12);
-                    return BarChartGroupData(
-                      x: i,
-                      barRods: [
-                        BarChartRodData(
-                          toY: topEvents[i]['count'].toDouble(),
-                          color: color,
-                          width: 28,
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                          gradient: LinearGradient(
-                            colors: [color, color.withOpacity(0.7)],
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                          ),
-                        ),
-                      ],
-                    );
-                  }),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: isDark ? Colors.white12 : Colors.black12,
+                    strokeWidth: 1,
+                    dashArray: [5, 5],
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                barGroups: List.generate(displayEvents.length, (index) {
+                  return BarChartGroupData(
+                    x: index,
+                    barRods: [
+                      BarChartRodData(
+                        toY: (displayEvents[index]['count'] as int).toDouble(),
+                        gradient: LinearGradient(
+                          colors: [
+                            isDark ? const Color(0xFFA855F7) : const Color(0xFF9333EA),
+                            isDark ? const Color(0xFF3B82F6) : const Color(0xFF2563EB)
+                          ],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                        ),
+                        width: 22,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(6),
+                          topRight: Radius.circular(6),
+                        ),
+                        backDrawRodData: BackgroundBarChartRodData(
+                          show: true,
+                          toY: maxY,
+                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1, delay: 100.ms),
+      ],
     );
   }
 

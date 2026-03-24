@@ -684,7 +684,7 @@ class EventDetailsScreen extends StatelessWidget {
             debugPrint("Error parsing deadline: $e");
           }
         }
-        final bool isPaid = data['isPaid'] == true;
+
 
         return Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -697,25 +697,7 @@ class EventDetailsScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (isPaid)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.amber.withOpacity(0.2))
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.payments_rounded, size: 18, color: Colors.amber),
-                          const SizedBox(width: 10),
-                          Text("ENTRY FEE: ₹${data['eventFee'] ?? '0'}",
-                            style: const TextStyle(color: Colors.amber, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
-                        ],
-                      ),
-                    ),
+
                     Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(24),

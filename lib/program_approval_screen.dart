@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
+import 'vibrant_background.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'dart:ui';
 
 class ProgramApprovalScreen extends StatefulWidget {
   final String clubId;
@@ -19,39 +22,56 @@ class ProgramApprovalScreen extends StatefulWidget {
 class _ProgramApprovalScreenState extends State<ProgramApprovalScreen> {
   Future<void> _rejectAll(BuildContext context, List<QueryDocumentSnapshot> docs) async {
     final reasonController = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Reject All (${docs.length})'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Are you sure you want to reject all pending requests? This cannot be undone.'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: reasonController,
-              decoration: const InputDecoration(
-                labelText: 'Reason for Bulk Rejection',
-                hintText: 'e.g., Incomplete details in multiple proposals',
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: AlertDialog(
+          backgroundColor: Theme.of(context).cardColor.withOpacity(0.9),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          title: Text('Reject All (${docs.length})', style: const TextStyle(fontWeight: FontWeight.w900)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Are you sure you want to reject all pending requests? This cannot be undone.',
+                style: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
               ),
-              maxLines: 3,
+              const SizedBox(height: 20),
+              TextField(
+                controller: reasonController,
+                decoration: InputDecoration(
+                  labelText: 'Reason for Bulk Rejection',
+                  filled: true,
+                  fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                  prefixIcon: const Icon(Icons.comment_rounded),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancel', style: TextStyle(color: Theme.of(context).colorScheme.primary))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent, 
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                if (reasonController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please provide a reason')));
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Reject All'),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            onPressed: () {
-              if (reasonController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please provide a reason')));
-                return;
-              }
-              Navigator.pop(ctx, true);
-            },
-            child: const Text('Reject All'),
-          ),
-        ],
       ),
     );
 
@@ -114,6 +134,8 @@ class _ProgramApprovalScreenState extends State<ProgramApprovalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('clubs')
@@ -125,40 +147,86 @@ class _ProgramApprovalScreenState extends State<ProgramApprovalScreen> {
         final List<QueryDocumentSnapshot> docs = snapshot.data?.docs ?? [];
 
         return Scaffold(
+          extendBodyBehindAppBar: true,
           appBar: AppBar(
-            title: Text('Pending Approvals - ${widget.clubName}'),
-            backgroundColor: const Color(0xFF1A237E),
-            foregroundColor: Colors.white,
+            title: Column(
+              children: [
+                const Text(
+                  'PENDING APPROVALS',
+                  style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: -0.5, fontSize: 18),
+                ),
+                Text(
+                  widget.clubName.toUpperCase(),
+                  style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 1.0, fontSize: 10, color: isDark ? Colors.white54 : Colors.black54),
+                ),
+              ],
+            ),
+            centerTitle: true,
+            backgroundColor: Colors.transparent,
+            flexibleSpace: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Container(
+                  color: (isDark ? Colors.black : Colors.white).withOpacity(isDark ? 0.4 : 0.6),
+                ),
+              ),
+            ),
+            elevation: 0,
+            scrolledUnderElevation: 0,
             actions: [
               if (docs.isNotEmpty)
                 IconButton(
-                  icon: const Icon(Icons.delete_sweep_outlined),
+                  icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent),
                   tooltip: 'Reject All',
                   onPressed: () => _rejectAll(context, docs),
                 ),
             ],
           ),
-          body: Builder(
-            builder: (context) {
-              if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
-              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-              if (docs.isEmpty) return const Center(child: Text('No pending programs for approval'));
+          body: Stack(
+            children: [
+              const VibrantBackground(),
+              Builder(
+                builder: (context) {
+                  if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+                  if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                  
+                  if (docs.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.auto_awesome_rounded, size: 64, color: isDark ? Colors.white24 : Colors.grey[300]),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No pending requests',
+                            style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 18, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ).animate().fadeIn().scale(begin: const Offset(0.9, 0.9)),
+                    );
+                  }
 
-              return ListView.builder(
-                itemCount: docs.length,
-                padding: const EdgeInsets.all(12),
-                itemBuilder: (context, index) {
-                  final doc = docs[index];
-                  final data = doc.data() as Map<String, dynamic>;
-                  return _ApprovalCard(
-                    programId: doc.id,
-                    clubId: widget.clubId,
-                    data: data,
-                    onProcessed: () => setState(() {}),
+                  return ListView.builder(
+                    itemCount: docs.length,
+                    padding: const EdgeInsets.fromLTRB(20, 120, 20, 40),
+                    physics: const BouncingScrollPhysics(),
+                    itemBuilder: (context, index) {
+                      final doc = docs[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: _ApprovalCard(
+                          programId: doc.id,
+                          clubId: widget.clubId,
+                          data: data,
+                          onProcessed: () => setState(() {}),
+                        ),
+                      ).animate().fadeIn(delay: (index * 100).ms).slideY(begin: 0.1);
+                    },
                   );
                 },
-              );
-            },
+              ),
+            ],
           ),
         );
       },
@@ -184,9 +252,6 @@ class _ApprovalCard extends StatelessWidget {
       final String? requestedStatus = data['requestedStatus'];
 
       if (requestedStatus != null) {
-        // --- CASE 1: APPROVING A STATUS CHANGE (Ongoing/Completed/etc.) ---
-
-        // 1. Update program status to the requested status
         await FirebaseFirestore.instance
             .collection('clubs')
             .doc(clubId)
@@ -198,7 +263,6 @@ class _ApprovalCard extends StatelessWidget {
           'approvedAt': FieldValue.serverTimestamp(),
         });
 
-        // 2. Update the status in the global 'events' collection
         final eventQuery = await FirebaseFirestore.instance
             .collection('events')
             .where('programId', isEqualTo: programId)
@@ -218,7 +282,6 @@ class _ApprovalCard extends StatelessWidget {
           );
         }
 
-        // 3. Send Notification to Club Coordinator
         await FirebaseFirestore.instance
             .collection('clubs')
             .doc(clubId)
@@ -231,9 +294,6 @@ class _ApprovalCard extends StatelessWidget {
           'read': false,
         });
       } else {
-        // --- CASE 2: NEW PROGRAM APPROVAL ---
-
-        // 1. Update program status to 'approved'
         await FirebaseFirestore.instance
             .collection('clubs')
             .doc(clubId)
@@ -244,7 +304,6 @@ class _ApprovalCard extends StatelessWidget {
           'approvedAt': FieldValue.serverTimestamp(),
         });
 
-        // 2. Add or Update in global 'events' collection
         final existingEvents = await FirebaseFirestore.instance
             .collection('events')
             .where('programId', isEqualTo: programId)
@@ -272,22 +331,16 @@ class _ApprovalCard extends StatelessWidget {
           'requiresVolunteers': data['requiresVolunteers'] ?? false,
           'volunteerCount': data['volunteerCount'],
           'volunteerRole': data['volunteerRole'],
-          // Team event details
           'isTeamEvent': data['isTeamEvent'] ?? false,
           'teamSize': data['teamSize'],
           'registrationDeadlineDate': data['registrationDeadlineDate'],
           'registrationDeadlineTime': data['registrationDeadlineTime'],
-          'isPaid': data['isPaid'] ?? false,
-          'eventFee': data['eventFee'],
-          'upiId': data['upiId'],
           'createdAt': FieldValue.serverTimestamp(),
         };
 
         if (existingEvents.docs.isNotEmpty) {
-          // Update existing event
           await existingEvents.docs.first.reference.update(eventPayload);
         } else {
-          // Add new event
           await FirebaseFirestore.instance.collection('events').add(eventPayload);
         }
 
@@ -297,7 +350,6 @@ class _ApprovalCard extends StatelessWidget {
           );
         }
 
-        // 3. Send Notification to Club Coordinator
         await FirebaseFirestore.instance
             .collection('clubs')
             .doc(clubId)
@@ -322,87 +374,98 @@ class _ApprovalCard extends StatelessWidget {
 
   Future<void> _showRejectDialog(BuildContext context) async {
     final reasonController = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Reject Request'),
-        content: TextField(
-          controller: reasonController,
-          decoration: const InputDecoration(
-            labelText: 'Reason for Rejection',
-            hintText: 'e.g., Change not allowed',
+      builder: (ctx) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: AlertDialog(
+          backgroundColor: Theme.of(context).cardColor.withOpacity(0.9),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          title: const Text('Reject Request', style: TextStyle(fontWeight: FontWeight.w900)),
+          content: TextField(
+            controller: reasonController,
+            decoration: InputDecoration(
+              labelText: 'Reason for Rejection',
+              filled: true,
+              fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              prefixIcon: const Icon(Icons.error_outline_rounded),
+            ),
+            maxLines: 3,
           ),
-          maxLines: 3,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent, 
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                if (reasonController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please provide a reason')),
+                  );
+                  return;
+                }
+
+                final String? requestedStatus = data['requestedStatus'];
+
+                if (requestedStatus != null) {
+                  await FirebaseFirestore.instance
+                      .collection('clubs')
+                      .doc(clubId)
+                      .collection('programs')
+                      .doc(programId)
+                      .update({
+                    'status': 'approved',
+                    'requestedStatus': FieldValue.delete(),
+                    'rejectionReason': 'Status change to $requestedStatus rejected: ${reasonController.text.trim()}',
+                    'rejectedAt': FieldValue.serverTimestamp(),
+                  });
+                } else {
+                  await FirebaseFirestore.instance
+                      .collection('clubs')
+                      .doc(clubId)
+                      .collection('programs')
+                      .doc(programId)
+                      .update({
+                    'status': 'rejected',
+                    'rejectionReason': reasonController.text.trim(),
+                    'rejectedAt': FieldValue.serverTimestamp(),
+                  });
+                }
+
+                if (context.mounted) {
+                  Navigator.pop(ctx); 
+                  Navigator.pop(context); 
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Request Rejected')),
+                  );
+                  onProcessed();
+                }
+
+                await FirebaseFirestore.instance
+                    .collection('clubs')
+                    .doc(clubId)
+                    .collection('notifications')
+                    .add({
+                  'title': 'Request Rejected',
+                  'message': 'Your request for "${data['name']}" was rejected. Reason: ${reasonController.text.trim()}',
+                  'timestamp': FieldValue.serverTimestamp(),
+                  'type': 'rejection',
+                  'read': false,
+                });
+              },
+              child: const Text('Reject'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            onPressed: () async {
-              if (reasonController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please provide a reason')),
-                );
-                return;
-              }
-
-              final String? requestedStatus = data['requestedStatus'];
-
-              if (requestedStatus != null) {
-                // Rejecting a status change: Revert to previous status
-                await FirebaseFirestore.instance
-                    .collection('clubs')
-                    .doc(clubId)
-                    .collection('programs')
-                    .doc(programId)
-                    .update({
-                  'status': 'approved', // Revert from pending
-                  'requestedStatus': FieldValue.delete(),
-                  'rejectionReason': 'Status change to $requestedStatus rejected: ${reasonController.text.trim()}',
-                  'rejectedAt': FieldValue.serverTimestamp(),
-                });
-              } else {
-                // Rejecting a new program
-                await FirebaseFirestore.instance
-                    .collection('clubs')
-                    .doc(clubId)
-                    .collection('programs')
-                    .doc(programId)
-                    .update({
-                  'status': 'rejected',
-                  'rejectionReason': reasonController.text.trim(),
-                  'rejectedAt': FieldValue.serverTimestamp(),
-                });
-              }
-
-              if (context.mounted) {
-                Navigator.pop(ctx); // Close dialog
-                Navigator.pop(context); // Redirect to Dashboard
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Request Rejected and returned to dashboard')),
-                );
-                onProcessed();
-              }
-
-              // Send Notification to Club Coordinator
-              await FirebaseFirestore.instance
-                  .collection('clubs')
-                  .doc(clubId)
-                  .collection('notifications')
-                  .add({
-                'title': 'Request Rejected',
-                'message': 'Your request for "${data['name']}" was rejected. Reason: ${reasonController.text.trim()}',
-                'timestamp': FieldValue.serverTimestamp(),
-                'type': 'rejection',
-                'read': false,
-              });
-            },
-            child: const Text('Reject'),
-          ),
-        ],
       ),
     );
   }
@@ -411,18 +474,12 @@ class _ApprovalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String? requestedStatus = data['requestedStatus'];
     final bool isStatusChange = requestedStatus != null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: isStatusChange ? 4 : 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isStatusChange
-            ? BorderSide(color: Colors.orange.shade300, width: 2)
-            : BorderSide.none,
-      ),
+    return GlassCard(
+      borderRadius: 24,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -430,31 +487,23 @@ class _ApprovalCard extends StatelessWidget {
               Container(
                 width: double.infinity,
                 height: 180,
-                margin: const EdgeInsets.only(bottom: 12),
+                margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(16),
+                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(16),
                   child: data['posterLink'].toString().startsWith('data:image') ? Image.memory(
                     base64Decode(data['posterLink'].toString().split(',').last),
                     fit: BoxFit.cover,
                     width: double.infinity,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Center(
-                        child: Icon(Icons.broken_image, color: Colors.grey, size: 40),
-                      );
-                    },
+                    errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.broken_image_rounded, color: Colors.grey, size: 40)),
                   ) : Image.network(
                     _convertGoogleDriveLink(data['posterLink']),
                     fit: BoxFit.cover,
                     width: double.infinity,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Center(
-                        child: Icon(Icons.broken_image, color: Colors.grey, size: 40),
-                      );
-                    },
+                    errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.broken_image_rounded, color: Colors.grey, size: 40)),
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return const Center(child: CircularProgressIndicator());
@@ -465,24 +514,21 @@ class _ApprovalCard extends StatelessWidget {
             if (isStatusChange)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.orangeAccent.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orangeAccent.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, color: Colors.orange, size: 20),
-                    const SizedBox(width: 8),
+                    const Icon(Icons.info_outline_rounded, color: Colors.orangeAccent, size: 20),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         "STATUS CHANGE REQUEST: ${requestedStatus.toUpperCase()}",
-                        style: TextStyle(
-                          color: Colors.orange.shade900,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
+                        style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 0.5),
                       ),
                     ),
                   ],
@@ -494,72 +540,92 @@ class _ApprovalCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     data['name'] ?? 'Unnamed Program',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5, color: isDark ? Colors.white : Colors.black87),
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: (data['visibility'] ?? 'college') == 'public' ? Colors.green[50] : Colors.blue[50],
-                    borderRadius: BorderRadius.circular(4),
+                    color: (data['visibility'] ?? 'college') == 'public' ? Colors.green.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: (data['visibility'] ?? 'college') == 'public' ? Colors.green : Colors.blue),
                   ),
                   child: Text(
                     (data['visibility'] ?? 'college').toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: (data['visibility'] ?? 'college') == 'public' ? Colors.green[900] : Colors.blue[900],
-                    ),
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: (data['visibility'] ?? 'college') == 'public' ? Colors.green : Colors.blue),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(data['description'] ?? '', style: const TextStyle(color: Colors.grey)),
-            const Divider(height: 24),
-            _detailRow(Icons.calendar_today, 'Date', data['date']),
-            _detailRow(Icons.schedule, 'Time', data['time']),
-            _detailRow(Icons.location_on, 'Venue', data['location']),
-            _detailRow(Icons.school, 'College', data['college']),
-            _detailRow(Icons.person, 'Coordinator', data['coordinatorName']),
-            _detailRow(Icons.category, 'Category', data['category'] ?? ''),
-            _detailRow(Icons.event, 'Mode', data['eventMode'] ?? ''),
-            // Prize details
-            if ((data['hasPrizePool'] ?? false) == true) ...[
-              _detailRow(Icons.emoji_events, 'Prize', data['prizeAmount']?.toString() ?? 'N/A'),
-            ],
-            // Volunteer details
-            if ((data['requiresVolunteers'] ?? false) == true) ...[
-              _detailRow(Icons.volunteer_activism, 'Volunteers Needed', (data['volunteerCount'] ?? '').toString()),
-              if ((data['volunteerRole'] ?? '').toString().isNotEmpty) _detailRow(Icons.list, 'Volunteer Role', data['volunteerRole']?.toString()),
-            ],
-            // Team event details
-            if ((data['isTeamEvent'] ?? false) == true) ...[
-              _detailRow(Icons.groups, 'Team Size', (data['teamSize'] ?? '').toString()),
-            ],
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            Text(
+              data['description'] ?? '', 
+              style: TextStyle(color: isDark ? Colors.white60 : Colors.black54, fontSize: 13, height: 1.4),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const Divider(height: 32, thickness: 0.5),
+            Wrap(
+              spacing: 16,
+              runSpacing: 12,
+              children: [
+                _detailChip(Icons.calendar_today_rounded, data['date']),
+                _detailChip(Icons.schedule_rounded, data['time']),
+                _detailChip(Icons.location_on_rounded, data['location']),
+                _detailChip(Icons.category_rounded, data['category']),
+                _detailChip(Icons.event_seat_rounded, data['eventMode']),
+              ],
+            ),
+            const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => _showRejectDialog(context),
-                    icon: const Icon(Icons.close, color: Colors.red),
-                    label: const Text('Reject', style: TextStyle(color: Colors.red)),
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    label: const Text('Reject', style: TextStyle(fontWeight: FontWeight.w900)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                      side: const BorderSide(color: Colors.redAccent),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _approveEvent(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isStatusChange ? Colors.orange : Colors.green,
-                      foregroundColor: Colors.white,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          colors: isStatusChange 
+                              ? [const Color(0xFFF59E0B), const Color(0xFFD97706)] 
+                              : [const Color(0xFF10B981), const Color(0xFF059669)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (isStatusChange ? const Color(0xFFF59E0B) : const Color(0xFF10B981)).withOpacity(0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton.icon(
+                        onPressed: () => _approveEvent(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          foregroundColor: Colors.white,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        icon: const Icon(Icons.check_rounded, size: 20),
+                        label: Text(isStatusChange ? 'APPROVE UPDATE' : 'APPROVE EVENT', style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                      ),
                     ),
-                    icon: const Icon(Icons.check),
-                    label: Text(isStatusChange ? 'Approve Update' : 'Approve Event'),
                   ),
-                ),
               ],
             ),
           ],
@@ -568,39 +634,28 @@ class _ApprovalCard extends StatelessWidget {
     );
   }
 
-  Widget _detailRow(IconData icon, String label, String? value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: Colors.grey),
-          const SizedBox(width: 8),
-          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          Expanded(child: Text(value ?? 'N/A', style: const TextStyle(fontSize: 13))),
-        ],
-      ),
+  Widget _detailChip(IconData icon, String? value) {
+    if (value == null || value.isEmpty) return const SizedBox.shrink();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: Colors.blueAccent),
+        const SizedBox(width: 6),
+        Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+      ],
     );
   }
 
   String _convertGoogleDriveLink(String? link) {
     if (link == null || link.isEmpty) return '';
-
-    if (link.contains('.jpg') || link.contains('.jpeg') || link.contains('.png') || link.contains('.gif') || link.contains('.webp')) {
-      return link;
-    }
-
-    if (link.contains('drive.google.com/uc?export=view')) {
-      return link;
-    }
-
+    if (link.contains('.jpg') || link.contains('.jpeg') || link.contains('.png') || link.contains('.gif') || link.contains('.webp')) return link;
+    if (link.contains('drive.google.com/uc?export=view')) return link;
     final regex = RegExp(r'(?:drive\.google\.com/file/d/|id=)([a-zA-Z0-9-_]+)');
     final match = regex.firstMatch(link);
-
     if (match != null) {
       final fileId = match.group(1);
       return 'https://drive.google.com/uc?export=view&id=$fileId';
     }
-
     return link;
   }
 }

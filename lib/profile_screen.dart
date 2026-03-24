@@ -701,45 +701,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
-        // About Section
-        const Text(
-          "About",
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          (userData?['about']?.toString().isNotEmpty == true)
-              ? userData!['about'].toString()
-              : "No bio provided yet. Tap edit to tell others about yourself!",
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white70 : Colors.black87,
-            height: 1.5,
+        if (userData?['role'] == 'Student') ...[
+          // About Section
+          const Text(
+            "About",
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
           ),
-        ),
-        const SizedBox(height: 32),
+          const SizedBox(height: 12),
+          Text(
+            (userData?['about']?.toString().isNotEmpty == true)
+                ? userData!['about'].toString()
+                : "No bio provided yet. Tap edit to tell others about yourself!",
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white70 : Colors.black87,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 32),
 
-        // Interests Section
-        const Text(
-          "Interests",
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
-        ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: (userData?['interests'] is List && (userData?['interests'] as List).isNotEmpty)
-              ? (userData?['interests'] as List).map<Widget>((interest) {
-                  return _interestChip(interest.toString(), Icons.stars_rounded, _getColorForInterest(interest.toString()));
-                }).toList()
-              : [
-                  _interestChip("Coding", Icons.code_rounded, Colors.green),
-                  _interestChip("Travel", Icons.flight_takeoff_rounded, Colors.blue),
-                  _interestChip("Design", Icons.palette_rounded, Colors.orange),
-                ],
-        ),
-        const SizedBox(height: 32),
+          // Interests Section
+          const Text(
+            "Interests",
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: (userData?['interests'] is List && (userData?['interests'] as List).isNotEmpty)
+                ? (userData?['interests'] as List).map<Widget>((interest) {
+                    return _interestChip(interest.toString(), Icons.stars_rounded, _getColorForInterest(interest.toString()));
+                  }).toList()
+                : [
+                    _interestChip("Coding", Icons.code_rounded, Colors.green),
+                    _interestChip("Travel", Icons.flight_takeoff_rounded, Colors.blue),
+                    _interestChip("Design", Icons.palette_rounded, Colors.orange),
+                  ],
+          ),
+          const SizedBox(height: 32),
+        ],
 
         // Quick Stats
         Row(
@@ -770,58 +772,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
 
         // Profile Strength (Matching imitation)
-        if (isMe) _buildProfileStrengthBar(theme),
+
         
         const SizedBox(height: 32),
       ],
     );
   }
 
-  Widget _buildProfileStrengthBar(ThemeData theme) {
-    final isDark = theme.brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.pink.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.pink.withOpacity(0.1)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                child: const Icon(Icons.flash_on_rounded, color: Colors.amber, size: 16),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  "You have 80% profile completion",
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white70 : Colors.black87,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: 0.8,
-              backgroundColor: Colors.pink.withOpacity(0.1),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.pink),
-              minHeight: 8,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _interestChip(String label, IconData icon, Color color) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1045,10 +1002,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               keyboardType: TextInputType.phone,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)]),
             const SizedBox(height: 18),
-            _buildModernEditableField(_aboutController, 'About Me', Icons.description_rounded, theme, maxLines: 4),
-            const SizedBox(height: 18),
-            _buildModernEditableField(_interestsController, 'Interests (comma separated)', Icons.interests_rounded, theme),
-            
+            if (userData?['role'] == 'Student') ...[
+              _buildModernEditableField(_aboutController, 'About Me', Icons.description_rounded, theme, maxLines: 4),
+              const SizedBox(height: 18),
+              _buildModernEditableField(_interestsController, 'Interests (comma separated)', Icons.interests_rounded, theme),
+              const SizedBox(height: 18),
+            ],
             if (userData?['role'] == 'Student') ...[
               const SizedBox(height: 32),
               const Divider(height: 1, color: Colors.white10),

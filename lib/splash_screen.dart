@@ -86,7 +86,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   ),
                   padding: const EdgeInsets.all(25),
                   child: Image.asset(
-                    'assets/images/app_logo.png',
+                    'assets/images/campusly_new_icon.png',
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) => const Icon(
                       Icons.school_rounded,

@@ -18,156 +18,173 @@ class WelcomeScreen extends StatelessWidget {
           const VibrantBackground(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _TopBadge(
-                    isDark: isDark,
-                  ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.2, end: 0, curve: Curves.easeOutCubic),
-                  const SizedBox(height: 24),
-                  Text(
-                        'Your College,\nMade Simple.',
-                        style: theme.textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          height: 1.1,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      )
+                  _TopBadge(isDark: isDark)
                       .animate()
-                      .fadeIn(delay: 200.ms, duration: 600.ms)
-                      .slideX(begin: -0.1, end: 0, curve: Curves.easeOutCubic),
-                  const SizedBox(height: 12),
+                      .fadeIn(duration: 800.ms)
+                      .slideY(begin: -0.3, curve: Curves.easeOutQuart),
+                  const SizedBox(height: 32),
                   Text(
-                    'Just a little app to help you find events, join clubs, and connect with folks on campus.',
+                    'Your College Life,\nElevated.',
+                    style: theme.textTheme.displayMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      height: 1.05,
+                      letterSpacing: -1.5,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  )
+                      .animate()
+                      .fadeIn(delay: 200.ms, duration: 800.ms)
+                      .slideX(begin: -0.1),
+                  const SizedBox(height: 16),
+                  Text(
+                    'The ultimate ecosystem for campus events, club engagement, and professional networking.',
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      height: 1.4,
-                      color: theme.colorScheme.onSurface.withOpacity(0.8),
+                      height: 1.5,
+                      color: (isDark ? Colors.white : Colors.black).withOpacity(0.6),
+                      fontWeight: FontWeight.w500,
                     ),
-                  ).animate().fadeIn(delay: 400.ms, duration: 600.ms),
-                  const SizedBox(height: 28),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF2563EB), Color(0xFF06B6D4)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(22),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x332563EB),
-                          blurRadius: 20,
-                          offset: Offset(0, 10),
-                        ),
-                      ],
-                    ),
+                  ).animate().fadeIn(delay: 400.ms, duration: 800.ms),
+                  const SizedBox(height: 40),
+                  
+                  // Premium Modern Highlight Card
+                  GlassCard(
+                    borderRadius: 32,
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.coffee_rounded, color: Colors.white, size: 28)
-                                .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                                .scale(begin: const Offset(1, 1), end: const Offset(1.15, 1.15), duration: 2.seconds, curve: Curves.easeInOut),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Stay in the loop',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(Icons.flash_on_rounded, color: Colors.blueAccent, size: 28),
+                            ).animate(onPlay: (c) => c.repeat(reverse: true))
+                             .shimmer(duration: 2.seconds, color: Colors.white30),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'STAY EMPOWERED',
+                                    style: TextStyle(
+                                      color: Colors.blueAccent,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 10,
+                                      letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                  const Text(
+                                    'Real-time Engagement',
+                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'See what\'s happening around campus without the noise.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: Colors.white.withOpacity(0.9),
-                            height: 1.3,
-                          ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Experience a seamless connection with everything happening on campus, from technical workshops to cultural festivals.',
+                          style: TextStyle(height: 1.4, fontSize: 13, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
-                  ).animate().fadeIn(delay: 600.ms, duration: 600.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
-                  const SizedBox(height: 20),
-                  const Wrap(
+                  ).animate().fadeIn(delay: 600.ms, duration: 800.ms).slideY(begin: 0.1),
+                  
+                  const SizedBox(height: 24),
+                  
+                  Wrap(
                     spacing: 12,
                     runSpacing: 12,
                     children: [
-                      _HighlightChip(
-                        icon: Icons.search_rounded,
-                        label: 'Find Events',
-                      ),
-                      _HighlightChip(
-                        icon: Icons.people_alt_rounded,
-                        label: 'Meet Clubs',
-                      ),
-                      _HighlightChip(
-                        icon: Icons.chat_bubble_outline_rounded,
-                        label: 'Get Updates',
-                      ),
+                      _HighlightChip(icon: Icons.event_available_rounded, label: 'Smart Events'),
+                      _HighlightChip(icon: Icons.groups_3_rounded, label: 'Dynamic Clubs'),
+                      _HighlightChip(icon: Icons.auto_graph_rounded, label: 'Live Analytics'),
                     ],
-                  ).animate().fadeIn(delay: 800.ms, duration: 600.ms),
+                  ).animate().fadeIn(delay: 800.ms, duration: 800.ms),
+                  
                   const Spacer(),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xE6172233)
-                          : const Color(0xEDFFFFFF),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: isDark
-                            ? Colors.white12
-                            : const Color(0x1A0F172A),
-                      ),
-                    ),
+                  
+                  // Bottom Glass Navigation Card
+                  GlassCard(
+                    borderRadius: 32,
+                    padding: const EdgeInsets.all(28),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          'Ready to log in?',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Ready to begin?',
+                                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Join the high-performance campus network.',
+                                    style: TextStyle(color: (isDark ? Colors.white : Colors.black).withOpacity(0.5), fontSize: 13, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Use your college account to hop right in.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.7),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
+                        const SizedBox(height: 24),
+                        Container(
                           width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const UnifiedLoginScreen(),
+                          height: 60,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF2563EB).withOpacity(0.3),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const UnifiedLoginScreen()),
+                                );
+                              },
+                              child: const Center(
+                                child: Text(
+                                  'LAUNCH CAMPUSLY',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.5,
+                                    fontSize: 15,
+                                  ),
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.login_rounded),
-                            label: const Text('Sign in'),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              )
+                              ),
                             ),
                           ),
-                        ),
+                        ).animate().scale(delay: 1.seconds, duration: 400.ms, curve: Curves.easeOutBack),
                       ],
                     ),
-                  ).animate().fadeIn(delay: 1000.ms, duration: 600.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
+                  ).animate().fadeIn(delay: 900.ms, duration: 800.ms).slideY(begin: 0.2),
                 ],
               ),
             ),
