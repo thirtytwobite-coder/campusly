@@ -602,7 +602,7 @@ class _ApprovalCard extends StatelessWidget {
                     border: Border.all(color: (data['visibility'] ?? 'college') == 'public' ? Colors.green : Colors.blue),
                   ),
                   child: Text(
-                    (data['visibility'] ?? 'college').toUpperCase(),
+                    (data['visibility'] ?? 'college') == 'public' ? 'PUBLIC' : 'COLLEGE ONLY',
                     style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: (data['visibility'] ?? 'college') == 'public' ? Colors.green : Colors.blue),
                   ),
                 ),
@@ -624,7 +624,10 @@ class _ApprovalCard extends StatelessWidget {
                 _detailChip(Icons.schedule_rounded, data['time']),
                 _detailChip(Icons.location_on_rounded, data['location']),
                 _detailChip(Icons.category_rounded, data['category']),
-                _detailChip(Icons.event_seat_rounded, data['eventMode']),
+                _detailChip(Icons.language_rounded, data['eventMode']),
+                _detailChip(Icons.chair_alt_rounded, data['totalSeats'] != null ? '${data['totalSeats']} Seats' : (data['maxSeats'] != null ? '${data['maxSeats']} Seats' : 'N/A Seats')),
+                if (data['registrationDeadlineDate'] != null && data['registrationDeadlineDate'].toString().isNotEmpty)
+                  _detailChip(Icons.timer_off_rounded, 'Deadline: ${data['registrationDeadlineDate']} ${data['registrationDeadlineTime'] ?? ''}'),
               ],
             ),
             const SizedBox(height: 24),

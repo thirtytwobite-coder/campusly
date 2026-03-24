@@ -34,8 +34,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _semesterController;
   late TextEditingController _ktuIdController;
   late TextEditingController _profilePicController;
-  late TextEditingController _aboutController;
-  late TextEditingController _interestsController;
   final _localAuth = LocalAuthentication();
 
   @override
@@ -103,12 +101,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _semesterController = TextEditingController(text: userData?['semester'] ?? '');
     _ktuIdController = TextEditingController(text: userData?['ktuId'] ?? '');
     _profilePicController = TextEditingController(text: userData?['profilePic'] ?? '');
-    _aboutController = TextEditingController(text: userData?['about'] ?? '');
-    _interestsController = TextEditingController(
-      text: (userData?['interests'] is List) 
-          ? (userData?['interests'] as List).join(', ') 
-          : (userData?['interests']?.toString() ?? '')
-    );
   }
 
   Future<void> _pickImage() async {
@@ -150,8 +142,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'name': _nameController.text.trim(),
         'phone': phone,
         'profilePic': _profilePicController.text.trim(),
-        'about': _aboutController.text.trim(),
-        'interests': _interestsController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
       };
 
       if (userData?['role'] == 'Student') {
@@ -234,8 +224,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _semesterController.dispose();
     _ktuIdController.dispose();
     _profilePicController.dispose();
-    _aboutController.dispose();
-    _interestsController.dispose();
     super.dispose();
   }
 
@@ -700,55 +688,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
-        if (userData?['role'] == 'Student') ...[
-          // About Section
-          const Text(
-            "About",
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            (userData?['about']?.toString().isNotEmpty == true)
-                ? userData!['about'].toString()
-                : "No bio provided yet. Tap edit to tell others about yourself!",
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white70 : Colors.black87,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 32),
-
-          // Interests Section
-          const Text(
-            "Interests",
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: (userData?['interests'] is List && (userData?['interests'] as List).isNotEmpty)
-                ? (userData?['interests'] as List).map<Widget>((interest) {
-                    return _interestChip(interest.toString(), Icons.stars_rounded, _getColorForInterest(interest.toString()));
-                  }).toList()
-                : [
-                    _interestChip("Coding", Icons.code_rounded, Colors.green),
-                    _interestChip("Travel", Icons.flight_takeoff_rounded, Colors.blue),
-                    _interestChip("Design", Icons.palette_rounded, Colors.orange),
-                  ],
-          ),
-          const SizedBox(height: 32),
-        ],
 
         // Quick Stats
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _statItem(Icons.school_rounded, 'Year', userData?['year']?.toString() ?? 'N/A', Colors.indigo),
             _statItem(Icons.history_rounded, 'Sem', userData?['semester']?.toString() ?? 'N/A', Colors.teal),
-            _statItem(Icons.stars_rounded, 'Events', '12+', Colors.amber),
           ],
         ),
         const SizedBox(height: 40),
@@ -1001,12 +947,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               keyboardType: TextInputType.phone,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)]),
             const SizedBox(height: 18),
-            if (userData?['role'] == 'Student') ...[
-              _buildModernEditableField(_aboutController, 'About Me', Icons.description_rounded, theme, maxLines: 4),
-              const SizedBox(height: 18),
-              _buildModernEditableField(_interestsController, 'Interests (comma separated)', Icons.interests_rounded, theme),
-              const SizedBox(height: 18),
-            ],
             if (userData?['role'] == 'Student') ...[
               const SizedBox(height: 32),
               const Divider(height: 1, color: Colors.white10),

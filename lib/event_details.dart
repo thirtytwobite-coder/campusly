@@ -217,7 +217,7 @@ class EventDetailsScreen extends StatelessWidget {
                                 ],
                               ),
                               const SizedBox(height: 24),
-                              _metricsGridDecorated(theme, date, time, venue, eventMode, isUnlimited, remainingSeats),
+                              _metricsGridDecorated(theme, date, time, venue, eventMode, isUnlimited, remainingSeats, totalSeats, data['registrationDeadlineDate'], data['registrationDeadlineTime']),
                               
                               if (manualWinners != null && manualWinners.values.any((v) => v.toString().isNotEmpty)) ...[
                                 const SizedBox(height: 32),
@@ -374,7 +374,8 @@ class EventDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _metricsGridDecorated(ThemeData theme, String date, String time, String venue, String mode, bool isUnlimited, int remainingSeats) {
+  Widget _metricsGridDecorated(ThemeData theme, String date, String time, String venue, String mode, bool isUnlimited, int remainingSeats, int totalSeats, String? deadlineDate, String? deadlineTime) {
+    bool hasDeadline = deadlineDate != null && deadlineDate.isNotEmpty;
     return Column(
       children: [
         Row(
@@ -397,7 +398,10 @@ class EventDetailsScreen extends StatelessWidget {
           children: [
             _metricItemVibrant(theme, Icons.chair_alt_rounded, "SEATS AVAILABLE", isUnlimited ? "Unlimited" : "$remainingSeats / $totalSeats", Colors.purple.shade400),
             const SizedBox(width: 12),
-            const Expanded(child: SizedBox()),
+            if (hasDeadline)
+              _metricItemVibrant(theme, Icons.timer_off_rounded, "DEADLINE", "$deadlineDate ${deadlineTime ?? ''}".trim(), Colors.teal)
+            else
+              const Expanded(child: SizedBox()),
           ],
         ),
       ],

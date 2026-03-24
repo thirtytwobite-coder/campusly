@@ -1722,6 +1722,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         'filledSeats': 0,
         'isTeamEvent': isTeamEvent,
         'teamSize': isTeamEvent ? int.tryParse(teamSize.trim()) ?? 0 : null,
+        'registrationDeadlineDate': deadlineDate,
         'registrationDeadlineTime': deadlineTime,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),

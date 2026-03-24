@@ -1410,7 +1410,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                     else if (isEventFull)
                                       _eventTag("FULL", bgColor: Colors.red.withOpacity(0.1), fgColor: Colors.red.shade700)
                                     else if (!isUnlimited)
-                                      _eventTag("SEATS: $remainingSeats", bgColor: Colors.blue.withOpacity(0.1), fgColor: Colors.blue.shade700)
+                                      _eventTag("$remainingSeats / $totalSeats SEATS", bgColor: Colors.blue.withOpacity(0.1), fgColor: Colors.blue.shade700)
                                     else
                                       _eventTag("OPEN", bgColor: Colors.blue.withOpacity(0.1), fgColor: Colors.blue.shade700),
                                     
@@ -1418,6 +1418,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                       _eventTag("Team", bgColor: Colors.purple.withOpacity(0.1), fgColor: Colors.purple.shade700),
                                     if (prize.isNotEmpty && prize != "0")
                                       _eventTag("Rs.$prize", bgColor: Colors.amber.withOpacity(0.1), fgColor: Colors.amber.shade900),
+                                    if (!isRegistrationClosed && deadlineDateStr != null && deadlineDateStr.isNotEmpty)
+                                      _eventTag("Deadline: $deadlineDateStr", bgColor: Colors.teal.withOpacity(0.1), fgColor: Colors.teal.shade700),
                                   ],
                                 ),
                               ],
