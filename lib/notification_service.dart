@@ -7,13 +7,34 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
-    'campusly_notifications_id',
+  // Channel IDs
+  static const String infoChannelId = 'campusly_info_channel';
+  static const String alertChannelId = 'campusly_alert_channel';
+  static const String successChannelId = 'campusly_success_channel';
+
+  static const AndroidNotificationChannel _infoChannel = AndroidNotificationChannel(
+    infoChannelId,
+    'Campusly Info',
+    description: 'Standard system updates and information',
+    importance: Importance.defaultImportance,
+    playSound: true,
+  );
+
+  static const AndroidNotificationChannel _alertChannel = AndroidNotificationChannel(
+    alertChannelId,
     'Campusly Alerts',
-    description: 'Notifications for events and team invitations',
+    description: 'Critical notifications and urgent updates',
     importance: Importance.max,
     playSound: true,
     enableVibration: true,
+  );
+
+  static const AndroidNotificationChannel _successChannel = AndroidNotificationChannel(
+    successChannelId,
+    'Campusly Success',
+    description: 'Confirmations and successful operations',
+    importance: Importance.low,
+    playSound: true,
   );
 
   static Future<void> init({GlobalKey<NavigatorState>? navigatorKey}) async {
@@ -23,11 +44,13 @@ class NotificationService {
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
 
-    // Create the channel explicitly for Android 8.0+
-    await _notificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(_channel);
+    // Create all channels explicitly for Android 8.0+
+    final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    
+    await androidPlugin?.createNotificationChannel(_infoChannel);
+    await androidPlugin?.createNotificationChannel(_alertChannel);
+    await androidPlugin?.createNotificationChannel(_successChannel);
 
     await _notificationsPlugin.initialize(
       initializationSettings,
@@ -48,23 +71,34 @@ class NotificationService {
     );
   }
 
+  static Future<bool> requestPermission() async {
+    final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    return await androidPlugin?.requestNotificationsPermission() ?? false;
+  }
+
   static Future<void> showNotification({
     required int id,
     required String title,
     required String body,
     String? payload,
+    String channelId = infoChannelId,
   }) async {
+    // 🔹 Ensure MAX importance for ALL channels so they pop-up ("heads-up") on any device
+    const importance = Importance.max;
+    const priority = Priority.high;
+
     await _notificationsPlugin.show(
       id,
       title,
       body,
       NotificationDetails(
         android: AndroidNotificationDetails(
-          _channel.id,
-          _channel.name,
-          channelDescription: _channel.description,
-          importance: Importance.max,
-          priority: Priority.high,
+          channelId,
+          channelId == alertChannelId ? _alertChannel.name : (channelId == successChannelId ? _successChannel.name : _infoChannel.name),
+          channelDescription: channelId == alertChannelId ? _alertChannel.description : (channelId == successChannelId ? _successChannel.description : _infoChannel.description),
+          importance: importance,
+          priority: priority,
           ticker: 'ticker',
           icon: '@mipmap/ic_launcher',
         ),

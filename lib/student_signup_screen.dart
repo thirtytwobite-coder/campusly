@@ -14,13 +14,57 @@ class StudentSignUpScreen extends StatefulWidget {
 class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
-  final _dept = TextEditingController();
+  
+  String _selectedDept = 'CS';
+  final _deptOther = TextEditingController();
+  final _collegeCode = TextEditingController();
+  final _admissionYear = TextEditingController();
+  final _rollNumber = TextEditingController();
+
   final _year = TextEditingController();
   final _semester = TextEditingController();
   final _ktuId = TextEditingController();
   final _email = TextEditingController();
   final _pass = TextEditingController();
   String? _selectedCollege;
+
+  @override
+  void initState() {
+    super.initState();
+    _collegeCode.addListener(_generateKtuId);
+    _admissionYear.addListener(_generateKtuId);
+    _deptOther.addListener(_generateKtuId);
+    _rollNumber.addListener(_generateKtuId);
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _phone.dispose();
+    _deptOther.dispose();
+    _collegeCode.dispose();
+    _admissionYear.dispose();
+    _rollNumber.dispose();
+    _year.dispose();
+    _semester.dispose();
+    _ktuId.dispose();
+    _email.dispose();
+    _pass.dispose();
+    super.dispose();
+  }
+
+  void _generateKtuId() {
+    String cc = _collegeCode.text.trim().toUpperCase();
+    String year = _admissionYear.text.trim();
+    String dept = _selectedDept == 'Other' ? _deptOther.text.trim().toUpperCase() : _selectedDept;
+    String roll = _rollNumber.text.trim();
+
+    if (cc.isNotEmpty && year.isNotEmpty && dept.isNotEmpty && roll.isNotEmpty) {
+      _ktuId.text = "${cc}${year}${dept}0${roll}";
+    } else {
+      _ktuId.text = "";
+    }
+  }
 
   bool _isLoading = false;
   bool _isPasswordObscured = true;
@@ -48,7 +92,8 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
       return;
     }
 
-    if (_dept.text.trim().isEmpty) {
+    String actualDept = _selectedDept == 'Other' ? _deptOther.text.trim().toUpperCase() : _selectedDept;
+    if (actualDept.isEmpty) {
       _showError("Department is required");
       return;
     }
@@ -65,14 +110,8 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
       return;
     }
 
-    String ktuId = _ktuId.text.trim().toUpperCase();
-    if (ktuId.isEmpty) {
-      _showError("KTU ID is required");
-      return;
-    }
-
-    if (!_isValidKtuId(ktuId)) {
-      _showError("Invalid KTU ID format (Example: IDK23IT040 or LIDK23IT040)");
+    if (_ktuId.text.trim().isEmpty) {
+      _showError("Registration ID (KTU ID) cannot be generated. Please fill all related fields.");
       return;
     }
 
@@ -104,10 +143,13 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
       await FirebaseFirestore.instance.collection('student').doc(u.user!.uid).set({
         'name': _name.text.trim(),
         'phone': phone,
-        'department': _dept.text.trim(),
+        'department': actualDept,
+        'collegeCode': _collegeCode.text.trim().toUpperCase(),
+        'admissionYear': _admissionYear.text.trim(),
+        'rollNumber': _rollNumber.text.trim(),
         'year': _year.text.trim(),
         'semester': _semester.text.trim(),
-        'ktuId': ktuId,
+        'ktuId': _ktuId.text.trim().toUpperCase(),
         'email': _email.text.trim(),
         'college': _selectedCollege,
         'role': 'Student',
@@ -144,9 +186,7 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
   }
 
   bool _isValidKtuId(String ktuId) {
-    // Optional L, then IDK, then year 22-25, then dept, then constant 0, then 2 digits 00-99
-    final ktuIdRegex = RegExp(r'^L?IDK(2[2-5])(CSE|IT|ME|EC|EEE|AI)0\d{2}$');
-    return ktuIdRegex.hasMatch(ktuId);
+    return ktuId.isNotEmpty;
   }
 
   @override
@@ -164,15 +204,62 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
                 keyboard: TextInputType.phone,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)]),
             _buildCollegeDropdown(),
-            _buildTextField(_dept, "Department", Icons.school),
-            _buildTextField(_year, "Year (1-4)", Icons.calendar_today,
+            
+            _buildTextField(_collegeCode, "College Code (e.g. IDK)", Icons.account_balance,
+                inputFormatters: [UpperCaseTextFormatter(), LengthLimitingTextInputFormatter(4)]),
+            _buildTextField(_admissionYear, "Admission Year (e.g. 23)", Icons.date_range,
+                keyboard: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(2)]),
+            
+            Padding(
+              padding: const EdgeInsets.only(bottom: 15),
+              child: DropdownButtonFormField<String>(
+                value: _selectedDept,
+                decoration: const InputDecoration(
+                  labelText: 'Department',
+                  prefixIcon: Icon(Icons.school),
+                ),
+                items: ['CS', 'IT', 'ECE', 'EEE', 'MEC', 'Other'].map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (newValue) {
+                  setState(() {
+                    _selectedDept = newValue!;
+                    _generateKtuId();
+                  });
+                },
+              ),
+            ),
+            if (_selectedDept == 'Other')
+              _buildTextField(_deptOther, "Specify Department", Icons.edit),
+              
+            _buildTextField(_rollNumber, "Roll Number (Last 2 digits)", Icons.format_list_numbered,
+                keyboard: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(2)]),
+
+            _buildTextField(_year, "Current Study Year (1-4)", Icons.calendar_today,
                 keyboard: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)]),
-            _buildTextField(_semester, "Semester (1-8)", Icons.format_list_numbered,
+            _buildTextField(_semester, "Current Semester (1-8)", Icons.format_list_numbered,
                 keyboard: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)]),
-            _buildTextField(_ktuId, "KTU ID (e.g. IDK23IT040)", Icons.badge,
-                inputFormatters: [UpperCaseTextFormatter()]),
+                
+            Padding(
+              padding: const EdgeInsets.only(bottom: 15),
+              child: TextField(
+                controller: _ktuId,
+                readOnly: true,
+                decoration: InputDecoration(
+                  labelText: "Generated Registration ID",
+                  prefixIcon: const Icon(Icons.badge),
+                  filled: true,
+                  fillColor: Colors.grey.withOpacity(0.1),
+                ),
+              ),
+            ),
             _buildTextField(_email, "Email", Icons.email,
                 keyboard: TextInputType.emailAddress),
             _buildTextField(_pass, "Password", Icons.lock,

@@ -255,6 +255,110 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
     }
   }
 
+  Future<void> _generateEventReport() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text("Generating Report...", style: TextStyle(fontWeight: FontWeight.bold))
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final registrationsSnap = await FirebaseFirestore.instance
+          .collection('registrations')
+          .where('eventId', isEqualTo: widget.eventId)
+          .get();
+
+      final eventDoc = await FirebaseFirestore.instance.collection('events').doc(widget.eventId).get();
+      final eventData = eventDoc.data() ?? {};
+      final eventDate = eventData['date'] ?? "TBD";
+
+      final pdf = pw.Document();
+
+      final headers = ['Name', 'KTU ID', 'College', 'Status'];
+      final data = registrationsSnap.docs.map((doc) {
+        final d = doc.data();
+        final name = d['studentName']?.toString() ?? 'N/A';
+        final ktuId = d['ktuId']?.toString() ?? 'N/A';
+        final college = d['college']?.toString() ?? 'N/A';
+        
+        final rank = _getRankByName(name);
+        String status = 'Registered';
+        if (rank != null) {
+          status = "Winner ($rank)";
+        } else if (d['participated'] == true) {
+          status = 'Participated';
+        }
+        
+        return [name, ktuId, college, status];
+      }).toList();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          header: (pw.Context context) => pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(widget.eventName.toUpperCase(), style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 4),
+              pw.Text("Date: $eventDate", style: const pw.TextStyle(fontSize: 12)),
+              pw.SizedBox(height: 8),
+              pw.Text("PARTICIPATION & WINNERS REPORT", style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
+              pw.Divider(thickness: 1),
+              pw.SizedBox(height: 16),
+            ],
+          ),
+          footer: (pw.Context context) => pw.Container(
+            alignment: pw.Alignment.centerRight,
+            margin: const pw.EdgeInsets.only(top: 16),
+            child: pw.Text('Page ${context.pageNumber} of ${context.pagesCount}', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
+          ),
+          build: (pw.Context context) => [
+            pw.TableHelper.fromTextArray(
+              headers: headers,
+              data: data,
+              border: pw.TableBorder.all(color: PdfColors.grey300),
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+              cellHeight: 30,
+              cellAlignments: {
+                0: pw.Alignment.centerLeft,
+                1: pw.Alignment.center,
+                2: pw.Alignment.centerLeft,
+                3: pw.Alignment.center,
+              },
+            ),
+          ],
+        ),
+      );
+
+      Navigator.pop(context);
+      final output = await getTemporaryDirectory();
+      final file = File("${output.path}/Report_${widget.eventName.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.pdf");
+      await file.writeAsBytes(await pdf.save());
+      await OpenFile.open(file.path);
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error generating report: $e")));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -289,6 +393,11 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_rounded),
+            tooltip: "Export Report",
+            onPressed: _generateEventReport,
+          ),
           if (!widget.isFacultyView)
             Container(
               margin: const EdgeInsets.only(right: 8),

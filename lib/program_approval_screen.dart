@@ -104,6 +104,20 @@ class _ProgramApprovalScreenState extends State<ProgramApprovalScreen> {
             });
           }
 
+          // 🔹 P2P Notification Trigger for Rejection (Bulk)
+          final coordinatorId = data['coordinatorId'];
+          if (coordinatorId != null) {
+            final pushRef = FirebaseFirestore.instance.collection('push_notifications').doc();
+            batch.set(pushRef, {
+              'title': 'Request Rejected',
+              'body': 'Your request for "${data['name']}" was rejected.',
+              'targetUid': coordinatorId,
+              'status': 'pending',
+              'createdAt': FieldValue.serverTimestamp(),
+              'data': {'type': 'REJECTION', 'reason': reason},
+            });
+          }
+
           // Send individual notifications
           final notifyRef = FirebaseFirestore.instance
               .collection('clubs')
@@ -250,6 +264,7 @@ class _ApprovalCard extends StatelessWidget {
   Future<void> _approveEvent(BuildContext context) async {
     try {
       final String? requestedStatus = data['requestedStatus'];
+      final bool isStatusChange = requestedStatus != null;
 
       if (requestedStatus != null) {
         await FirebaseFirestore.instance
@@ -310,6 +325,12 @@ class _ApprovalCard extends StatelessWidget {
             .limit(1)
             .get();
 
+        final int approvedCapacity = data['totalSeats'] != null 
+          ? (data['totalSeats'] is int ? data['totalSeats'] : int.tryParse(data['totalSeats'].toString()) ?? 100) 
+          : (data['maxSeats'] != null 
+              ? (data['maxSeats'] is int ? data['maxSeats'] : int.tryParse(data['maxSeats'].toString()) ?? 100)
+              : 100);
+
         final Map<String, dynamic> eventPayload = {
           'title': data['name'],
           'description': data['description'],
@@ -323,8 +344,7 @@ class _ApprovalCard extends StatelessWidget {
           'category': data['category'] ?? 'Technical',
           'eventMode': data['eventMode'] ?? 'Online',
           'status': 'approved',
-          'maxSeats': 100,
-          'filledSeats': 0,
+          'totalSeats': approvedCapacity,
           'posterLink': data['posterLink'],
           'visibility': data['visibility'] ?? 'college',
           'college': data['college'],
@@ -335,12 +355,13 @@ class _ApprovalCard extends StatelessWidget {
           'teamSize': data['teamSize'],
           'registrationDeadlineDate': data['registrationDeadlineDate'],
           'registrationDeadlineTime': data['registrationDeadlineTime'],
-          'createdAt': FieldValue.serverTimestamp(),
         };
 
         if (existingEvents.docs.isNotEmpty) {
           await existingEvents.docs.first.reference.update(eventPayload);
         } else {
+          eventPayload['filledSeats'] = 0;
+          eventPayload['createdAt'] = FieldValue.serverTimestamp();
           await FirebaseFirestore.instance.collection('events').add(eventPayload);
         }
 
@@ -361,6 +382,22 @@ class _ApprovalCard extends StatelessWidget {
           'type': 'approval',
           'read': false,
         });
+
+        // 🔹 P2P Notification Trigger for Approval
+        final coordinatorId = data['coordinatorId'];
+        debugPrint("🔔 P2P: Triggering Approval Update to $coordinatorId");
+        try {
+          await FirebaseFirestore.instance.collection('push_notifications').add({
+            'title': isStatusChange ? 'Update Approved' : 'Event Approved',
+            'body': 'Your request for "${data['name']}" was approved.',
+            'targetUid': coordinatorId,
+            'status': 'pending',
+            'createdAt': FieldValue.serverTimestamp(),
+            'data': {'type': 'APPROVAL', 'programId': programId},
+          });
+        } catch (e) {
+          debugPrint("🔔 P2P: Trigger Error: $e");
+        }
       }
       onProcessed();
     } catch (e) {
@@ -461,6 +498,20 @@ class _ApprovalCard extends StatelessWidget {
                   'type': 'rejection',
                   'read': false,
                 });
+
+                // 🔹 P2P Notification Trigger for Rejection
+                final coordinatorId = data['coordinatorId'];
+                debugPrint("🔔 P2P: Triggering Rejection Update to $coordinatorId");
+                if (coordinatorId != null) {
+                  await FirebaseFirestore.instance.collection('push_notifications').add({
+                    'title': 'Request Rejected',
+                    'body': 'Your request for "${data['name']}" was rejected.',
+                    'targetUid': coordinatorId,
+                    'status': 'pending',
+                    'createdAt': FieldValue.serverTimestamp(),
+                    'data': {'type': 'REJECTION', 'reason': reasonController.text.trim()},
+                  });
+                }
               },
               child: const Text('Reject'),
             ),

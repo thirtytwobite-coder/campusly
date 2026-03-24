@@ -1237,6 +1237,30 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
       statusLabel = "COMPLETED";
     }
 
+    // Deadline Check
+    bool isRegistrationClosed = false;
+    final deadlineDateStr = data['registrationDeadlineDate'];
+    final deadlineTimeStr = data['registrationDeadlineTime'];
+    if (deadlineDateStr != null && deadlineDateStr.isNotEmpty && deadlineTimeStr != null && deadlineTimeStr.isNotEmpty) {
+      try {
+        final deadline = DateTime.parse('$deadlineDateStr $deadlineTimeStr:00');
+        if (DateTime.now().isAfter(deadline)) {
+          isRegistrationClosed = true;
+        }
+      } catch (e) {
+        debugPrint("Error parsing deadline: $e");
+      }
+    }
+
+    // Capacity Logic
+    final int filledSeats = data['filledSeats'] is int ? data['filledSeats'] : int.tryParse(data['filledSeats']?.toString() ?? '') ?? 0;
+    final dynamic tsData = data['totalSeats'] ?? data['capacity'] ?? data['maxSeats'];
+    final String totalSeatsStr = tsData?.toString() ?? '';
+    final int totalSeats = int.tryParse(totalSeatsStr) ?? 0;
+    final bool isUnlimited = totalSeatsStr.isEmpty || totalSeatsStr.toLowerCase() == 'unlimited' || totalSeats <= 0;
+    final int remainingSeats = isUnlimited ? -1 : (totalSeats - filledSeats > 0 ? totalSeats - filledSeats : 0);
+    final bool isEventFull = !isUnlimited && filledSeats >= totalSeats;
+
     return Container(
       width: isHorizontal ? null : double.infinity,
       padding: EdgeInsets.symmetric(
@@ -1381,6 +1405,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                   runSpacing: 4,
                                   children: [
                                     _eventTag(statusLabel, bgColor: statusInfoColor, fgColor: statusInfoText),
+                                    if (isRegistrationClosed)
+                                      _eventTag("Closed", bgColor: Colors.red.withOpacity(0.1), fgColor: Colors.red.shade700)
+                                    else if (isEventFull)
+                                      _eventTag("FULL", bgColor: Colors.red.withOpacity(0.1), fgColor: Colors.red.shade700)
+                                    else if (!isUnlimited)
+                                      _eventTag("SEATS: $remainingSeats", bgColor: Colors.blue.withOpacity(0.1), fgColor: Colors.blue.shade700)
+                                    else
+                                      _eventTag("OPEN", bgColor: Colors.blue.withOpacity(0.1), fgColor: Colors.blue.shade700),
+                                    
                                     if (isTeamEvent)
                                       _eventTag("Team", bgColor: Colors.purple.withOpacity(0.1), fgColor: Colors.purple.shade700),
                                     if (prize.isNotEmpty && prize != "0")

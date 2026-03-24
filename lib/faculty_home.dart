@@ -251,48 +251,86 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                         return CustomScrollView(
                           physics: const BouncingScrollPhysics(),
                           slivers: [
-                            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                            // Header Section
                             SliverToBoxAdapter(
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 24),
+                                padding: const EdgeInsets.fromLTRB(24, 120, 24, 8),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      "Welcome Back,",
-                                      style: TextStyle(
-                                        color: isDark ? Colors.white38 : Colors.black38,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 1.2,
-                                      ),
-                                    ).animate().fadeIn(duration: 600.ms, delay: 100.ms),
-                                    Text(
-                                      (facultyName ?? "Faculty Member").toLowerCase(),
-                                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: -1.0,
-                                        color: isDark ? Colors.white : Colors.black87,
-                                        fontSize: 32,
-                                      ),
-                                    ).animate().fadeIn(duration: 600.ms, delay: 200.ms),
-                                    const SizedBox(height: 32),
-                                    
-                                    // Club Selector
-                                    if (docs.length > 1) ...[
+                                    // Greeting
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              "Welcome back",
+                                              style: TextStyle(
+                                                color: isDark ? Colors.white54 : Colors.black54,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              (facultyName ?? "Faculty Member").split(' ').first,
+                                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                                fontWeight: FontWeight.w900,
+                                                color: isDark ? Colors.white : Colors.black87,
+                                              ),
+                                            ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+                                          ],
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                                                Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                                              ],
+                                            ),
+                                            borderRadius: BorderRadius.circular(20),
+                                            border: Border.all(
+                                              color: isDark ? Colors.white12 : Colors.black12,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.school_rounded,
+                                            color: Theme.of(context).colorScheme.primary,
+                                            size: 24,
+                                          ),
+                                        ).animate().fadeIn(duration: 400.ms, delay: 150.ms).scale(begin: const Offset(0.8, 0.8)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // Club Selector with Modern Design
+                            if (docs.length > 1)
+                              SliverToBoxAdapter(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
                                       Text(
-                                        "Select Club",
+                                        "Active Club",
                                         style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w800,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
                                           color: isDark ? Colors.white54 : Colors.black54,
-                                          letterSpacing: 1.0,
+                                          letterSpacing: 1.5,
                                         ),
                                       ).animate().fadeIn(),
                                       const SizedBox(height: 12),
                                       SizedBox(
-                                        height: 48,
+                                        height: 56,
                                         child: ListView.builder(
                                           scrollDirection: Axis.horizontal,
                                           physics: const BouncingScrollPhysics(),
@@ -300,53 +338,97 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                                           itemBuilder: (context, index) {
                                             final docData = docs[index].data() as Map<String, dynamic>;
                                             final id = docData['clubId'];
-                                            final name = (docData['clubName'] ?? "Club").toString().toUpperCase();
+                                            final name = (docData['clubName'] ?? "Club").toString();
                                             final isSelected = id == (isValidSelection ? _selectedClubId : clubId);
 
-                                            return Padding(
-                                              padding: const EdgeInsets.only(right: 12),
-                                              child: ChoiceChip(
-                                                label: Text(name),
-                                                selected: isSelected,
-                                                onSelected: (val) {
-                                                  if (val && mounted) {
-                                                    setState(() => _selectedClubId = id);
-                                                  }
-                                                },
-                                                selectedColor: Theme.of(context).colorScheme.primary,
-                                                labelStyle: TextStyle(
-                                                  color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
-                                                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-                                                  fontSize: 12,
-                                                  letterSpacing: 1.0,
+                                            return GestureDetector(
+                                              onTap: () {
+                                                if (mounted) setState(() => _selectedClubId = id);
+                                              },
+                                              child: Container(
+                                                margin: const EdgeInsets.only(right: 12),
+                                                child: AnimatedContainer(
+                                                  duration: const Duration(milliseconds: 300),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                                                  decoration: BoxDecoration(
+                                                    gradient: isSelected
+                                                        ? LinearGradient(
+                                                            colors: [
+                                                              Theme.of(context).colorScheme.primary,
+                                                              Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                                                            ],
+                                                          )
+                                                        : LinearGradient(
+                                                            colors: [
+                                                              isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+                                                              isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02),
+                                                            ],
+                                                          ),
+                                                    borderRadius: BorderRadius.circular(14),
+                                                    border: Border.all(
+                                                      color: isSelected
+                                                          ? Colors.transparent
+                                                          : (isDark ? Colors.white12 : Colors.black12),
+                                                      width: 1.5,
+                                                    ),
+                                                    boxShadow: isSelected
+                                                        ? [
+                                                            BoxShadow(
+                                                              color: Theme.of(context).colorScheme.primary.withOpacity(0.25),
+                                                              blurRadius: 16,
+                                                              offset: const Offset(0, 6),
+                                                            )
+                                                          ]
+                                                        : [],
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                                                        size: 16,
+                                                        color: isSelected ? Colors.white : (isDark ? Colors.white54 : Colors.black54),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        name,
+                                                        style: TextStyle(
+                                                          color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                                                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                                          fontSize: 13,
+                                                          letterSpacing: 0.3,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
-                                                backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
-                                                elevation: 0,
-                                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                                side: BorderSide(color: isSelected ? Colors.transparent : (isDark ? Colors.white12 : Colors.black12)),
-                                              ),
+                                              ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.05),
                                             );
                                           },
                                         ),
-                                      ).animate().fadeIn().slideX(begin: 0.1),
-                                      const SizedBox(height: 24),
+                                      ),
                                     ],
-                                  ],
+                                  ),
+                                ),
+                              )
+                            else
+                              SliverToBoxAdapter(
+                                child: SizedBox(
+                                  height: 12,
                                 ),
                               ),
-                            ),
-                            
+
+                            // Dashboard Cards Section
                             SliverPadding(
                               padding: const EdgeInsets.symmetric(horizontal: 24),
                               sliver: SliverToBoxAdapter(
                                 child: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 300),
+                                  duration: const Duration(milliseconds: 400),
                                   switchInCurve: Curves.easeOutCubic,
                                   switchOutCurve: Curves.easeInCubic,
                                   child: Container(
                                     key: ValueKey(clubId),
-                                    child: _buildClubOptionsCard(
+                                    child: _buildModernDashboard(
                                       clubName: clubName,
                                       clubId: clubId,
                                       clubMappingDoc: selectedDoc,
@@ -355,6 +437,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                                 ),
                               ),
                             ),
+                            
                             const SliverToBoxAdapter(child: SizedBox(height: 120)),
                           ],
                         );
@@ -375,7 +458,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
     );
   }
 
-  Widget _buildClubOptionsCard({
+  Widget _buildModernDashboard({
     required String clubName,
     required String clubId,
     required DocumentSnapshot clubMappingDoc,
@@ -385,44 +468,75 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Dashboard Header
         Padding(
           padding: const EdgeInsets.only(bottom: 16),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 4,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                clubName.toUpperCase(),
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                  letterSpacing: 1.2,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 5,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.primary,
+                          Theme.of(context).colorScheme.secondary,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          clubName.toUpperCase(),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                            letterSpacing: 1.5,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          "Dashboard",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white54 : Colors.black54,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
+
+
+        // Main Action Cards Grid
         GridView.count(
-          crossAxisCount: 2,
+          crossAxisCount: 1,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 1.0,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 14,
+          childAspectRatio: 4.2,
           children: [
-            _buildPremiumCard(
-              title: "Analytics",
-              subtitle: "Usage Trends",
+            _buildDashboardCard(
               icon: Icons.analytics_rounded,
-              colors: const [Color(0xFF0EA5E9), Color(0xFF0284C7)],
+              title: "Analytics",
+              subtitle: "Insights",
+              colors: [const Color(0xFF0EA5E9), const Color(0xFF0284C7)],
+              index: 0,
               onTap: () {
                 Navigator.push(
                   context,
@@ -436,11 +550,12 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                 );
               },
             ),
-            _buildPremiumCard(
-              title: "Coordinators",
-              subtitle: "Manage Staff",
+            _buildDashboardCard(
               icon: Icons.manage_accounts_rounded,
-              colors: const [Color(0xFF6366F1), Color(0xFF4F46E5)],
+              title: "Coordinators",
+              subtitle: "Manage",
+              colors: [const Color(0xFF6366F1), const Color(0xFF4F46E5)],
+              index: 1,
               onTap: () {
                 Navigator.push(
                   context,
@@ -452,13 +567,14 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                 );
               },
             ),
-            _buildApproveButton(clubId, clubName),
-            _buildVerifyCertsButton(clubId, clubName),
-            _buildPremiumCard(
-              title: "Approved",
-              subtitle: "Completed Events",
+            _buildApprovalCard(clubId, clubName),
+            _buildCertificateCard(clubId, clubName),
+            _buildDashboardCard(
               icon: Icons.check_circle_rounded,
-              colors: const [Color(0xFF10B981), Color(0xFF059669)],
+              title: "Approved",
+              subtitle: "Success",
+              colors: [const Color(0xFF10B981), const Color(0xFF059669)],
+              index: 4,
               onTap: () {
                 Navigator.push(
                   context,
@@ -472,11 +588,12 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                 );
               },
             ),
-            _buildPremiumCard(
-              title: "Rejected",
-              subtitle: "Declined Events",
+            _buildDashboardCard(
               icon: Icons.cancel_rounded,
-              colors: const [Color(0xFFF43F5E), Color(0xFFE11D48)],
+              title: "Rejected",
+              subtitle: "Declined",
+              colors: [const Color(0xFFF43F5E), const Color(0xFFE11D48)],
+              index: 5,
               onTap: () {
                 Navigator.push(
                   context,
@@ -492,126 +609,180 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
             ),
           ],
         ),
+        const SizedBox(height: 12),
+
+        const SizedBox(height: 12),
       ],
     );
   }
 
-  Widget _buildPremiumCard({
-    required String title,
-    required String subtitle,
+  Widget _buildStatCard({
     required IconData icon,
+    required String label,
+    required String value,
     required List<Color> colors,
-    required VoidCallback onTap,
-    int index = 0,
-    int badgeCount = 0,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        GlassCard(
-          borderRadius: 32,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(32),
-            child: Container(
-              padding: const EdgeInsets.all(20),
+    return GlassCard(
+      borderRadius: 18,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [colors[0].withOpacity(0.1), colors[1].withOpacity(0.05)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
+          ),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [colors[0].withOpacity(0.15), colors[1].withOpacity(0.05)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                gradient: LinearGradient(colors: colors),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: colors[0].withOpacity(0.25),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  )
+                ],
               ),
+              child: Icon(icon, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: colors),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: colors[0].withOpacity(0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        )
-                      ],
+                  Text(
+                    label.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white38 : Colors.black38,
+                      letterSpacing: 0.8,
                     ),
-                    child: Icon(icon, color: Colors.white, size: 28),
                   ),
-                  const SizedBox(height: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: isDark ? Colors.white : Colors.black87,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white54 : Colors.black54,
-                          letterSpacing: 0.1,
-                          height: 1.2,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: isDark ? Colors.white : Colors.black87,
+                      letterSpacing: -0.2,
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
-        ).animate().fadeIn(delay: (100 * index).ms).slideY(begin: 0.1, duration: 400.ms).scale(begin: const Offset(0.95, 0.95)),
-        if (badgeCount > 0)
-          Positioned(
-            right: 0,
-            top: 0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.redAccent,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.redAccent.withOpacity(0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Text(
-                badgeCount.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ).animate(onPlay: (c) => c.repeat()).shake(hz: 3, offset: const Offset(2, 2)),
-          ),
-      ],
-    );
+          ],
+        ),
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1);
   }
 
-  Widget _buildApproveButton(String clubId, String clubName) {
+  Widget _buildDashboardCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required List<Color> colors,
+    required int index,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GlassCard(
+      borderRadius: 22,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [colors[0].withOpacity(0.12), colors[1].withOpacity(0.04)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+              color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+              width: 1,
+            ),
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: colors),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors[0].withOpacity(0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 6),
+                    )
+                  ],
+                ),
+                child: Icon(icon, color: Colors.white, size: 28),
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? Colors.white : Colors.black87,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white38 : Colors.black38,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: isDark ? Colors.white24 : Colors.black12,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(delay: (100 * index).ms).slideX(begin: 0.05, duration: 400.ms);
+  }
+
+  Widget _buildApprovalCard(String clubId, String clubName) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('clubs')
@@ -621,30 +792,66 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
           .snapshots(),
       builder: (context, snapshot) {
         final int pendingCount = snapshot.data?.docs.length ?? 0;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
 
-        return _buildPremiumCard(
-          title: "Approvals",
-          subtitle: "Events Queue",
-          icon: Icons.approval_rounded,
-          colors: const [Color(0xFFF59E0B), Color(0xFFD97706)],
-          badgeCount: pendingCount,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ProgramApprovalScreen(
-                  clubId: clubId,
-                  clubName: clubName,
-                ),
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            _buildDashboardCard(
+              title: "Approvals",
+              subtitle: "Queue",
+              icon: Icons.approval_rounded,
+              colors: const [Color(0xFFF59E0B), Color(0xFFD97706)],
+              index: 2,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProgramApprovalScreen(
+                      clubId: clubId,
+                      clubName: clubName,
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (pendingCount > 0)
+              Positioned(
+                right: -6,
+                top: -6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF3B30), Color(0xFFE63017)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF3B30).withOpacity(0.35),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    pendingCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2.seconds, color: Colors.white.withOpacity(0.2)).scale(begin: const Offset(0.8, 0.8)),
               ),
-            );
-          },
+          ],
         );
       },
     );
   }
 
-  Widget _buildVerifyCertsButton(String clubId, String clubName) {
+  Widget _buildCertificateCard(String clubId, String clubName) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('certificate_approvals')
@@ -653,28 +860,65 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
           .snapshots(),
       builder: (context, snapshot) {
         final int pendingCount = snapshot.data?.docs.length ?? 0;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
 
-        return _buildPremiumCard(
-          title: "Certificates",
-          subtitle: "Verification",
-          icon: Icons.verified_rounded,
-          colors: const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
-          badgeCount: pendingCount,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => CertificateApprovalScreen(
-                  clubId: clubId,
-                  clubName: clubName,
-                ),
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            _buildDashboardCard(
+              title: "Certificates",
+              subtitle: "Verify",
+              icon: Icons.verified_rounded,
+              colors: const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
+              index: 3,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CertificateApprovalScreen(
+                      clubId: clubId,
+                      clubName: clubName,
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (pendingCount > 0)
+              Positioned(
+                right: -6,
+                top: -6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF3B30), Color(0xFFE63017)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF3B30).withOpacity(0.35),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    pendingCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2.seconds, color: Colors.white.withOpacity(0.2)).scale(begin: const Offset(0.8, 0.8)),
               ),
-            );
-          },
+          ],
         );
       },
     );
   }
+
 
 }
 

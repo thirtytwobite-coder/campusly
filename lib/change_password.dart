@@ -54,6 +54,18 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         );
         Navigator.pop(context);
       }
+    } on FirebaseAuthException catch (e) {
+      String message = "An error occurred. Please try again.";
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        message = "The current password you entered is incorrect.";
+      } else {
+        message = e.message ?? message;
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.red),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -216,8 +216,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   bool _isValidKtuId(String ktuId) {
-    final ktuIdRegex = RegExp(r'^L?IDK(2[2-5])(CSE|IT|ME|EC|EEE|AI)0\d{2}$');
-    return ktuIdRegex.hasMatch(ktuId);
+    return ktuId.isNotEmpty;
   }
 
   void _showError(String message) {

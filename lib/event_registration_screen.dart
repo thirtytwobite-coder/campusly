@@ -121,10 +121,74 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
     }
   }
 
+  bool _isRegistrationClosed() {
+    final eventData = widget.event.data() as Map<String, dynamic>? ?? {};
+    final deadlineDateStr = eventData['registrationDeadlineDate'];
+    final deadlineTimeStr = eventData['registrationDeadlineTime'];
+    if (deadlineDateStr != null && deadlineDateStr.isNotEmpty && deadlineTimeStr != null && deadlineTimeStr.isNotEmpty) {
+      try {
+        final deadline = DateTime.parse('$deadlineDateStr $deadlineTimeStr:00');
+        return DateTime.now().isAfter(deadline);
+      } catch (e) {
+        debugPrint("Error parsing deadline: $e");
+      }
+    }
+    final status = eventData['status']?.toString().toLowerCase() ?? 'approved';
+    return status == 'completed';
+  }
+
+  bool _hasEnoughSeats() {
+    final eventData = widget.event.data() as Map<String, dynamic>? ?? {};
+    final bool isTeamEvent = eventData['isTeamEvent'] == true;
+    final int teamSize = eventData['teamSize'] != null 
+        ? (eventData['teamSize'] is int ? eventData['teamSize'] : int.tryParse(eventData['teamSize'].toString()) ?? 1)
+        : 1;
+        
+    final bool requiresVolunteers = eventData['requiresVolunteers'] == true;
+    final String regType = requiresVolunteers ? _registrationType : 'participant';
+    final bool shouldRegisterAsTeam = isTeamEvent && regType == 'participant';
+    final int seatsRequired = shouldRegisterAsTeam ? teamSize : 1;
+
+    final int filledSeats = eventData['filledSeats'] is int ? eventData['filledSeats'] : int.tryParse(eventData['filledSeats']?.toString() ?? '') ?? 0;
+    final dynamic tsData = eventData['totalSeats'] ?? eventData['capacity'] ?? eventData['maxSeats'];
+    final String totalSeatsStr = tsData?.toString() ?? '';
+    final int totalSeats = int.tryParse(totalSeatsStr) ?? 0;
+    
+    final bool isUnlimited = totalSeatsStr.isEmpty || totalSeatsStr.toLowerCase() == 'unlimited' || totalSeats <= 0;
+    if (isUnlimited) return true;
+
+    final int availableSeats = totalSeats - filledSeats;
+    return availableSeats >= seatsRequired;
+  }
+
   Future<void> _handleRegistration() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_isRegistrationClosed()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Registration has closed for this event.'), backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
 
+    if (!_hasEnoughSeats()) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            title: const Text("Event Full"),
+            content: const Text("Sorry, there are not enough seats remaining for this registration."),
+            actions: [
+              TextButton(onPressed: () { Navigator.pop(ctx); Navigator.pop(context); }, child: const Text("OK")),
+            ],
+          ),
+        );
+      }
+      return;
+    }
 
     _submitRegistration();
   }
@@ -397,16 +461,16 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
                             ),
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).primaryColor,
+                                backgroundColor: _isRegistrationClosed() ? Colors.grey : Theme.of(context).primaryColor,
                                 foregroundColor: Colors.white,
                                 minimumSize: const Size(double.infinity, 68),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                                 elevation: 0,
                               ),
-                              onPressed: isSubmitting ? null : _handleRegistration,
+                              onPressed: (isSubmitting || _isRegistrationClosed()) ? null : _handleRegistration,
                               child: isSubmitting
                                   ? const CircularProgressIndicator(color: Colors.white)
-                                  : const Text("CONFIRM REGISTRATION",
+                                  : Text(_isRegistrationClosed() ? "REGISTRATION CLOSED" : "CONFIRM REGISTRATION",
                                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
                             ),
                           ),

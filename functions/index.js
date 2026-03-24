@@ -320,3 +320,56 @@ exports.notifyOnClubNotification = functions.firestore
     }
     return null;
   });
+
+// Generic trigger for the push_notifications collection used by PushNotificationSender
+exports.notifyOnPushNotification = functions.firestore
+  .document('push_notifications/{notifId}')
+  .onCreate(async (snap, context) => {
+    const data = snap.data();
+    if (!data) return null;
+
+    let targetTokens = [];
+    if (data.targetUid) {
+      const token = await getTokenByUid(data.targetUid);
+      if (token) targetTokens.push(token);
+    } else if (data.targetRole) {
+      // Get by role via users collection
+      const usersSnap = await admin.firestore().collection('users')
+        .where('role', '==', data.targetRole)
+        .get();
+      
+      usersSnap.forEach(doc => {
+        const t = doc.data().fcmToken;
+        // Optional college filter
+        if (t && (!data.targetCollege || doc.data().college === data.targetCollege)) {
+          targetTokens.push(t);
+        }
+      });
+    }
+
+    if (targetTokens.length === 0) {
+      return snap.ref.update({ status: 'no_tokens_found' });
+    }
+
+    const payload = {
+      notification: {
+        title: data.title || 'New Update',
+        body: data.body || 'A new activity was added to the dashboard.',
+      },
+      data: Object.assign({}, data.data || {}, {
+        click_action: 'FLUTTER_NOTIFICATION_CLICK'
+      }),
+    };
+
+    try {
+      await admin.messaging().sendToDevice(targetTokens, payload);
+      return snap.ref.update({ 
+        status: 'sent', 
+        sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        tokenCount: targetTokens.length 
+      });
+    } catch (e) {
+      console.error('Error sending push_notification FCM', e);
+      return snap.ref.update({ status: 'failed', error: e.message });
+    }
+  });

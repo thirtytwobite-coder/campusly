@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -64,13 +65,33 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text("${widget.clubName} Analytics"),
+        title: Text(
+          "ANALYTICS",
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 20,
+            letterSpacing: 2.5,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
+              color: (isDark ? Colors.black : Colors.white).withOpacity(0.15),
+            ),
+          ),
+        ),
         actions: [
           if (widget.isFaculty)
             IconButton(
-              icon: const Icon(Icons.playlist_add_check),
-              tooltip: 'Approve Participant/Winner Lists',
+              icon: const Icon(Icons.playlist_add_check_rounded, size: 28),
+              tooltip: 'Approve Lists',
               onPressed: () {
                 Navigator.push(
                   context,
@@ -82,7 +103,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   ),
                 );
               },
-            )
+            ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Stack(
@@ -121,73 +143,143 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               });
 
               if (events.isEmpty) {
-                return const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.analytics_outlined, size: 80, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text("No published events found.", style: TextStyle(fontSize: 18, color: Colors.grey)),
-                    ],
+                return Center(
+                  child: GlassCard(
+                    margin: const EdgeInsets.all(32),
+                    borderRadius: 32,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 40),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.analytics_outlined, 
+                            size: 80, 
+                            color: isDark ? Colors.white12 : Colors.black12
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            "No events found.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 18, 
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white38 : Colors.black38
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                );
+                ).animate().fadeIn().scale();
               }
 
-              return ListView.builder(
-                padding: const EdgeInsets.all(16),
+              return ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 120, 16, 40),
                 itemCount: events.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final event = events[index];
                   final data = event.data() as Map<String, dynamic>;
-
                   final title = data['title'] ?? 'Untitled Event';
                   final date = data['date'] ?? 'N/A';
 
                   return GlassCard(
-                    borderRadius: 15,
-                    child: Card(
-                      elevation: 0,
-                      color: Colors.transparent,
-                      clipBehavior: Clip.antiAlias,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                      margin: EdgeInsets.zero,
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EventRegistrationsListScreen(
-                                eventId: event.id,
-                                eventName: title,
-                                isFacultyView: widget.isFaculty,
+                    borderRadius: 24,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EventRegistrationsListScreen(
+                              eventId: event.id,
+                              eventName: title,
+                              isFacultyView: widget.isFaculty,
+                            ),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(24),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.blue.withOpacity(0.08), 
+                              Colors.cyan.withOpacity(0.04)
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: Border.all(
+                            color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.03),
+                            width: 1,
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF0EA5E9), Color(0xFF0284C7)],
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF0EA5E9).withOpacity(0.25),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 6),
+                                  )
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.bar_chart_rounded, 
+                                color: Colors.white, 
+                                size: 28
                               ),
                             ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                title, 
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold, 
-                                  fontSize: 18,
-                                  color: isDark ? Colors.white : Colors.black,
-                                )
+                            const SizedBox(width: 18),
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                      letterSpacing: -0.3,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    "Event Date: $date",
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white38 : Colors.black38,
+                                      letterSpacing: 0.4,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                "Date: $date",
-                                style: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
-                              ),
-                            ],
-                          ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              color: isDark ? Colors.white24 : Colors.black12,
+                              size: 16,
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ).animate().fadeIn().slideY(begin: 0.1, delay: (50 * index).ms);
+                  ).animate().fadeIn(delay: (60 * index).ms).slideX(begin: 0.05, duration: 400.ms);
                 },
               );
             },

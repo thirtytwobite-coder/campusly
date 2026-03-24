@@ -1172,8 +1172,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     final deadlineDateController = TextEditingController();
     final deadlineTimeController = TextEditingController();
 
-
     bool isUploadingPoster = false;
+    String? errorMessage;
 
     showGeneralDialog(
       context: context,
@@ -1310,7 +1310,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                                           label: Text(
                                               isUploadingPoster
                                                   ? 'Processing...'
-                                                  : (posterLinkController.text.isNotEmpty ? 'Poster Attached ✅' : 'Attach Poster Image'),
+                                                  : (posterLinkController.text.isNotEmpty ? 'Poster Attached ✅' : 'Attach Poster Image *'),
                                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13),
                                           ),
                                           style: ElevatedButton.styleFrom(
@@ -1329,7 +1329,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                                 _buildProposalField(descriptionController, 'Description *', isDark, maxLines: 4),
                                 Row(
                                   children: [
-                                    Expanded(child: _buildProposalField(totalSeatsController, 'Capacity *', isDark, keyboardType: TextInputType.number)),
+                                    Expanded(child: _buildProposalField(totalSeatsController, 'Total Seats (Capacity) *', isDark, keyboardType: TextInputType.number)),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Container(
@@ -1478,64 +1478,93 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                                   ],
                                 ),
 
-
                                 const SizedBox(height: 24),
+                                // Error Message Display
+                                if (errorMessage != null)
+                                  Container(
+                                    margin: const EdgeInsets.only(bottom: 16),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.red.withOpacity(0.3))),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+                                        const SizedBox(width: 12),
+                                        Expanded(child: Text(errorMessage!, style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold))),
+                                      ],
+                                    ),
+                                  ),
+                                // Actions
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Container(
+                                        height: 56,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(20),
+                                          gradient: const LinearGradient(colors: [Color(0xFF2196F3), Color(0xFF1565C0)]),
+                                          boxShadow: [
+                                            BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
+                                          ],
+                                        ),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            borderRadius: BorderRadius.circular(20),
+                                            onTap: () {
+                                              final valError = _validateProgramForm(
+                                                nameController.text,
+                                                descriptionController.text,
+                                                dateController.text,
+                                                timeController.text,
+                                                locationController.text,
+                                                category,
+                                                eventMode,
+                                                posterLinkController.text,
+                                              );
+                                              if (valError != null) {
+                                                setDialogState(() => errorMessage = valError);
+                                                return;
+                                              }
+                                              setDialogState(() => errorMessage = null);
+                                              _handlePropose(
+                                                ctx,
+                                                nameController.text,
+                                                descriptionController.text,
+                                                dateController.text,
+                                                timeController.text,
+                                                locationController.text,
+                                                hasPrizePool,
+                                                prizeAmountController.text,
+                                                posterLinkController.text,
+                                                visibility,
+                                                category,
+                                                eventMode,
+                                                requiresVolunteers,
+                                                volunteerCountController.text,
+                                                volunteerRoleController.text,
+                                                isTeamEvent,
+                                                teamSizeController.text,
+                                                totalSeatsController.text,
+                                                deadlineDateController.text,
+                                                deadlineTimeController.text,
+                                              );
+                                            },
+                                            child: const Center(
+                                              child: Text(
+                                                "SUBMIT PROPOSAL",
+                                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15, letterSpacing: 1),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      // Actions
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              height: 56,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                gradient: const LinearGradient(colors: [Color(0xFF2196F3), Color(0xFF1565C0)]),
-                                boxShadow: [
-                                  BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
-                                ],
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(20),
-                                  onTap: () => _handlePropose(
-                                    ctx,
-                                    nameController.text,
-                                    descriptionController.text,
-                                    dateController.text,
-                                    timeController.text,
-                                    locationController.text,
-                                    hasPrizePool,
-                                    prizeAmountController.text,
-                                    posterLinkController.text,
-                                    visibility,
-                                    category,
-                                    eventMode,
-                                    requiresVolunteers,
-                                    volunteerCountController.text,
-                                    volunteerRoleController.text,
-                                    isTeamEvent,
-                                    teamSizeController.text,
-                                    totalSeatsController.text,
-                                    deadlineDateController.text,
-                                    deadlineTimeController.text,
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      "SUBMIT PROPOSAL",
-                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15, letterSpacing: 1),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
@@ -1611,12 +1640,13 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         totalSeats.trim().isEmpty ||
         deadlineDate.isEmpty ||
         deadlineTime.isEmpty ||
+        poster.trim().isEmpty ||
         cat == null ||
         mode == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Please fill all required fields (Name, Description, Total Seats, Date, Time, Venue, Category, Event Mode, and Deadline)',
+            'Please fill all required fields (Name, Description, Total Seats, Date, Time, Venue, Category, Event Mode, Deadline, and Poster Image)',
           ),
         ),
       );
@@ -1971,8 +2001,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     final deadlineDateController = TextEditingController(text: data['registrationDeadlineDate'] ?? '');
     final deadlineTimeController = TextEditingController(text: data['registrationDeadlineTime'] ?? '');
 
-
     bool isUploadingPoster = false;
+    String? errorMessage;
 
     showDialog(
       context: context,
@@ -2176,6 +2206,21 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                     ),
                   ],
                 ),
+                if (errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.red.withOpacity(0.3))),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.redAccent, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(errorMessage!, style: const TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold))),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -2198,12 +2243,14 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   locationController.text,
                   category,
                   eventMode,
+                  posterLinkController.text,
                 );
 
                 if (validationError != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(validationError)));
+                  setDialogState(() => errorMessage = validationError);
                   return;
                 }
+                setDialogState(() => errorMessage = null);
 
                 _updateProgram(
                   ctx,
@@ -2243,9 +2290,11 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       String loc,
       String? category,
       String? mode,
+      String poster,
       ) {
     if (name.trim().isEmpty) return 'Program name cannot be empty';
     if (desc.trim().isEmpty) return 'Description cannot be empty';
+    if (poster.trim().isEmpty) return 'Please attach an event poster image';
     if (date.trim().isEmpty) return 'Date cannot be empty';
     if (time.trim().isEmpty) return 'Time cannot be empty';
     if (loc.trim().isEmpty) return 'Venue cannot be empty';
@@ -2974,7 +3023,7 @@ class ProgramCard extends StatelessWidget {
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _buildDetailRow(Icons.groups_rounded, "Capacity", (programData['totalSeats'] ?? 'Unlimited').toString(), isDark)),
+            Expanded(child: _buildDetailRow(Icons.groups_rounded, "Total Seats", (programData['totalSeats'] ?? 'Unlimited').toString(), isDark)),
             Expanded(child: _buildDetailRow(Icons.visibility_rounded, "Visibility", programData['visibility']?.toString().toUpperCase() ?? 'COLLEGE', isDark)),
           ],
         ),

@@ -102,6 +102,14 @@ class EventDetailsScreen extends StatelessWidget {
               final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
               final bool requiresVolunteers = (data['requiresVolunteers'] ?? false) == true;
               final int volunteerCount = data['volunteerCount'] ?? 0;
+              
+              // CAPACITY LOGIC
+              final int filledSeats = data['filledSeats'] is int ? data['filledSeats'] : int.tryParse(data['filledSeats']?.toString() ?? '') ?? 0;
+              final dynamic tsData = data['totalSeats'] ?? data['capacity'] ?? data['maxSeats'];
+              final String totalSeatsStr = tsData?.toString() ?? '';
+              final int totalSeats = int.tryParse(totalSeatsStr) ?? 0;
+              final bool isUnlimited = totalSeatsStr.isEmpty || totalSeatsStr.toLowerCase() == 'unlimited' || totalSeats <= 0;
+              final int remainingSeats = isUnlimited ? -1 : (totalSeats - filledSeats > 0 ? totalSeats - filledSeats : 0);
               final String volunteerRole = data['volunteerRole']?.toString() ?? '';
               final Map<String, dynamic>? manualWinners = data['manualWinners'] as Map<String, dynamic>?;
 
@@ -209,7 +217,7 @@ class EventDetailsScreen extends StatelessWidget {
                                 ],
                               ),
                               const SizedBox(height: 24),
-                              _metricsGridDecorated(theme, date, time, venue, eventMode),
+                              _metricsGridDecorated(theme, date, time, venue, eventMode, isUnlimited, remainingSeats),
                               
                               if (manualWinners != null && manualWinners.values.any((v) => v.toString().isNotEmpty)) ...[
                                 const SizedBox(height: 32),
@@ -366,7 +374,7 @@ class EventDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _metricsGridDecorated(ThemeData theme, String date, String time, String venue, String mode) {
+  Widget _metricsGridDecorated(ThemeData theme, String date, String time, String venue, String mode, bool isUnlimited, int remainingSeats) {
     return Column(
       children: [
         Row(
@@ -382,6 +390,14 @@ class EventDetailsScreen extends StatelessWidget {
             _metricItemVibrant(theme, Icons.location_on_rounded, "VENUE", venue, Colors.teal),
             const SizedBox(width: 12),
             _metricItemVibrant(theme, mode == 'Online' ? Icons.videocam_rounded : Icons.business_center_rounded, "MODE", mode, Colors.pink.shade400),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            _metricItemVibrant(theme, Icons.chair_alt_rounded, "SEATS AVAILABLE", isUnlimited ? "Unlimited" : "$remainingSeats / $totalSeats", Colors.purple.shade400),
+            const SizedBox(width: 12),
+            const Expanded(child: SizedBox()),
           ],
         ),
       ],
@@ -685,6 +701,15 @@ class EventDetailsScreen extends StatelessWidget {
           }
         }
 
+        final int filledSeats = data['filledSeats'] is int ? data['filledSeats'] : int.tryParse(data['filledSeats']?.toString() ?? '') ?? 0;
+        final dynamic tsData = data['totalSeats'] ?? data['capacity'] ?? data['maxSeats'];
+        final String totalSeatsStr = tsData?.toString() ?? '';
+        final int totalSeats = int.tryParse(totalSeatsStr) ?? 0;
+        final bool isUnlimited = totalSeatsStr.isEmpty || totalSeatsStr.toLowerCase() == 'unlimited' || totalSeats <= 0;
+        final bool isEventFull = !isUnlimited && filledSeats >= totalSeats;
+
+        final bool isDisabled = isRegistered || isRegistrationClosed || isEventFull;
+
 
         return Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -701,7 +726,7 @@ class EventDetailsScreen extends StatelessWidget {
                     Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(24),
-                        boxShadow: (isRegistered || isRegistrationClosed) ? [] : [
+                        boxShadow: isDisabled ? [] : [
                           BoxShadow(
                             color: theme.primaryColor.withOpacity(0.4),
                             blurRadius: 20,
@@ -712,18 +737,18 @@ class EventDetailsScreen extends StatelessWidget {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size(double.infinity, 70),
-                          backgroundColor: (isRegistered || isRegistrationClosed) ? Colors.grey.withOpacity(0.2) : theme.primaryColor,
-                          foregroundColor: (isRegistered || isRegistrationClosed) ? Colors.grey : Colors.white,
+                          backgroundColor: isDisabled ? Colors.grey.withOpacity(0.2) : theme.primaryColor,
+                          foregroundColor: isDisabled ? Colors.grey : Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                           elevation: 0,
                         ),
-                        onPressed: (isRegistered || isRegistrationClosed) ? null : () {
+                        onPressed: isDisabled ? null : () {
                           Navigator.push(context, MaterialPageRoute(builder: (context) => EventRegistrationScreen(event: eventDoc)));
                         },
                         child: Text(
                           isRegistered
                             ? "ALREADY REGISTERED"
-                            : (isRegistrationClosed ? "REGISTRATION CLOSED" : (isTeamEvent ? "REGISTER YOUR TEAM" : "CLAIM MY SPOT")),
+                            : (isEventFull ? "EVENT FULL" : (isRegistrationClosed ? "REGISTRATION CLOSED" : (isTeamEvent ? "REGISTER YOUR TEAM" : "CLAIM MY SPOT"))),
                           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 1.0),
                         ),
                       ),
