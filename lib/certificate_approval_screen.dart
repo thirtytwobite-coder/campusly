@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -21,80 +22,53 @@ class CertificateApprovalScreen extends StatefulWidget {
 class _CertificateApprovalScreenState extends State<CertificateApprovalScreen> {
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        title: Column(
+          children: [
+            Text(
+              "CERTIFICATE REQUESTS",
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+                letterSpacing: -0.5,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            Text(
+              widget.clubName.toUpperCase(),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.0,
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: Container(
+              color: (isDark ? Colors.black : Colors.white).withOpacity(isDark ? 0.4 : 0.6),
+            ),
+          ),
+        ),
+      ),
       body: Stack(
         children: [
           const VibrantBackground(),
           CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-              SliverAppBar(
-                expandedHeight: 180.0,
-                floating: false,
-                pinned: true,
-                stretch: true,
-                backgroundColor: Colors.indigo.shade900,
-                elevation: 0,
-                flexibleSpace: FlexibleSpaceBar(
-                  stretchModes: const [
-                    StretchMode.zoomBackground,
-                    StretchMode.blurBackground,
-                  ],
-                  titlePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  centerTitle: false,
-                  title: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Certificate Requests",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 20,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      Text(
-                        widget.clubName,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.white.withOpacity(0.7),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  background: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Colors.indigo.shade900,
-                              Colors.indigo.shade700,
-                              Colors.blue.shade800,
-                            ],
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: -50,
-                        top: -20,
-                        child: Icon(
-                          Icons.verified_user,
-                          size: 200,
-                          color: Colors.white.withOpacity(0.05),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 120)),
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('certificate_approvals')
@@ -125,23 +99,21 @@ class _CertificateApprovalScreenState extends State<CertificateApprovalScreen> {
                             Container(
                               padding: const EdgeInsets.all(30),
                               decoration: BoxDecoration(
-                                color: Colors.indigo.withOpacity(0.05),
+                                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.indigo.withOpacity(0.1), width: 2),
                               ),
                               child: Icon(
-                                Icons.auto_awesome_rounded,
+                                Icons.verified_rounded,
                                 size: 80,
-                                color: Colors.indigo.withOpacity(0.3),
+                                color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
                               ),
                             ).animate(onPlay: (c) => c.repeat(reverse: true))
-                             .scale(duration: 2.seconds, curve: Curves.easeInOut)
-                             .rotate(begin: -0.05, end: 0.05),
+                             .scale(duration: 2.seconds, curve: Curves.easeInOut),
                             const SizedBox(height: 24),
                             Text(
-                              "Perfectly Clear!",
+                              "All Verified!",
                               style: TextStyle(
-                                color: Colors.indigo.shade900,
+                                color: isDark ? Colors.white : Colors.black87,
                                 fontSize: 24,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: -0.5,
@@ -149,9 +121,9 @@ class _CertificateApprovalScreenState extends State<CertificateApprovalScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              "No pending certificate verifications.",
+                              "No pending certificate requests.",
                               style: TextStyle(
-                                color: Colors.grey.shade600,
+                                color: isDark ? Colors.white54 : Colors.black54,
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -163,7 +135,7 @@ class _CertificateApprovalScreenState extends State<CertificateApprovalScreen> {
                   }
 
                   return SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 100),
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
@@ -204,187 +176,163 @@ class _CertificateApprovalScreenState extends State<CertificateApprovalScreen> {
     String requestedBy,
     Timestamp? timestamp,
   ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.indigo.withOpacity(0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _navigateToDetails(context, eventId, eventName),
-            child: Stack(
-              children: [
-                // Decoration Blob
-                Positioned(
-                  top: -20,
-                  right: -20,
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.indigo.withOpacity(0.03),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: GlassCard(
+        borderRadius: 32,
+        child: InkWell(
+          onTap: () => _navigateToDetails(context, eventId, eventName),
+          borderRadius: BorderRadius.circular(32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF4F46E5)]),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6366F1).withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
+                      ),
+                      child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 24),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text(
+                            eventName.toUpperCase(),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                              letterSpacing: -0.5,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
                           Container(
-                            padding: const EdgeInsets.all(14),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [Colors.indigo.shade400, Colors.indigo.shade700],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                                colors: [
+                                  const Color(0xFFF59E0B).withOpacity(0.15),
+                                  const Color(0xFFF59E0B).withOpacity(0.05),
+                                ],
                               ),
-                              borderRadius: BorderRadius.circular(18),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.indigo.withOpacity(0.3),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4)),
                             ),
-                            child: const Icon(
-                              Icons.workspace_premium_rounded,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  eventName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 19,
-                                    color: Color(0xFF1A237E),
-                                    letterSpacing: -0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.amber.shade100,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    "PENDING VERIFICATION",
-                                    style: TextStyle(
-                                      color: Colors.amber.shade900,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            child: const Text(
+                              "PENDING VERIFICATION",
+                              style: TextStyle(
+                                color: Color(0xFFF59E0B),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.5,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          _buildModernMetaItem(Icons.person_rounded, "From", requestedBy),
-                          const SizedBox(width: 24),
-                          if (timestamp != null)
-                            _buildModernMetaItem(
-                              Icons.access_time_filled_rounded,
-                              "Time",
-                              _formatDate(timestamp.toDate()),
-                            ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        _buildModernMetaItem(Icons.person_outline_rounded, "Coordinator", requestedBy),
+                        const SizedBox(width: 16),
+                        if (timestamp != null)
+                          _buildModernMetaItem(
+                            Icons.calendar_today_rounded,
+                            "Requested On",
+                            _formatDate(timestamp.toDate()),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      width: double.infinity,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF312E81), Color(0xFF1E1B4B)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF312E81).withOpacity(0.4),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 24),
-                      Container(
-                        width: double.infinity,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(18),
-                          gradient: LinearGradient(
-                            colors: [Colors.indigo.shade700, Colors.indigo.shade900],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.indigo.withOpacity(0.3),
-                              blurRadius: 15,
-                              offset: const Offset(0, 8),
+                      child: ElevatedButton(
+                        onPressed: () => _navigateToDetails(context, eventId, eventName),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          foregroundColor: Colors.white,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "REVIEW REQUEST",
+                              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 13),
                             ),
+                            SizedBox(width: 12),
+                            Icon(Icons.arrow_forward_rounded, size: 20),
                           ],
                         ),
-                        child: ElevatedButton(
-                          onPressed: () => _navigateToDetails(context, eventId, eventName),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "REVIEW & VERIFY",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 14,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                      ).animate().scale(delay: 200.ms),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
-    ).animate().fadeIn(duration: 500.ms, delay: (index * 100).ms).slideX(begin: 0.1, curve: Curves.easeOutQuad);
+    ).animate().fadeIn(delay: (100 * index).ms).slideY(begin: 0.1);
   }
 
   Widget _buildModernMetaItem(IconData icon, String label, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 14, color: Colors.grey.shade400),
+              Icon(icon, size: 14, color: isDark ? Colors.white38 : Colors.black38),
               const SizedBox(width: 6),
               Text(
                 label.toUpperCase(),
                 style: TextStyle(
-                  color: Colors.grey.shade500,
+                  color: isDark ? Colors.white54 : Colors.black54,
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.5,
@@ -392,12 +340,12 @@ class _CertificateApprovalScreenState extends State<CertificateApprovalScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontSize: 13,
+            style: TextStyle(
+              color: isDark ? Colors.white : Colors.black87,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
             maxLines: 1,

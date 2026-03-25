@@ -7,7 +7,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:college_event_manager/scooped_navbar.dart';
 import 'package:flutter/rendering.dart';
 
 import 'analytics_dashboard_screen.dart';
@@ -179,15 +178,15 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         ),
         bottomNavigationBar: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          height: _isNavbarVisible ? 100 : 0,
-          child: _isNavbarVisible ? ScoopedNavigationBar(
+          height: _isNavbarVisible ? 80 : 0,
+          child: _isNavbarVisible ? BottomNavigationBar(
             currentIndex: _selectedIndex > 2 ? 0 : _selectedIndex,
             onTap: _onItemTapped,
-            activeColor: Colors.blueAccent,
+            selectedItemColor: Colors.blueAccent,
             items: const [
-              ScoopedNavItem(icon: Icons.dashboard_rounded, label: 'Home'),
-              ScoopedNavItem(icon: Icons.add_circle_outline_rounded, label: 'Create'),
-              ScoopedNavItem(icon: Icons.person_outline_rounded, label: 'Profile'),
+              BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Home'),
+              BottomNavigationBarItem(icon: Icon(Icons.add_circle_outline_rounded), label: 'Create'),
+              BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'Profile'),
             ],
           ) : const SizedBox.shrink(),
         ),

@@ -15,10 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'faculty_home.dart';
 import 'main_faculty_dashboard.dart' as main_fac;
 import 'student_home.dart';
-import 'welcome_screen.dart';
-import 'splash_screen.dart';
-
-final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
+import 'welcome_screen.dart';final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 String? _fcmToken;
 
@@ -80,7 +77,6 @@ Future<void> _setupFCM() async {
       await _saveTokenToFirestore(_fcmToken!);
     }
     
-    _subscribeToLocalPushWorkaround();
 
     messaging.onTokenRefresh.listen((newToken) async {
       _fcmToken = newToken;
@@ -334,7 +330,7 @@ class CampuslyApp extends StatelessWidget {
           theme: lightTheme,
           darkTheme: darkTheme,
           themeMode: mode,
-          home: const SplashScreen(nextScreen: AuthWrapper()),
+          home: const AuthWrapper(),
         );
       },
     );
@@ -426,77 +422,3 @@ class AuthWrapper extends StatelessWidget {
   }
 }
 
-// 🔹 Emergency Listener for immediate demo notifications (P2P Bride via Firestore)
-void _subscribeToLocalPushWorkaround() {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return;
-
-  final now = DateTime.now();
-
-  // 1. Fetch user role first (Wait a bit for auth state to stabilize)
-  Future.delayed(const Duration(seconds: 2), () {
-    FirebaseFirestore.instance.collection('users').doc(user.uid).get().then((doc) {
-      final role = (doc.data()?['role']?.toString() ?? '').toUpperCase();
-      
-      // 2. Listen for ANY pending notification relevant to this user or their role
-      debugPrint("🔔 P2P: Initializing Listener for Role: '$role', UID: '${user.uid}'");
-      
-      FirebaseFirestore.instance
-          .collection('push_notifications')
-          .where('status', isEqualTo: 'pending')
-          .snapshots()
-          .listen((snapshot) {
-        debugPrint("🔔 P2P: Snapshot received with ${snapshot.docs.length} pending docs.");
-        
-        if (snapshot.docs.isEmpty) {
-          debugPrint("🔔 P2P: No pending notifications in Firestore for anyone.");
-        }
-
-        for (var change in snapshot.docChanges) {
-          if (change.type == DocumentChangeType.added) {
-            final data = change.doc.data();
-            if (data == null) continue;
-
-            // Relaxed: Prevent old notifications (only within last 5 minutes)
-            final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
-            if (createdAt != null && createdAt.isBefore(now.subtract(const Duration(minutes: 5)))) {
-              debugPrint("🔔 P2P: Skipping OLD notification id=${change.doc.id} (Created: $createdAt)");
-              continue;
-            }
-
-            bool forMe = false;
-            final String targetUid = data['targetUid']?.toString() ?? '';
-            final String targetRole = (data['targetRole']?.toString() ?? '').toUpperCase();
-
-            debugPrint("🔔 P2P: Processing id=${change.doc.id} | Target: UID='$targetUid', Role='$targetRole'");
-
-            if (targetUid == user.uid) forMe = true;
-            if (role.isNotEmpty && targetRole == role) forMe = true;
-
-            if (forMe && data['localHandled'] != true) {
-              debugPrint("🔔 P2P: ✅ TRIGGERING NOTIFICATION: ${data['title']}");
-              NotificationService.showNotification(
-                id: change.doc.id.hashCode,
-                title: data['title'] ?? 'Dashboard Update',
-                body: data['body'] ?? 'New activity detected.',
-                payload: (data['data'] as Map?)?['eventId'] ?? '',
-                channelId: NotificationService.infoChannelId,
-              );
-              
-              // Mark as handled to prevent duplicate popups
-              change.doc.reference.update({
-                'localHandled': true, 
-                'deliveredAt': FieldValue.serverTimestamp(),
-                'status': 'delivered_locally'
-              });
-            } else {
-               debugPrint("🔔 P2P: ❌ SKIPPED. forMe=$forMe, localHandled=${data['localHandled']}");
-            }
-          }
-        }
-      }, onError: (e) {
-        debugPrint("🔔 P2P: ERROR in Firestore listener: $e");
-      });
-    });
-  });
-}

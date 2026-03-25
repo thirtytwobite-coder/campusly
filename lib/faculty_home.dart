@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:college_event_manager/scooped_navbar.dart';
 import 'package:flutter/rendering.dart';
 
 import 'main.dart';
@@ -445,13 +444,13 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                     ),
           ],
         ),
-        bottomNavigationBar: ScoopedNavigationBar(
+        bottomNavigationBar: BottomNavigationBar(
           currentIndex: _selectedIndex > 1 ? 0 : _selectedIndex,
           onTap: _onItemTapped,
-          activeColor: Theme.of(context).primaryColor,
+          selectedItemColor: Theme.of(context).primaryColor,
           items: const [
-            ScoopedNavItem(icon: Icons.home_rounded, label: 'Home'),
-            ScoopedNavItem(icon: Icons.person_rounded, label: 'Profile'),
+            BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
+            BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
           ],
         ),
       ),

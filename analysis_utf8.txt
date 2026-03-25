@@ -1,0 +1,9 @@
+﻿Analyzing certificate_approval_screen.dart...                   
+
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\certificate_approval_screen.dart:40:61 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\certificate_approval_screen.dart:66:112 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\certificate_approval_screen.dart:138:76 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\certificate_approval_screen.dart:165:85 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\certificate_approval_screen.dart:196:79 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\certificate_approval_screen.dart:207:82 - deprecated_member_use
+
