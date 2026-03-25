@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -297,10 +298,46 @@ class ParticipationHistoryScreen extends StatelessWidget {
       pw.MemoryImage? sig2Img;
       pw.MemoryImage? bgImg;
 
-      if (settings['useLogo'] == true && clubData['profilePic'] != null) logoImg = await _loadNetworkImage(clubData['profilePic']);
-      if (clubData['signatureUrl'] != null) sig1Img = await _loadNetworkImage(clubData['signatureUrl']);
-      if (clubData['facultySignatureUrl'] != null) sig2Img = await _loadNetworkImage(clubData['facultySignatureUrl']);
-      if (settings['bgUrl']?.toString().isNotEmpty == true) bgImg = await _loadNetworkImage(settings['bgUrl']);
+      if (settings['useLogo'] == true && clubData['profilePic'] != null) {
+        final profilePic = clubData['profilePic'].toString();
+        if (profilePic.startsWith('data:image')) {
+          final base64Data = profilePic.split(',').last;
+          final imageBytes = base64Decode(base64Data);
+          logoImg = pw.MemoryImage(imageBytes);
+        } else {
+          logoImg = await _loadNetworkImage(profilePic);
+        }
+      }
+      if (clubData['signatureUrl'] != null) {
+        final sigUrl = clubData['signatureUrl'].toString();
+        if (sigUrl.startsWith('data:image')) {
+          final base64Data = sigUrl.split(',').last;
+          final imageBytes = base64Decode(base64Data);
+          sig1Img = pw.MemoryImage(imageBytes);
+        } else {
+          sig1Img = await _loadNetworkImage(sigUrl);
+        }
+      }
+      if (clubData['facultySignatureUrl'] != null) {
+        final facultySigUrl = clubData['facultySignatureUrl'].toString();
+        if (facultySigUrl.startsWith('data:image')) {
+          final base64Data = facultySigUrl.split(',').last;
+          final imageBytes = base64Decode(base64Data);
+          sig2Img = pw.MemoryImage(imageBytes);
+        } else {
+          sig2Img = await _loadNetworkImage(facultySigUrl);
+        }
+      }
+      if (settings['bgUrl']?.toString().isNotEmpty == true) {
+        final bgUrl = settings['bgUrl'].toString();
+        if (bgUrl.startsWith('data:image')) {
+          final base64Data = bgUrl.split(',').last;
+          final imageBytes = base64Decode(base64Data);
+          bgImg = pw.MemoryImage(imageBytes);
+        } else {
+          bgImg = await _loadNetworkImage(bgUrl);
+        }
+      }
 
       pdf.addPage(
         pw.Page(
