@@ -87,25 +87,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ),
           ),
         ),
-        actions: [
-          if (widget.isFaculty)
-            IconButton(
-              icon: const Icon(Icons.playlist_add_check_rounded, size: 28),
-              tooltip: 'Approve Lists',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ListApprovalScreen(
-                      clubId: widget.clubId,
-                      clubName: widget.clubName,
-                    ),
-                  ),
-                );
-              },
-            ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: Stack(
         children: [

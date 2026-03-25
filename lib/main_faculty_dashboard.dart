@@ -347,14 +347,22 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                     itemBuilder: (context, index) {
                       final data = docs[index].data() as Map<String, dynamic>;
                       final clubId = docs[index].id;
+                      final bool isEnabled = data['isEnabled'] ?? true;
+
                       return GlassCard(
                         borderRadius: 16,
                         child: ListTile(
-                          title: Text(data['clubName']?.toUpperCase() ?? 'CLUB', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: const Text("Local Club"),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline, color: Colors.red),
-                            onPressed: () => _deleteClub(clubId, data['clubName']),
+                          title: Text(data['clubName']?.toUpperCase() ?? 'CLUB', 
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              decoration: isEnabled ? null : TextDecoration.lineThrough,
+                              color: isEnabled ? null : Colors.grey,
+                            )),
+                          subtitle: Text(isEnabled ? "Active Club" : "Disabled Club"),
+                          trailing: Switch(
+                            value: isEnabled,
+                            onChanged: (value) => _toggleClubStatus(clubId, value, data['clubName'] ?? 'Club'),
+                            activeColor: Colors.green,
                           ),
                         ),
                       );
@@ -369,36 +377,15 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
     );
   }
 
-  Future<void> _deleteClub(String clubId, String clubName) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Club?'),
-        content: Text('This will permanently delete "$clubName" and all its mappings. This cannot be undone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        // 1. Delete the club document
-        await FirebaseFirestore.instance.collection('clubs').doc(clubId).delete();
-        // 2. Delete the mapping if it exists
-        await FirebaseFirestore.instance.collection('club_mappings').doc("${widget.collegeName}_$clubId").delete();
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Club "$clubName" deleted.')));
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting club: $e')));
-        }
+  Future<void> _toggleClubStatus(String clubId, bool enable, String clubName) async {
+    try {
+      await FirebaseFirestore.instance.collection('clubs').doc(clubId).update({
+        'isEnabled': enable,
+      });
+      // SnackBar removed per user request
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -445,6 +432,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                 await FirebaseFirestore.instance.collection('clubs').add({
                   'clubName': nameController.text.trim(),
                   'college': widget.collegeName,
+                  'isEnabled': true,
                   'createdAt': FieldValue.serverTimestamp(),
                 });
                 if (mounted) Navigator.pop(c);

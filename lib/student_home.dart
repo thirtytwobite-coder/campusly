@@ -191,7 +191,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                final eventDoc = await FirebaseFirestore.instance.collection('events').doc(eventId).get();                if (eventDoc.exists && mounted) {
+                final eventDoc = await FirebaseFirestore.instance.collection('events').doc(eventId).get();
+                if (eventDoc.exists && mounted) {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => EventDetailsScreen(event: eventDoc)));
                 }
               },

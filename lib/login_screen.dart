@@ -990,6 +990,7 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
                 await FirebaseFirestore.instance.collection('clubs').add({
                   'clubName': clubName.text.trim(),
                   'description': clubDesc.text.trim(),
+                  'isEnabled': true,
                   'createdBy': FirebaseAuth.instance.currentUser?.email ?? 'admin',
                   'createdAt': FieldValue.serverTimestamp(),
                 });
@@ -1001,6 +1002,19 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _toggleClubStatus(String clubId, bool enable, String clubName) async {
+    try {
+      await FirebaseFirestore.instance.collection('clubs').doc(clubId).update({
+        'isEnabled': enable,
+      });
+      // No SnackBar per user request
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
   }
 
   @override
@@ -1049,6 +1063,10 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
                 itemCount: docs.length,
                 itemBuilder: (context, index) {
                   final data = docs[index].data() as Map<String, dynamic>;
+                  final clubId = docs[index].id;
+                  final bool isEnabled = data['isEnabled'] ?? true;
+                  final String clubName = data['clubName'] ?? 'Unnamed Club';
+
                   return GlassCard(
                     margin: const EdgeInsets.only(bottom: 16),
                     borderRadius: 24,
@@ -1060,44 +1078,46 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
                           color: theme.colorScheme.primary.withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(Icons.group_work_rounded, color: theme.colorScheme.primary),
+                        child: Icon(Icons.group_work_rounded, color: isEnabled ? theme.colorScheme.primary : Colors.grey),
                       ),
                       title: Text(
-                        data['clubName'] ?? 'Unnamed Club',
+                        clubName,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w900,
                           letterSpacing: -0.5,
+                          decoration: isEnabled ? null : TextDecoration.lineThrough,
+                          color: isEnabled ? null : Colors.grey,
                         ),
                       ),
                       subtitle: Padding(
                         padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          data['description'] ?? 'No description provided',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDark ? Colors.white54 : Colors.black54,
-                            height: 1.3,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              data['description'] ?? 'No description provided',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? Colors.white54 : Colors.black54,
+                                height: 1.3,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              isEnabled ? "Status: Active" : "Status: Disabled",
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isEnabled ? Colors.green : Colors.redAccent,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent),
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text("Delete Club?"),
-                              content: const Text("This action cannot be undone."),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
-                                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
-                              ],
-                            ),
-                          );
-                          if (confirm == true) {
-                            await FirebaseFirestore.instance.collection('clubs').doc(docs[index].id).delete();
-                          }
-                        },
+                      trailing: Switch(
+                        value: isEnabled,
+                        onChanged: (value) => _toggleClubStatus(clubId, value, clubName),
+                        activeColor: Colors.green,
                       ),
                     ),
                   ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.1);

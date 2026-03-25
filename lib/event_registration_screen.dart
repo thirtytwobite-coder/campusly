@@ -262,10 +262,10 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
         'college': studentData?['college'],
         'registrationType': regType,
         'registeredAt': FieldValue.serverTimestamp(),
+        'status': 'confirmed',
         if (isTeamEvent && regType == 'participant') 'teamId': teamId,
         if (isTeamEvent && regType == 'participant') 'teamName': teamName,
         if (isTeamEvent && regType == 'participant') 'isTeamLeader': true,
-        if (isTeamEvent && regType == 'participant') 'status': 'confirmed',
       });
 
       if (isTeamEvent && regType == 'participant' && _selectedTeamMembers.isNotEmpty) {
@@ -506,43 +506,86 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
   }
 
   void _showAddMemberDialog() {
+    String searchQuery = '';
     showDialog(
       context: context,
       builder: (ctx) {
-        final availableStudents = _collegeStudents
-            .where((s) => !_selectedTeamMembers.any((m) => m['id'] == s['id']))
-            .toList();
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final filteredStudents = _collegeStudents
+                .where((s) {
+                  final matchesSearch = (s['name'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase()) ||
+                      (s['department'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase()) ||
+                      (s['email'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase());
+                  final isNotAlreadySelected = !_selectedTeamMembers.any((m) => m['id'] == s['id']);
+                  return matchesSearch && isNotAlreadySelected;
+                })
+                .toList();
 
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text("Select Team Member", style: TextStyle(fontWeight: FontWeight.w900)),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 350,
-            child: availableStudents.isEmpty
-                ? const Center(child: Text("No more students available in your college."))
-                : ListView.builder(
-                    itemCount: availableStudents.length,
-                    itemBuilder: (context, index) {
-                      final s = availableStudents[index];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.blue.withOpacity(0.1),
-                          child: Text((s['name'] ?? '?')[0].toUpperCase(), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-                        ),
-                        title: Text(s['name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w700)),
-                        subtitle: Text(s['department'] ?? '', style: const TextStyle(fontSize: 12)),
-                        onTap: () {
-                          setState(() => _selectedTeamMembers.add(s));
-                          Navigator.pop(ctx);
-                        },
-                      );
-                    },
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Select Team Member", style: TextStyle(fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: TextField(
+                      onChanged: (value) {
+                        setDialogState(() {
+                          searchQuery = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: "Search name, dept, email...",
+                        hintStyle: TextStyle(fontSize: 13, color: Colors.grey.withOpacity(0.6)),
+                        prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                    ),
                   ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          ],
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 350,
+                child: filteredStudents.isEmpty
+                    ? Center(
+                        child: Text(
+                          searchQuery.isEmpty ? "No more students available." : "No results for \"$searchQuery\"",
+                          style: TextStyle(color: Colors.grey.withOpacity(0.8)),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: filteredStudents.length,
+                        itemBuilder: (context, index) {
+                          final s = filteredStudents[index];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.blue.withOpacity(0.1),
+                              child: Text((s['name'] ?? '?')[0].toUpperCase(), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                            ),
+                            title: Text(s['name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w700)),
+                            subtitle: Text("${s['department'] ?? ''} • ${s['year'] ?? ''}Y", style: const TextStyle(fontSize: 12)),
+                            onTap: () {
+                              setState(() => _selectedTeamMembers.add(s));
+                              Navigator.pop(ctx);
+                            },
+                          );
+                        },
+                      ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+              ],
+            );
+          },
         );
       },
     );

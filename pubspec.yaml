@@ -36,6 +36,7 @@ dependencies:
   local_auth: ^2.2.0
   flutter_secure_storage: ^9.0.0
   confetti: ^0.8.0
+  app_links: ^6.3.2
 
 dev_dependencies:
   flutter_test:

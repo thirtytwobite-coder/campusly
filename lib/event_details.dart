@@ -4,6 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:convert';
+import 'package:share_plus/share_plus.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import 'event_registration_screen.dart';
 import 'vibrant_background.dart';
 import 'profile_screen.dart';
@@ -12,6 +16,64 @@ class EventDetailsScreen extends StatelessWidget {
   final DocumentSnapshot event;
 
   const EventDetailsScreen({super.key, required this.event});
+
+  Future<void> _shareEvent(BuildContext context, String title, String date, String time, String venue, String mode, String clubName, String description, String? imageUrl) async {
+    final String deepLink = 'https://campusly.app/event?id=${event.id}';
+    final String shareText = '''
+Check out this event on Campusly! 🚀
+
+Event: $title
+📅 Date: $date
+⏰ Time: $time
+📍 Venue: $venue
+🎥 Mode: $mode
+🏢 Organized by: $clubName
+
+Description:
+$description
+
+View event details here: $deepLink
+''';
+
+    try {
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        // Show loading indicator
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(child: CircularProgressIndicator()),
+        );
+
+        final String finalImageUrl = _convertGoogleDriveLink(imageUrl);
+        final response = await http.get(Uri.parse(finalImageUrl));
+        
+        if (response.statusCode == 200) {
+          final bytes = response.bodyBytes;
+          final tempDir = await getTemporaryDirectory();
+          final path = '${tempDir.path}/event_poster_${DateTime.now().millisecondsSinceEpoch}.png';
+          final file = File(path);
+          await file.writeAsBytes(bytes);
+
+          if (context.mounted) Navigator.pop(context); // Remove loading indicator
+
+          await Share.shareXFiles(
+            [XFile(file.path)],
+            text: shareText,
+            subject: 'Event: $title',
+          );
+        } else {
+          throw Exception('Failed to load image');
+        }
+      } else {
+        await Share.share(shareText, subject: 'Event: $title');
+      }
+    } catch (e) {
+      if (context.mounted && Navigator.canPop(context)) Navigator.pop(context);
+      debugPrint("Error sharing event: $e");
+      // Fallback to text only if image sharing fails
+      await Share.share(shareText, subject: 'Event: $title');
+    }
+  }
 
   void _showFullImage(BuildContext context, String? url) {
     if (url == null || url.isEmpty) return;
@@ -212,7 +274,7 @@ class EventDetailsScreen extends StatelessWidget {
                                   const Spacer(),
                                   IconButton(
                                     icon: Icon(Icons.share_rounded, color: theme.colorScheme.primary.withOpacity(0.6), size: 22),
-                                    onPressed: () {}, // Share functionality
+                                    onPressed: () => _shareEvent(context, title, date, time, venue, eventMode, clubName, description, imageUrl),
                                   ),
                                 ],
                               ),

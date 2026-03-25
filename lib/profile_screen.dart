@@ -63,16 +63,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Map<String, dynamic> data =
             Map<String, dynamic>.from(userDoc.data() as Map<String, dynamic>);
 
-        if (userData?['email'] != null) {
+        final String? email = data['email'];
+        if (email != null && email.isNotEmpty) {
           final coordinatorQuery = await FirebaseFirestore.instance
               .collection('clubs')
-              .where('coordinatorEmails', arrayContains: userData?['email'])
+              .where('coordinatorEmails', arrayContains: email)
               .limit(1)
               .get();
 
           if (coordinatorQuery.docs.isNotEmpty) {
             String currentRole = data['role'] ?? '';
-            if (currentRole.isNotEmpty && !currentRole.contains('Club Coordinator')) {
+            if (currentRole.isNotEmpty && !currentRole.toLowerCase().contains('coordinator')) {
               data['displayRole'] = '$currentRole / Club Coordinator';
             } else if (currentRole.isEmpty) {
               data['displayRole'] = 'Club Coordinator';
@@ -705,7 +706,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildModernInfoGroup([
             _buildModernInfoTile(Icons.phone_iphone_rounded, 'Primary Phone', userData?['phone']?.toString() ?? 'Not provided', theme, Colors.blue),
             _buildModernInfoTile(Icons.account_balance_rounded, 'Institutional Affiliation', userData?['college']?.toString() ?? 'Not provided', theme, Colors.indigo),
-            _buildModernInfoTile(Icons.badge_rounded, 'Registry ID', userData?['ktuId']?.toString() ?? 'Not provided', theme, Colors.amber.shade800, isLast: true),
+            _buildModernInfoTile(Icons.badge_rounded, 'Register ID', userData?['ktuId']?.toString() ?? 'Not provided', theme, Colors.amber.shade800, isLast: true),
           ], theme),
           const SizedBox(height: 32),
         ] else ...[
@@ -963,7 +964,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
               const SizedBox(height: 18),
-              _buildModernEditableField(_ktuIdController, 'KTU Registry ID', Icons.badge_rounded, theme,
+              _buildModernEditableField(_ktuIdController, 'KTU Register ID', Icons.badge_rounded, theme,
                 inputFormatters: [UpperCaseTextFormatter()]),
             ],
             
