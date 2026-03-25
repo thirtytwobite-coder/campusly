@@ -104,19 +104,6 @@ class _ProgramApprovalScreenState extends State<ProgramApprovalScreen> {
             });
           }
 
-          // 🔹 P2P Notification Trigger for Rejection (Bulk)
-          final coordinatorId = data['coordinatorId'];
-          if (coordinatorId != null) {
-            final pushRef = FirebaseFirestore.instance.collection('push_notifications').doc();
-            batch.set(pushRef, {
-              'title': 'Request Rejected',
-              'body': 'Your request for "${data['name']}" was rejected.',
-              'targetUid': coordinatorId,
-              'status': 'pending',
-              'createdAt': FieldValue.serverTimestamp(),
-              'data': {'type': 'REJECTION', 'reason': reason},
-            });
-          }
 
           // Send individual notifications
           final notifyRef = FirebaseFirestore.instance
@@ -383,21 +370,7 @@ class _ApprovalCard extends StatelessWidget {
           'read': false,
         });
 
-        // 🔹 P2P Notification Trigger for Approval
-        final coordinatorId = data['coordinatorId'];
-        debugPrint("🔔 P2P: Triggering Approval Update to $coordinatorId");
-        try {
-          await FirebaseFirestore.instance.collection('push_notifications').add({
-            'title': isStatusChange ? 'Update Approved' : 'Event Approved',
-            'body': 'Your request for "${data['name']}" was approved.',
-            'targetUid': coordinatorId,
-            'status': 'pending',
-            'createdAt': FieldValue.serverTimestamp(),
-            'data': {'type': 'APPROVAL', 'programId': programId},
-          });
-        } catch (e) {
-          debugPrint("🔔 P2P: Trigger Error: $e");
-        }
+
       }
       onProcessed();
     } catch (e) {
@@ -499,19 +472,7 @@ class _ApprovalCard extends StatelessWidget {
                   'read': false,
                 });
 
-                // 🔹 P2P Notification Trigger for Rejection
-                final coordinatorId = data['coordinatorId'];
-                debugPrint("🔔 P2P: Triggering Rejection Update to $coordinatorId");
-                if (coordinatorId != null) {
-                  await FirebaseFirestore.instance.collection('push_notifications').add({
-                    'title': 'Request Rejected',
-                    'body': 'Your request for "${data['name']}" was rejected.',
-                    'targetUid': coordinatorId,
-                    'status': 'pending',
-                    'createdAt': FieldValue.serverTimestamp(),
-                    'data': {'type': 'REJECTION', 'reason': reasonController.text.trim()},
-                  });
-                }
+
               },
               child: const Text('Reject'),
             ),

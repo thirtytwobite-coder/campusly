@@ -6,7 +6,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:college_event_manager/scooped_navbar.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:path_provider/path_provider.dart';
@@ -19,7 +18,6 @@ import 'change_password.dart';
 import 'login_screen.dart';
 import 'main.dart';
 import 'profile_screen.dart';
-import 'student_directory_screen.dart';
 import 'vibrant_background.dart';
 
 class MainFacultyDashboard extends StatefulWidget {
@@ -617,21 +615,6 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                             },
                             4
                           ),
-                          _buildPremiumCard(
-                            "Directory", 
-                            "View All Students",
-                            Icons.folder_shared_rounded, 
-                            const [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
-                            () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (c) => const StudentDirectoryScreen(),
-                                ),
-                              );
-                            },
-                            5
-                          ),
                         ],
                       ),
                     ),
@@ -641,13 +624,13 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
               ),
             ],
           ),
-          bottomNavigationBar: ScoopedNavigationBar(
+          bottomNavigationBar: BottomNavigationBar(
             currentIndex: _selectedIndex > 1 ? 0 : _selectedIndex,
             onTap: _onItemTapped,
-            activeColor: Theme.of(context).colorScheme.primary,
+            selectedItemColor: Theme.of(context).colorScheme.primary,
             items: const [
-              ScoopedNavItem(icon: Icons.home_rounded, label: 'Home'),
-              ScoopedNavItem(icon: Icons.person_rounded, label: 'Profile'),
+              BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
+              BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
             ],
           ),
         ));

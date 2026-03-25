@@ -284,21 +284,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
-    // 🔹 P2P Notification Trigger for Faculty Approval
-    debugPrint("🔔 P2P: Triggering Faculty Approval Request for $name");
-    try {
-      await FirebaseFirestore.instance.collection('push_notifications').add({
-        'title': 'Approval Request: $name',
-        'body': 'A new program has been created and needs your review.',
-        'targetRole': 'FACULTY',
-        'status': 'pending',
-        'createdAt': FieldValue.serverTimestamp(),
-        'data': {'eventId': eventRef.id, 'type': 'APPROVAL_REQUEST'},
-      });
-      debugPrint("🔔 P2P: Success writing to Firestore collection 'push_notifications'.");
-    } catch (e) {
-      debugPrint("🔔 P2P: ERROR WRITING TRIGGER: $e");
-    }
+
   }
 
   Future<void> _updateProgram(String programId, String name, String category, String date) async {
@@ -335,25 +321,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
       await doc.reference.update({'status': newStatus, 'updatedAt': FieldValue.serverTimestamp()});
     }
 
-      // 🔹 P2P Notification Trigger for Students when event starts
-      if (newStatus == 'ongoing') {
-        final progDoc = await programRef.get();
-        final name = progDoc.data()?['name'] ?? 'Event';
-        
-        debugPrint("🔔 P2P: Triggering Event Started notification for Students ($name)");
-        try {
-          await FirebaseFirestore.instance.collection('push_notifications').add({
-            'title': 'Event Started! 🚀',
-            'body': '$name is now LIVE. Come join us!',
-            'targetRole': 'STUDENT',
-            'status': 'pending',
-            'createdAt': FieldValue.serverTimestamp(),
-            'data': {'programId': programId, 'type': 'EVENT_STARTED'},
-          });
-        } catch (e) {
-          debugPrint("🔔 P2P: ERROR Triggering Student Notif: $e");
-        }
-      }
+
     }
 
   void _confirmDelete(BuildContext context, String programId) {
