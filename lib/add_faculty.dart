@@ -125,50 +125,6 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 40),
-                GlassCard(
-                  borderRadius: 32,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        const Icon(Icons.upload_file_rounded, size: 48, color: Colors.green),
-                        const SizedBox(height: 16),
-                        const Text(
-                          "Bulk Upload (CSV)",
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          "Import multiple faculty records using a CSV file template.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: OutlinedButton.icon(
-                            onPressed: () => pickAndUploadCSV(context, _c.text.trim()),
-                            icon: const Icon(Icons.publish_rounded),
-                            label: const Text("Select & Upload CSV"),
-                            style: OutlinedButton.styleFrom(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              side: const BorderSide(color: Colors.green),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextButton.icon(
-                          onPressed: () => downloadCSVTemplate(context),
-                          icon: const Icon(Icons.download_rounded, size: 18),
-                          label: const Text("Download CSV Template"),
-                          style: TextButton.styleFrom(foregroundColor: Colors.green),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               ],
             ),
           ),

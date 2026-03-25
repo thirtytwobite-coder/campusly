@@ -5,11 +5,13 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
+import 'package:csv/csv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Ensure these imports match your actual file names
@@ -586,7 +588,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                           ),
                           _buildPremiumCard(
                             "Register", 
-                            "Manual/Bulk Faculty Add",
+                            "Manual Faculty Registration",
                             Icons.person_add_rounded, 
                             const [Color(0xFFF59E0B), Color(0xFFD97706)],
                             () {
@@ -723,9 +725,10 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
   final _pass = TextEditingController();
   final _phone = TextEditingController();
 
-  Future<void> _register(String name, String email, String password) async {
+  Future<void> _register(String name, String email, String password, {FirebaseAuth? auth}) async {
+    final authToUse = auth ?? FirebaseAuth.instance;
     UserCredential cred =
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        await authToUse.createUserWithEmailAndPassword(
       email: email.trim(),
       password: password.trim(),
     );
@@ -737,6 +740,10 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
       'role': 'Faculty',
       'phone': '',
     });
+    
+    if (auth != null) {
+      await auth.signOut();
+    }
   }
 
   Future<void> _handleManualRegister() async {
@@ -746,11 +753,19 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
     if (_pass.text.length < 6) { _showError("Password must be at least 6 chars"); return; }
 
     try {
-      await _register(_name.text, _email.text, _pass.text);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Successfully registered ${_name.text}')));
-        Navigator.pop(context);
+      FirebaseApp secondaryApp = await Firebase.initializeApp(
+        name: 'Secondary',
+        options: Firebase.app().options,
+      );
+      try {
+        await _register(_name.text, _email.text, _pass.text, auth: FirebaseAuth.instanceFor(app: secondaryApp));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Successfully registered ${_name.text}')));
+          Navigator.pop(context);
+        }
+      } finally {
+        await secondaryApp.delete();
       }
     } catch (e) {
       _showError('Failed to register: ${e.toString()}');
@@ -772,44 +787,127 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
     );
 
     if (result != null) {
-      final file = File(result.files.single.path!);
-      final lines = await file.readAsLines(encoding: utf8);
+      // Show loading dialog
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
       int successCount = 0;
-      int failCount = 0;
 
-      for (var i = 1; i < lines.length; i++) {
-        final line = lines[i];
-        if (line.trim().isEmpty) continue;
-        final parts = line.split(',');
-        if (parts.length >= 4) {
-          final name = parts[1].trim();
-          final email = parts[2].trim();
-          final password = parts[3].trim();
-          if (name.isNotEmpty && email.isNotEmpty && password.isNotEmpty) {
+      try {
+        final file = File(result.files.single.path!);
+        final content = await file.readAsString(encoding: utf8);
+        final rows = const CsvToListConverter().convert(content, eol: '\n');
+
+        FirebaseApp secondaryApp = await Firebase.initializeApp(
+          name: 'SecondaryCSV',
+          options: Firebase.app().options,
+        );
+        FirebaseAuth secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+
+        try {
+          for (var i = 1; i < rows.length; i++) {
+            final row = rows[i];
+            if (row.isEmpty) continue;
+
+            String name = '';
+            String email = '';
+            String password = '';
+
+            if (row.length >= 4) {
+              name = row[1].toString().trim();
+              email = row[2].toString().trim();
+              password = row[3].toString().trim();
+            } else if (row.length == 3) {
+              name = row[0].toString().trim();
+              email = row[1].toString().trim();
+              password = row[2].toString().trim();
+            } else {
+              continue;
+            }
+
+            if (name.isEmpty || email.isEmpty || password.isEmpty || !_isValidEmail(email)) {
+              continue;
+            }
+
             try {
-              await _register(name, email, password);
+              await _register(name, email, password, auth: secondaryAuth);
               successCount++;
-            } catch (e) { failCount++; }
-          } else { failCount++; }
-        } else { failCount++; }
+            } catch (e) {
+              // Ignore individual row errors as per request to show only success message
+            }
+          }
+        } finally {
+          await secondaryApp.delete();
+        }
+      } catch (e) {
+        debugPrint("CSV Process Error: $e");
       }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Finished. Success: $successCount, Failed: $failCount')));
-        Navigator.pop(context);
-      }
-    }
-  }
 
-  Future<void> _openTemplate() async {
-    try {
-      final String templateString = await rootBundle.loadString('assets/faculty_template.csv');
-      final Directory directory = await getApplicationDocumentsDirectory();
-      final File file = File('${directory.path}/faculty_template.csv');
-      await file.writeAsString(templateString);
-      await OpenFile.open(file.path);
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        
+        if (successCount > 0) {
+          showDialog(
+            context: context,
+            builder: (ctx) => BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              child: AlertDialog(
+                backgroundColor: Colors.transparent,
+                contentPadding: EdgeInsets.zero,
+                content: GlassCard(
+                  borderRadius: 32,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 64),
+                        ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
+                        const SizedBox(height: 24),
+                        const Text(
+                          "Registration Successful",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          "$successCount faculty members have been successfully added to your college directory.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 14, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54),
+                        ),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: const Text("Done", style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -875,19 +973,6 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       children: [
-                        const Icon(Icons.upload_file_rounded, size: 48, color: Colors.green),
-                        const SizedBox(height: 16),
-                        const Text(
-                          "Bulk Upload",
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          "Upload a CSV file to register multiple faculty members at once.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 24),
                         SizedBox(
                           width: double.infinity,
                           height: 56,
@@ -900,13 +985,6 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
                               side: const BorderSide(color: Colors.green),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextButton.icon(
-                          onPressed: _openTemplate,
-                          icon: const Icon(Icons.download_rounded, size: 18),
-                          label: const Text("Download CSV Template"),
-                          style: TextButton.styleFrom(foregroundColor: Colors.green),
                         ),
                       ],
                     ),
