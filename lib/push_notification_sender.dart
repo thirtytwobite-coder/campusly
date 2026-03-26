@@ -1,4 +1,4 @@
-import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
+import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart' as jwt;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -50,17 +50,18 @@ NLbfcukmwoxiAukDD8pDsZY=
 
     try {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final jwt = JWT(
-        {
-          "iss": _clientEmail,
-          "scope": "https://www.googleapis.com/auth/cloud-platform",
-          "aud": "https://oauth2.googleapis.com/token",
-          "exp": now + 3600,
-          "iat": now,
-        },
-      );
+      
+      final payload = {
+        "iss": _clientEmail,
+        "scope": "https://www.googleapis.com/auth/cloud-platform",
+        "aud": "https://oauth2.googleapis.com/token",
+        "exp": now + 3600,
+        "iat": now,
+      };
 
-      final tokenString = jwt.sign(RSAPrivateKey(_privateKey), algorithm: JWTAlgorithm.RS256);
+      final key = jwt.RSAPrivateKey(_privateKey);
+      final token = jwt.JWT(payload);
+      final tokenString = token.sign(key, algorithm: jwt.JWTAlgorithm.RS256);
 
       final response = await http.post(
         Uri.parse("https://oauth2.googleapis.com/token"),

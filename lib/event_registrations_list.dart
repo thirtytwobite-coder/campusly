@@ -63,6 +63,8 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
   String? _clubId;
   bool _certsApproved = false;
   String _eventStatus = 'approved';
+  bool _isTeamEvent = false;
+  bool _isApprovalRequestPending = false;
 
   @override
   void initState() {
@@ -803,9 +805,10 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
             ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Row(
+              child: Wrap(
+                spacing: 8,
                 children: [
-                  if (rank != null) ...[
+                  if (rank != null)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
@@ -820,8 +823,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                         style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                  ],
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
@@ -839,6 +840,28 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                       ),
                     ),
                   ),
+                  if (data['isVolunteer'] == true)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF10B981)]),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(color: Colors.green.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2)),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.volunteer_activism_rounded, size: 10, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            "VOLUNTEER",
+                            style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -849,7 +872,8 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
               Divider(color: isDark ? Colors.white10 : Colors.black12),
               const SizedBox(height: 16),
               _buildDetailGrid(data),
-              if (!widget.isFacultyView && isCompleted && (participated || isWinner)) ...[
+              if (data['isVolunteer'] == true) ...[const SizedBox(height: 16), _buildVolunteerSection(doc, data)],
+              if (!widget.isFacultyView && isCompleted && (participated || isWinner)) ..[
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -890,6 +914,202 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
         _buildDetailItem(Icons.school_outlined, "College", data['college'] ?? 'N/A'),
         _buildDetailItem(Icons.email_outlined, "Email", data['studentEmail'] ?? 'N/A'),
       ],
+    );
+  }
+
+  Widget _buildVolunteerSection(QueryDocumentSnapshot doc, Map<String, dynamic> data) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final studentName = data['studentName']?.toString() ?? 'Unknown';
+    final assignedTask = data['volunteerTask']?.toString() ?? '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.volunteer_activism_rounded, size: 16, color: Colors.green.shade700),
+                const SizedBox(width: 8),
+                Text(
+                  "Volunteer Assignment",
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+            if (!widget.isFacultyView && !_certsApproved)
+              GestureDetector(
+                onTap: () => _showAssignTaskDialog(doc, data),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_rounded, size: 12, color: Colors.blue),
+                      const SizedBox(width: 4),
+                      Text(
+                        assignedTask.isEmpty ? "Assign" : "Update",
+                        style: const TextStyle(
+                          color: Colors.blue,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (assignedTask.isNotEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.green.withOpacity(0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.check_circle_rounded, size: 14, color: Colors.green.shade700),
+                    const SizedBox(width: 8),
+                    Text("Task Assigned", style: TextStyle(fontSize: 10, color: Colors.green.shade700, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  assignedTask,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white87 : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded, size: 14, color: Colors.grey.shade600),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "No task assigned yet",
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _showAssignTaskDialog(QueryDocumentSnapshot doc, Map<String, dynamic> data) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final studentName = data['studentName']?.toString() ?? 'Unknown';
+    final currentTask = data['volunteerTask']?.toString() ?? '';
+    final taskController = TextEditingController(text: currentTask);
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Assign Volunteer Task", style: TextStyle(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text(
+              "For: $studentName",
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.white54 : Colors.grey[600]),
+            ),
+          ],
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: taskController,
+                maxLines: 4,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                decoration: InputDecoration(
+                  hintText: "Describe the volunteer task (e.g., 'Setup decoration', 'Manage registration desk', etc.)",
+                  hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.grey),
+                  fillColor: isDark ? Colors.white10 : Colors.grey[100],
+                  filled: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Cancel", style: TextStyle(color: isDark ? Colors.white54 : Colors.grey[600])),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final task = taskController.text.trim();
+              if (task.isNotEmpty) {
+                try {
+                  await doc.reference.update({'volunteerTask': task});
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Task assigned successfully!")),
+                    );
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Error: $e")),
+                  );
+                }
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Please enter a task description")),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text("Assign Task", style: TextStyle(fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
     );
   }
 
