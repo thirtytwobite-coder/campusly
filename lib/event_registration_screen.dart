@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'vibrant_background.dart';
+import 'package:college_event_manager/vibrant_background.dart';
 
 class EventRegistrationScreen extends StatefulWidget {
   final DocumentSnapshot event;
@@ -28,7 +28,6 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
   late TextEditingController _yearController;
   late TextEditingController _semController;
   late TextEditingController _ktuIdController;
-  late TextEditingController _teamNameController;
 
   final List<Map<String, dynamic>> _selectedTeamMembers = [];
   List<Map<String, dynamic>> _collegeStudents = [];
@@ -44,7 +43,6 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
     _yearController = TextEditingController();
     _semController = TextEditingController();
     _ktuIdController = TextEditingController();
-    _teamNameController = TextEditingController();
     _fetchStudentData();
   }
 
@@ -57,7 +55,6 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
     _yearController.dispose();
     _semController.dispose();
     _ktuIdController.dispose();
-    _teamNameController.dispose();
     super.dispose();
   }
 
@@ -246,7 +243,6 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
           .set(updatedData, SetOptions(merge: true));
 
       final String teamId = (isTeamEvent && regType == 'participant') ? "${widget.event.id}_${user.uid}" : "";
-      final String teamName = (isTeamEvent && regType == 'participant') ? _teamNameController.text.trim() : "";
 
       await FirebaseFirestore.instance.collection('registrations').add({
         'userId': user.uid,
@@ -262,10 +258,9 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
         'college': studentData?['college'],
         'registrationType': regType,
         'registeredAt': FieldValue.serverTimestamp(),
-        'status': 'confirmed',
         if (isTeamEvent && regType == 'participant') 'teamId': teamId,
-        if (isTeamEvent && regType == 'participant') 'teamName': teamName,
         if (isTeamEvent && regType == 'participant') 'isTeamLeader': true,
+        if (isTeamEvent && regType == 'participant') 'status': 'confirmed',
       });
 
       if (isTeamEvent && regType == 'participant' && _selectedTeamMembers.isNotEmpty) {
@@ -285,7 +280,6 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
              'registrationType': 'participant',
              'registeredAt': FieldValue.serverTimestamp(),
              'teamId': teamId,
-             'teamName': teamName,
              'isTeamLeader': false,
              'status': 'pending',
            });
@@ -293,7 +287,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
            await FirebaseFirestore.instance.collection('student').doc(memberData['id']).collection('notifications').add({
              'type': 'team_invite',
              'title': 'Team Invitation',
-             'message': '${updatedData['name']} invited you to join their team ${teamName.isNotEmpty ? "($teamName)" : ""} for ${eventData['title'] ?? 'an event'}.',
+             'message': '${updatedData['name']} invited you to join their team for ${eventData['title'] ?? 'an event'}.',
              'eventId': widget.event.id,
              'regId': pendingRegRef.id,
              'read': false,
@@ -452,20 +446,6 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
                           ),
                           if (isTeamEvent && _registrationType == 'participant') ...[
                             const SizedBox(height: 24),
-                            GlassCard(
-                              child: Padding(
-                                padding: const EdgeInsets.all(24),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text("Team Information", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
-                                    const SizedBox(height: 16),
-                                    _buildTextField(_teamNameController, "Team Name", Icons.group_work_rounded),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
                             _buildTeamSection(maxTeamSize),
                           ],
                           const SizedBox(height: 48),
@@ -506,86 +486,43 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
   }
 
   void _showAddMemberDialog() {
-    String searchQuery = '';
     showDialog(
       context: context,
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final filteredStudents = _collegeStudents
-                .where((s) {
-                  final matchesSearch = (s['name'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase()) ||
-                      (s['department'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase()) ||
-                      (s['email'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase());
-                  final isNotAlreadySelected = !_selectedTeamMembers.any((m) => m['id'] == s['id']);
-                  return matchesSearch && isNotAlreadySelected;
-                })
-                .toList();
+        final availableStudents = _collegeStudents
+            .where((s) => !_selectedTeamMembers.any((m) => m['id'] == s['id']))
+            .toList();
 
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Select Team Member", style: TextStyle(fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 16),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: TextField(
-                      onChanged: (value) {
-                        setDialogState(() {
-                          searchQuery = value;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        hintText: "Search name, dept, email...",
-                        hintStyle: TextStyle(fontSize: 13, color: Colors.grey.withOpacity(0.6)),
-                        prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              content: SizedBox(
-                width: double.maxFinite,
-                height: 350,
-                child: filteredStudents.isEmpty
-                    ? Center(
-                        child: Text(
-                          searchQuery.isEmpty ? "No more students available." : "No results for \"$searchQuery\"",
-                          style: TextStyle(color: Colors.grey.withOpacity(0.8)),
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text("Select Team Member", style: TextStyle(fontWeight: FontWeight.w900)),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 350,
+            child: availableStudents.isEmpty
+                ? const Center(child: Text("No more students available in your college."))
+                : ListView.builder(
+                    itemCount: availableStudents.length,
+                    itemBuilder: (context, index) {
+                      final s = availableStudents[index];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: Colors.blue.withOpacity(0.1),
+                          child: Text((s['name'] ?? '?')[0].toUpperCase(), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
                         ),
-                      )
-                    : ListView.builder(
-                        itemCount: filteredStudents.length,
-                        itemBuilder: (context, index) {
-                          final s = filteredStudents[index];
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: Colors.blue.withOpacity(0.1),
-                              child: Text((s['name'] ?? '?')[0].toUpperCase(), style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-                            ),
-                            title: Text(s['name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w700)),
-                            subtitle: Text("${s['department'] ?? ''} • ${s['year'] ?? ''}Y", style: const TextStyle(fontSize: 12)),
-                            onTap: () {
-                              setState(() => _selectedTeamMembers.add(s));
-                              Navigator.pop(ctx);
-                            },
-                          );
+                        title: Text(s['name'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.w700)),
+                        subtitle: Text(s['department'] ?? '', style: const TextStyle(fontSize: 12)),
+                        onTap: () {
+                          setState(() => _selectedTeamMembers.add(s));
+                          Navigator.pop(ctx);
                         },
-                      ),
-              ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-              ],
-            );
-          },
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          ],
         );
       },
     );

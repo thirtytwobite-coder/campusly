@@ -20,7 +20,6 @@ function normalizePhone(phone) {
   if (!phone) return null;
   const digits = String(phone).replace(/\D/g, '');
   if (digits.length < 10) return null;
-  // Assumes India numbers without country code, adjust if needed
   if (digits.length === 10) return `+91${digits}`;
   if (digits.startsWith('91') && digits.length === 12) return `+${digits}`;
   if (digits.startsWith('1') && digits.length === 11) return `+${digits}`;
@@ -54,41 +53,40 @@ async function getTokenByUid(uid) {
   return doc.data().fcmToken || null;
 }
 
-// ---------- new notification triggers ----------
+// =========================================================================
+// NEW FCM NOTIFICATION TRIGGERS (Requested Scenarios)
+// =========================================================================
 
-// When a global event document is created and status is pending,
-// notify all faculties that an approval request has arrived.
+// Scenario 1: When a Club Coordinator creates an event -> Send notification to Club Faculty
 exports.notifyOnEventCreated = functions.firestore
   .document('events/{eventId}')
   .onCreate(async (snap, context) => {
     const data = snap.data() || {};
     if (String(data.status).toLowerCase() !== 'pending') return null;
 
-    const title = data.title || data.name || 'New Event';
     const payload = {
       notification: {
-        title: 'New Event Approval Request',
-        body: `A new event '${title}' has been created. Please review and approve.`,
+        title: 'New Event Approval Required',
+        body: 'A new event has been created and needs your approval.',
       },
       data: {
-        type: 'EVENT_APPROVAL_REQUEST',
-        eventId: context.params.eventId,
+        type: 'approval_request',
+        screen: 'event_approval',
       },
     };
 
     const tokens = await getTokensByRole('FACULTY');
     if (tokens.length === 0) return null;
     try {
-      await admin.messaging().sendToDevice(tokens, payload);
+      await admin.messaging().sendToDevice(tokens, payload, { priority: 'high', timeToLive: 86400 });
     } catch (e) {
       console.error('Error sending approval request FCM', e);
     }
 
-    // mark that we notified so duplicates are avoided on re-create
     return snap.ref.update({ pendingNotified: true });
   });
 
-// When event document updates status, send targeted notifications.
+// Scenario 2 & 3: When Faculty approves event OR Club Coordinator starts event
 exports.notifyOnEventStatusChange = functions.firestore
   .document('events/{eventId}')
   .onUpdate(async (change, context) => {
@@ -97,54 +95,161 @@ exports.notifyOnEventStatusChange = functions.firestore
     if (before.status === after.status) return null;
 
     const newStatus = String(after.status).toLowerCase();
-    let payload = null;
-    let targetTokens = [];
+    const oldStatus = String(before.status).toLowerCase();
 
-    if (newStatus === 'approved') {
-      // notify only the coordinator who created the event
+    // Scenario 2: Event Approved -> Send notification to Club Coordinator
+    if (newStatus === 'approved' && oldStatus === 'pending') {
       const coordId = after.createdBy || after.coordinatorId;
       if (coordId) {
         const token = await getTokenByUid(coordId);
-        if (token) targetTokens.push(token);
+        if (token) {
+          const payload = {
+            notification: {
+              title: 'Event Approved',
+              body: 'Your event has been approved successfully.',
+            },
+            data: {
+              type: 'approval_success',
+              screen: 'event_details',
+            },
+          };
+          await admin.messaging().sendToDevice([token], payload, { priority: 'high', timeToLive: 86400 });
+        }
       }
-      payload = {
-        notification: {
-          title: 'Event Approved',
-          body: `Your event '${after.title || ''}' has been approved and published.`,
-        },
-        data: {
-          type: 'EVENT_APPROVED',
-          eventId: context.params.eventId,
-        },
-      };
-    } else if (newStatus === 'ongoing') {
-      // send to all students when event goes live/ongoing
-      targetTokens = await getTokensByRole('STUDENT');
-      payload = {
-        notification: {
-          title: 'Event Started!',
-          body: `The event '${after.title || ''}' has officially started. Check it out now!`,
-        },
-        data: {
-          type: 'EVENT_STARTED',
-          eventId: context.params.eventId,
-        },
-      };
-    }
+    } 
+    // Scenario 3: Event Started -> Send notification to all registered students
+    else if (newStatus === 'ongoing' && oldStatus !== 'ongoing') {
+      const registrationsSnap = await admin.firestore().collection('registrations')
+        .where('eventId', '==', context.params.eventId)
+        .get();
+      
+      const userIds = new Set();
+      registrationsSnap.forEach(doc => {
+        if (doc.data().userId) userIds.add(doc.data().userId);
+      });
 
-    if (payload && targetTokens.length) {
-      try {
-        await admin.messaging().sendToDevice(targetTokens, payload);
-      } catch (e) {
-        console.error('Error sending status-change FCM', e);
+      const tokens = [];
+      for (const uid of userIds) {
+        const t = await getTokenByUid(uid);
+        if (t) tokens.push(t);
+      }
+
+      if (tokens.length > 0) {
+        const payload = {
+          notification: {
+            title: 'Event Started',
+            body: 'Your registered event has started. Join now!',
+          },
+          data: {
+            type: 'event_start',
+            screen: 'live_event',
+          },
+        };
+        await admin.messaging().sendToDevice(tokens, payload, { priority: 'high', timeToLive: 86400 });
       }
     }
 
     return null;
   });
 
-// When a student receives a notification in their sub-collection (like a team invite),
-// send an actual FCM push notification to them.
+// Scenario 4: When Coordinator sends certificate for verification -> Send notification to Faculty
+exports.notifyOnCertificatePending = functions.firestore
+  .document('certificate_approvals/{certId}')
+  .onCreate(async (snap, context) => {
+    const data = snap.data() || {};
+    if (data.status !== 'pending') return null;
+
+    const payload = {
+      notification: {
+        title: 'Certificate Verification Required',
+        body: 'A certificate is waiting for your verification.',
+      },
+      data: {
+        type: 'certificate_pending',
+        screen: 'verification_page',
+      },
+    };
+
+    const tokens = await getTokensByRole('FACULTY');
+    if (tokens.length > 0) {
+      await admin.messaging().sendToDevice(tokens, payload, { priority: 'high', timeToLive: 86400 });
+    }
+    return null;
+  });
+
+// Scenario 5: When Faculty verifies certificate -> Send notification to Club Coordinator
+exports.notifyOnCertificateVerified = functions.firestore
+  .document('certificate_approvals/{certId}')
+  .onUpdate(async (change, context) => {
+    const before = change.before.data() || {};
+    const after = change.after.data() || {};
+    
+    // Status can change to 'approved' or 'verified' when faculty verifies
+    if (before.status === 'pending' && (after.status === 'approved' || after.status === 'verified')) {
+      const clubId = after.clubId;
+      let targetTokens = [];
+      
+      if (clubId) {
+        const clubDoc = await admin.firestore().collection('clubs').doc(clubId).get();
+        if (clubDoc.exists && clubDoc.data().coordinatorId) {
+          const token = await getTokenByUid(clubDoc.data().coordinatorId);
+          if (token) targetTokens.push(token);
+        }
+      }
+      
+      if (targetTokens.length === 0 && after.requestedById) {
+         const t = await getTokenByUid(after.requestedById);
+         if (t) targetTokens.push(t);
+      }
+      
+      if (targetTokens.length > 0) {
+        const payload = {
+          notification: {
+            title: 'Certificate Verified',
+            body: 'Your certificate has been verified.',
+          },
+          data: {
+            type: 'certificate_done',
+            screen: 'certificates',
+          },
+        };
+        await admin.messaging().sendToDevice(targetTokens, payload, { priority: 'high', timeToLive: 86400 });
+      }
+    }
+    return null;
+  });
+
+// Scenario 6: When a student registers for a team event -> Send notification to all selected teammates
+exports.notifyOnTeamInvite = functions.firestore
+  .document('registrations/{regId}')
+  .onCreate(async (snap, context) => {
+    const data = snap.data() || {};
+    
+    // In our logic, 'isTeamLeader: false' and 'status: pending' denotes a team invite.
+    if (data.isTeamLeader === false && data.status === 'pending' && data.teamId && data.userId) {
+       const token = await getTokenByUid(data.userId);
+       if (token) {
+         const payload = {
+           notification: {
+             title: 'Team Invitation',
+             body: 'You have been invited to join a team event.',
+           },
+           data: {
+             type: 'team_invite',
+             screen: 'team_invite',
+           },
+         };
+         await admin.messaging().sendToDevice([token], payload, { priority: 'high', timeToLive: 86400 });
+       }
+    }
+    return null;
+  });
+
+
+// =========================================================================
+// LEGACY TRIGGERS AND SMS NOTIFICATIONS
+// =========================================================================
+
 exports.notifyOnStudentNotification = functions.firestore
   .document('student/{studentId}/notifications/{notifyId}')
   .onCreate(async (snap, context) => {
@@ -168,7 +273,7 @@ exports.notifyOnStudentNotification = functions.firestore
     };
 
     try {
-      await admin.messaging().sendToDevice(token, payload);
+      await admin.messaging().sendToDevice(token, payload, { priority: 'high' });
     } catch (e) {
       console.error('Error sending student notification FCM', e);
     }
@@ -265,8 +370,6 @@ exports.sendPushOnEventApproved = functions.firestore
     return null;
   });
 
-
-
 exports.notifyOnClubNotification = functions.firestore
   .document('clubs/{clubId}/notifications/{notifId}')
   .onCreate(async (snap, context) => {
@@ -276,27 +379,10 @@ exports.notifyOnClubNotification = functions.firestore
     const clubDoc = await admin.firestore().collection('clubs').doc(clubId).get();
     if (!clubDoc.exists) return null;
     
-    // We notify coordinator emails or id
     const clubData = clubDoc.data();
-    const coordinatorEmails = clubData.coordinatorEmails || [];
-    
-    // if we have emails, we can try to find their tokens
     let targetTokens = [];
-    if (coordinatorEmails.length > 0) {
-      // the only way to get uid from email via firestore is query 'users' / 'faculty' / 'student'
-      // but 'users' collection might not have email stored in some cases... wait!
-      // To be safe, let's query the 'users' collection where 'email' is in coordinatorEmails?
-      // Since it could be multiple collections, it's safer to get the token directly if 'coordinatorId' is there
-      if (clubData.coordinatorId) {
-        const token = await getTokenByUid(clubData.coordinatorId);
-        if (token) targetTokens.push(token);
-      } else {
-        // Query users by email to find tokens if stored there
-        // Note: For simplicity, we just send to coordinatorId if it exists.
-      }
-    }
 
-    if (targetTokens.length === 0 && clubData.coordinatorId) {
+    if (clubData.coordinatorId) {
       const token = await getTokenByUid(clubData.coordinatorId);
       if (token) targetTokens.push(token);
     }
@@ -314,62 +400,9 @@ exports.notifyOnClubNotification = functions.firestore
     };
 
     try {
-      await admin.messaging().sendToDevice(targetTokens, payload);
+      await admin.messaging().sendToDevice(targetTokens, payload, { priority: 'high' });
     } catch (e) {
       console.error('FCM send failed for club notification', e);
     }
     return null;
-  });
-
-// Generic trigger for the push_notifications collection used by PushNotificationSender
-exports.notifyOnPushNotification = functions.firestore
-  .document('push_notifications/{notifId}')
-  .onCreate(async (snap, context) => {
-    const data = snap.data();
-    if (!data) return null;
-
-    let targetTokens = [];
-    if (data.targetUid) {
-      const token = await getTokenByUid(data.targetUid);
-      if (token) targetTokens.push(token);
-    } else if (data.targetRole) {
-      // Get by role via users collection
-      const usersSnap = await admin.firestore().collection('users')
-        .where('role', '==', data.targetRole)
-        .get();
-      
-      usersSnap.forEach(doc => {
-        const t = doc.data().fcmToken;
-        // Optional college filter
-        if (t && (!data.targetCollege || doc.data().college === data.targetCollege)) {
-          targetTokens.push(t);
-        }
-      });
-    }
-
-    if (targetTokens.length === 0) {
-      return snap.ref.update({ status: 'no_tokens_found' });
-    }
-
-    const payload = {
-      notification: {
-        title: data.title || 'New Update',
-        body: data.body || 'A new activity was added to the dashboard.',
-      },
-      data: Object.assign({}, data.data || {}, {
-        click_action: 'FLUTTER_NOTIFICATION_CLICK'
-      }),
-    };
-
-    try {
-      await admin.messaging().sendToDevice(targetTokens, payload);
-      return snap.ref.update({ 
-        status: 'sent', 
-        sentAt: admin.firestore.FieldValue.serverTimestamp(),
-        tokenCount: targetTokens.length 
-      });
-    } catch (e) {
-      console.error('Error sending push_notification FCM', e);
-      return snap.ref.update({ status: 'failed', error: e.message });
-    }
   });

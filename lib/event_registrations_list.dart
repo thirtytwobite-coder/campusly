@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:ui';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -63,8 +62,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
   bool _isLoadingSettings = true;
   String? _clubId;
   bool _certsApproved = false;
-  bool _isTeamEvent = false;
-  bool _isApprovalRequestPending = false;
   String _eventStatus = 'approved';
 
   @override
@@ -79,7 +76,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
       final eventData = eventDoc.data();
       _clubId = eventData?['clubId'];
       _certsApproved = eventData?['certsApproved'] ?? false;
-      _isTeamEvent = eventData?['isTeamEvent'] == true;
       _eventStatus = (eventData?['status'] ?? 'approved').toString().toLowerCase();
 
       if (eventData != null && eventData.containsKey('manualWinners')) {
@@ -131,7 +127,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
   }
 
   String? _getRankByName(String? name) {
-    if (name == null || name.trim().isEmpty) return null;
+    if (name == null || name.isEmpty) return null;
     final cleanName = name.trim().toLowerCase();
     for (var entry in _manualWinners.entries) {
       if (entry.value.trim().toLowerCase() == cleanName && entry.value.isNotEmpty) {
@@ -139,20 +135,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
       }
     }
     return null;
-  }
-
-  String? _getRankByRegistration(Map<String, dynamic> registrationData) {
-    if (_isTeamEvent) {
-      final teamName = registrationData['teamName']?.toString().trim();
-      if (teamName != null && teamName.isNotEmpty) {
-        final teamRank = _getRankByName(teamName);
-        if (teamRank != null) return teamRank;
-      }
-      // fallback on student name for any non-team entries
-    }
-
-    final studentName = registrationData['studentName']?.toString();
-    return _getRankByName(studentName);
   }
 
   Future<void> _requestUnifiedApproval() async {
@@ -169,10 +151,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
         'type': 'event_certificates',
         'timestamp': FieldValue.serverTimestamp(),
       });
-
-      if (mounted) {
-        setState(() => _isApprovalRequestPending = true);
-      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Certificate approval request sent to faculty!")),
@@ -202,7 +180,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
       }
 
       if (approved) {
-        if (mounted) setState(() => _isApprovalRequestPending = false);
         batch.update(FirebaseFirestore.instance.collection('events').doc(widget.eventId), {
           'certsApproved': true,
         });
@@ -217,7 +194,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
               .doc(programId), {'certsApproved': true});
         }
       } else {
-        if (mounted) setState(() => _isApprovalRequestPending = false);        // Handle rejection notification
+        // Handle rejection notification
         if (_clubId != null) {
           final clubDoc = await FirebaseFirestore.instance.collection('clubs').doc(_clubId!).get();
           final coordinatorEmails = List<String>.from(clubDoc.data()?['coordinatorEmails'] ?? []);
@@ -318,7 +295,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
         final ktuId = d['ktuId']?.toString() ?? 'N/A';
         final college = d['college']?.toString() ?? 'N/A';
         
-        final rank = _getRankByRegistration(d);
+        final rank = _getRankByName(name);
         String status = 'Registered';
         if (rank != null) {
           status = "Winner ($rank)";
@@ -447,12 +424,12 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
               if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
 
               final docs = snapshot.data?.docs ?? [];
-              final winners = docs.where((d) => _getRankByRegistration(d.data() as Map<String, dynamic>) != null).toList();
-              final participants = docs.where((d) => _getRankByRegistration(d.data() as Map<String, dynamic>) == null).toList();
+              final winners = docs.where((d) => _getRankByName((d.data() as Map<String, dynamic>)['studentName']) != null).toList();
+              final participants = docs.where((d) => _getRankByName((d.data() as Map<String, dynamic>)['studentName']) == null).toList();
 
               winners.sort((a, b) {
-                final aRank = _getRankByRegistration(a.data() as Map<String, dynamic>) ?? 'zzz';
-                final bRank = _getRankByRegistration(b.data() as Map<String, dynamic>) ?? 'zzz';
+                final aRank = _getRankByName((a.data() as Map<String, dynamic>)['studentName']) ?? 'zzz';
+                final bRank = _getRankByName((b.data() as Map<String, dynamic>)['studentName']) ?? 'zzz';
                 return aRank.compareTo(bRank);
               });
 
@@ -462,23 +439,9 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                 return aName.compareTo(bName);
               });
 
-              final winnersByTeam = <String, List<QueryDocumentSnapshot>>{};
-              if (_isTeamEvent) {
-                for (var doc in winners) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  final teamName = data['teamName']?.toString().trim();
-                  final key = (teamName != null && teamName.isNotEmpty)
-                      ? teamName
-                      : data['studentName']?.toString().trim() ?? 'Unknown Team';
-                  winnersByTeam.putIfAbsent(key, () => []).add(doc);
-                }
-              }
-
-              final winnersCountForStats = _isTeamEvent ? winnersByTeam.length : winners.length;
-
               return Column(
                 children: [
-                  _buildStatsHeader(context, winnersCountForStats, participants.length),
+                  _buildStatsHeader(context, winners.length, participants.length),
                   Expanded(
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
@@ -493,8 +456,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                         ),
                         if (winners.isEmpty)
                           _buildEmptyState("No winners announced yet", "Tap 'Set Winners' to assign ranks")
-                        else if (_isTeamEvent)
-                          ...winnersByTeam.entries.map((entry) => _buildTeamWinnerCard(entry.key, entry.value, isCompleted))
                         else ...[
                           ...winners.map((doc) => _buildStudentCard(doc, isWinner: true, isCompleted: isCompleted)),
                         ],
@@ -619,7 +580,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
@@ -632,29 +592,24 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                 ),
                 child: Icon(icon, color: color, size: 24),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 22,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
+                        letterSpacing: -1.0,
                         color: isDark ? Colors.white : Colors.black,
                       ),
                     ),
-                    const SizedBox(height: 2),
                     Text(
                       title == "Event Winners" ? "RECOGNIZING EXCELLENCE" : "COMMUNITY BUILDING",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 9,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.5,
                         color: color.withOpacity(0.6),
@@ -664,21 +619,20 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                 ),
               ),
               if (showGenerateAll && !widget.isFacultyView && _eventStatus == 'completed') ...[
-                const SizedBox(width: 6),
                 _buildActionChip(title == "Event Winners"),
               ],
               if (action != null) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 _buildSmallActionButton(
                   onPressed: action,
-                  tooltip: _certsApproved ? "View winners" : "Set winners",
+                  label: _certsApproved ? "VIEW" : "SET WINNERS",
                   color: Colors.orange.shade800,
                   icon: _certsApproved ? Icons.visibility_rounded : Icons.add_circle_outline_rounded,
                 ),
               ],
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Container(
             height: 4,
             width: 40,
@@ -692,7 +646,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
     );
   }
 
-  Widget _buildSmallActionButton({required VoidCallback onPressed, required String tooltip, required Color color, required IconData icon}) {
+  Widget _buildSmallActionButton({required VoidCallback onPressed, required String label, required Color color, required IconData icon}) {
     return Container(
       decoration: BoxDecoration(
         boxShadow: [
@@ -703,18 +657,30 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
           ),
         ],
       ),
-      child: Tooltip(
-        message: tooltip,
-        child: Material(
-          color: color,
+      child: Material(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+        elevation: 0,
+        child: InkWell(
+          onTap: onPressed,
           borderRadius: BorderRadius.circular(12),
-          elevation: 0,
-          child: InkWell(
-            onTap: onPressed,
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Icon(icon, size: 16, color: Colors.white),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 14, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -724,17 +690,29 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
 
   Widget _buildActionChip(bool isWinner) {
     final color = isWinner ? Colors.orange.shade800 : Colors.green.shade800;
-    return Tooltip(
-      message: "Generate all certificates",
-      child: Material(
-        color: color.withOpacity(0.1),
+    return Material(
+      color: color.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () => _handleGenerateAll(isWinner),
         borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: () => _handleGenerateAll(isWinner),
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Icon(Icons.auto_awesome_rounded, size: 16, color: color),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.auto_awesome_rounded, size: 14, color: color),
+              const SizedBox(width: 8),
+              Text(
+                "GENERATE ALL",
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -776,7 +754,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                 color: isDark ? Colors.white54 : Colors.black54,
               ),
             ),
-            onChanged: (isCompleted && !_isApprovalRequestPending) ? (val) { if (val != null) _markAllParticipated(allDocs, val); } : null,
+            onChanged: isCompleted ? (val) { if (val != null) _markAllParticipated(allDocs, val); } : null,
             controlAffinity: ListTileControlAffinity.leading,
           ),
         ),
@@ -787,7 +765,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
   Widget _buildStudentCard(QueryDocumentSnapshot doc, {required bool isWinner, bool isCompleted = false}) {
     final data = doc.data() as Map<String, dynamic>;
     final name = data['studentName']?.toString() ?? 'Unknown';
-    final rank = _getRankByRegistration(data);
+    final rank = _getRankByName(name);
     final bool participated = data['participated'] ?? false;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -897,132 +875,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
     ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.05, curve: Curves.easeOutQuad);
   }
 
-  Widget _buildTeamWinnerCard(String teamName, List<QueryDocumentSnapshot> members, bool isCompleted) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final rank = members.isNotEmpty ? _getRankByRegistration(members.first.data() as Map<String, dynamic>) : null;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.7),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: isDark ? Colors.white12 : Colors.white),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: ExpansionTile(
-            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
-            collapsedShape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
-            tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            title: Text(
-              teamName,
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 16,
-                letterSpacing: -0.5,
-                color: isDark ? Colors.white : Colors.black,
-              ),
-            ),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Row(
-                children: [
-                  if (rank != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [Color(0xFFFF8C00), Color(0xFFFFA500)]),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        rank.toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.5),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      "WINNER",
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: isDark ? Colors.greenAccent : Colors.green.shade700,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            iconColor: isDark ? Colors.white70 : Colors.black54,
-            collapsedIconColor: isDark ? Colors.white38 : Colors.black38,
-            childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            children: [
-              Divider(color: isDark ? Colors.white10 : Colors.black12),
-              const SizedBox(height: 10),
-              ...members.map((memberDoc) {
-                final memberData = memberDoc.data() as Map<String, dynamic>;
-                final memberName = memberData['studentName']?.toString() ?? 'Unknown';
-                return Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.03),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.person_outline_rounded, size: 18, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          memberName,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-              if (!widget.isFacultyView && isCompleted) ...[
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _generateCertificatesFromDocs(members, isWinner: true),
-                    icon: const Icon(Icons.emoji_events_rounded, size: 18),
-                    label: const Text("GENERATE TEAM WINNER CERTIFICATES"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange.shade800,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.05, curve: Curves.easeOutQuad);
-  }
-
   Widget _buildDetailGrid(Map<String, dynamic> data) {
     return GridView(
       shrinkWrap: true,
@@ -1095,7 +947,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
           checkColor: Colors.white,
           side: BorderSide(color: isDark ? Colors.white38 : Colors.black26),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-          onChanged: (isCompleted && !_isApprovalRequestPending) ? (val) {
+          onChanged: isCompleted ? (val) {
             FirebaseFirestore.instance.collection('registrations').doc(doc.id).update({'participated': val});
           } : null,
         ),
@@ -1297,21 +1149,15 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
       builder: (context, snapshot) {
         bool isPending = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
 
-        final bool showPending = isPending || _isApprovalRequestPending;
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
-          decoration: BoxDecoration(
-            color: showPending ? Colors.orange.withOpacity(0.12) : Colors.transparent,
-            borderRadius: BorderRadius.circular(24),
-            border: showPending ? Border.all(color: Colors.orange.withOpacity(0.2)) : null,
-            boxShadow: showPending
-                ? [
-                    BoxShadow(color: Colors.orange.withOpacity(0.15), blurRadius: 16, offset: const Offset(0, 4)),
-                  ]
-                : null,
-          ),
-          child: showPending
-              ? Row(
+        return isPending
+            ? Container(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.orange.withOpacity(0.2)),
+                ),
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     SizedBox(
@@ -1323,30 +1169,40 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                         backgroundColor: Colors.orange.withOpacity(0.1),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "VERIFICATION SENT",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              color: Colors.orange.shade800,
-                              fontSize: 12,
-                              letterSpacing: 0.5,
-                            ),
+                    const SizedBox(width: 16),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "PENDING FACULTY VERIFICATION",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            color: Colors.orange.shade800,
+                            fontSize: 12,
+                            letterSpacing: 0.5,
                           ),
-                          Text(
-                            "Pending faculty approval (typically 24-48 hours).",
-                            style: TextStyle(fontSize: 10, color: Colors.orange.shade700, fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
+                        ),
+                        const Text(
+                          "This usually takes 24-48 hours",
+                          style: TextStyle(fontSize: 9, color: Colors.orange, fontWeight: FontWeight.w600),
+                        ),
+                      ],
                     ),
                   ],
-                )
-              : SizedBox(
+                ),
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.orange.withOpacity(0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () => _requestUnifiedApproval(),
@@ -1364,7 +1220,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                     ).copyWith(elevation: ButtonStyleButton.allOrNull(0)),
                   ),
                 ),
-        );
+              );
       },
     );
   }
@@ -1504,38 +1360,37 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
     final sig2NameCtrl = TextEditingController(text: settings['signatory2Name'] ?? '');
     final sig2TitleCtrl = TextEditingController(text: settings['signatory2Title'] ?? '');
     final bgUrlCtrl = TextEditingController(text: settings['bgUrl'] ?? '');
+    bool useLogo = settings['useLogo'] ?? true;
 
-    return StatefulBuilder(
-      builder: (context, setState) => SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildDesignField(titleCtrl, "Certificate Title", Icons.title, (v) => setState(() => settings['title'] = v)),
-            _buildDesignField(subtitleCtrl, "Certification Text", Icons.subtitles, (v) => setState(() => settings['subtitle'] = v)),
-            _buildDesignField(bodyCtrl, "Main Content Body", Icons.text_fields, (v) => setState(() => settings['body'] = v), maxLines: 3),
-            const SizedBox(height: 24),
-            const Text("SIGNATORIES", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.5)),
-            const SizedBox(height: 16),
-            _buildDesignField(sig1NameCtrl, "Signatory 1 Name", Icons.person, (v) => setState(() => settings['signatory1Name'] = v)),
-            _buildDesignField(sig1TitleCtrl, "Signatory 1 Title", Icons.work, (v) => setState(() => settings['signatory1Title'] = v)),
-            const SizedBox(height: 12),
-            _buildDesignField(sig2NameCtrl, "Signatory 2 Name", Icons.person, (v) => setState(() => settings['signatory2Name'] = v)),
-            _buildDesignField(sig2TitleCtrl, "Signatory 2 Title", Icons.work, (v) => setState(() => settings['signatory2Title'] = v)),
-            const SizedBox(height: 24),
-            const Text("BACKGROUND \u0026 LOGO", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.5)),
-            const SizedBox(height: 16),
-            _buildDesignField(bgUrlCtrl, "Background Image URL", Icons.image_search, (v) => setState(() => settings['bgUrl'] = v)),
-            SwitchListTile(
-              title: const Text("Include Club Logo", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-              value: settings['useLogo'] ?? true,
-              activeColor: Theme.of(context).primaryColor,
-              contentPadding: EdgeInsets.zero,
-              onChanged: (v) => setState(() => settings['useLogo'] = v),
-            ),
-            const SizedBox(height: 100), // Spacing for scroll
-          ],
-        ),
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildDesignField(titleCtrl, "Certificate Title", Icons.title, (v) => settings['title'] = v),
+          _buildDesignField(subtitleCtrl, "Certification Text", Icons.subtitles, (v) => settings['subtitle'] = v),
+          _buildDesignField(bodyCtrl, "Main Content Body", Icons.text_fields, (v) => settings['body'] = v, maxLines: 3),
+          const SizedBox(height: 24),
+          const Text("SIGNATORIES", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.5)),
+          const SizedBox(height: 16),
+          _buildDesignField(sig1NameCtrl, "Signatory 1 Name", Icons.person, (v) => settings['signatory1Name'] = v),
+          _buildDesignField(sig1TitleCtrl, "Signatory 1 Title", Icons.work, (v) => settings['signatory1Title'] = v),
+          const SizedBox(height: 12),
+          _buildDesignField(sig2NameCtrl, "Signatory 2 Name", Icons.person, (v) => settings['signatory2Name'] = v),
+          _buildDesignField(sig2TitleCtrl, "Signatory 2 Title", Icons.work, (v) => settings['signatory2Title'] = v),
+          const SizedBox(height: 24),
+          const Text("BACKGROUND \u0026 LOGO", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1.5)),
+          const SizedBox(height: 16),
+          _buildDesignField(bgUrlCtrl, "Background Image URL", Icons.image_search, (v) => settings['bgUrl'] = v),
+          SwitchListTile(
+            title: const Text("Include Club Logo", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+            value: useLogo,
+            activeColor: Theme.of(context).primaryColor,
+            contentPadding: EdgeInsets.zero,
+            onChanged: (v) { setState(() { settings['useLogo'] = v; useLogo = v; }); },
+          ),
+          const SizedBox(height: 100), // Spacing for scroll
+        ],
       ),
     );
   }
@@ -1573,43 +1428,13 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
         .get()
         .then((snapshot) {
       final docs = snapshot.docs;
-      List<QueryDocumentSnapshot> eligible = [];
-
-      if (isWinnerList) {
-        if (_isTeamEvent) {
-          // For team events, collect all members of winning teams
-          final winningTeams = <String>{};
-          for (var doc in docs) {
-            final d = doc.data();
-            final teamName = d['teamName']?.toString().trim();
-            if (teamName != null && teamName.isNotEmpty && _getRankByName(teamName) != null) {
-              winningTeams.add(teamName);
-            }
-          }
-
-          // Collect all members of winning teams
-          eligible = docs.where((doc) {
-            final d = doc.data();
-            final teamName = d['teamName']?.toString().trim();
-            return teamName != null && teamName.isNotEmpty && winningTeams.contains(teamName);
-          }).toList();
-        } else {
-          // For individual events, use existing logic
-          eligible = docs.where((doc) {
-            final d = doc.data();
-            final name = d['studentName']?.toString();
-            return _getRankByName(name) != null;
-          }).toList();
-        }
-      } else {
-        // For participants (non-winners)
-        eligible = docs.where((doc) {
-          final d = doc.data();
-          final name = d['studentName']?.toString();
-          final isWinner = _getRankByName(name) != null;
-          return (d['participated'] == true) && !isWinner;
-        }).toList();
-      }
+      final eligible = docs.where((doc) {
+        final d = doc.data();
+        final name = d['studentName']?.toString();
+        final isWinner = _getRankByName(name) != null;
+        if (isWinnerList) return isWinner;
+        return (d['participated'] == true) && !isWinner;
+      }).toList();
 
       if (eligible.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("No eligible ${isWinnerList ? 'winners' : 'participants'} found.")));
@@ -1624,36 +1449,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Not approved by faculty")));
       return;
     }
-
-    if (isWinner && _isTeamEvent) {
-      // For team events, generate certificates for all team members when any team member is selected
-      final data = doc.data() as Map<String, dynamic>;
-      final teamName = data['teamName']?.toString().trim();
-
-      if (teamName != null && teamName.isNotEmpty && _getRankByName(teamName) != null) {
-        // This is a winning team member, generate for all team members
-        FirebaseFirestore.instance
-            .collection('registrations')
-            .where('eventId', isEqualTo: widget.eventId)
-            .where('teamName', isEqualTo: teamName)
-            .get()
-            .then((snapshot) {
-          final teamMembers = snapshot.docs;
-          if (teamMembers.isNotEmpty) {
-            _generateCertificatesFromDocs(teamMembers, isWinner: true);
-          } else {
-            // Fallback to individual if team lookup fails
-            _generateCertificatesFromDocs([doc], isWinner: isWinner);
-          }
-        });
-      } else {
-        // Not a team winner, generate individual certificate
-        _generateCertificatesFromDocs([doc], isWinner: isWinner);
-      }
-    } else {
-      // Individual event or non-winner, generate individual certificate
-      _generateCertificatesFromDocs([doc], isWinner: isWinner);
-    }
+    _generateCertificatesFromDocs([doc], isWinner: isWinner);
   }
 
   void _generateCertificatesFromDocs(List<QueryDocumentSnapshot> studentDocs, {required bool isWinner}) {
@@ -1679,67 +1475,13 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
         final clubDoc = await FirebaseFirestore.instance.collection('clubs').doc(_clubId!).get();
         final clubData = clubDoc.data();
         if (clubData != null) {
-          if (activeSettings['useLogo'] == true && clubData['profilePic'] != null && clubData['profilePic'].toString().isNotEmpty) {
-            try {
-              final profilePic = clubData['profilePic'].toString();
-              if (profilePic.startsWith('data:image')) {
-                // Handle base64 encoded image
-                final base64Data = profilePic.split(',').last;
-                final imageBytes = base64Decode(base64Data);
-                logoImg = pw.MemoryImage(imageBytes);
-              } else {
-                // Handle URL
-                logoImg = await _loadNetworkImage(profilePic);
-              }
-            } catch (e) {
-              // Logo loading failed, continue without logo
-            }
-          }
-          if (clubData['signatureUrl'] != null && clubData['signatureUrl'].toString().isNotEmpty) {
-            try {
-              final sigUrl = clubData['signatureUrl'].toString();
-              if (sigUrl.startsWith('data:image')) {
-                final base64Data = sigUrl.split(',').last;
-                final imageBytes = base64Decode(base64Data);
-                sig1Img = pw.MemoryImage(imageBytes);
-              } else {
-                sig1Img = await _loadNetworkImage(sigUrl);
-              }
-            } catch (e) {
-              // Signature loading failed, continue without signature
-            }
-          }
-          if (clubData['facultySignatureUrl'] != null && clubData['facultySignatureUrl'].toString().isNotEmpty) {
-            try {
-              final facultySigUrl = clubData['facultySignatureUrl'].toString();
-              if (facultySigUrl.startsWith('data:image')) {
-                final base64Data = facultySigUrl.split(',').last;
-                final imageBytes = base64Decode(base64Data);
-                sig2Img = pw.MemoryImage(imageBytes);
-              } else {
-                sig2Img = await _loadNetworkImage(facultySigUrl);
-              }
-            } catch (e) {
-              // Faculty signature loading failed, continue without signature
-            }
-          }
+          if (activeSettings['useLogo'] == true && clubData['profilePic'] != null) logoImg = await _loadNetworkImage(clubData['profilePic']);
+          if (clubData['signatureUrl'] != null) sig1Img = await _loadNetworkImage(clubData['signatureUrl']);
+          if (clubData['facultySignatureUrl'] != null) sig2Img = await _loadNetworkImage(clubData['facultySignatureUrl']);
         }
       }
       pw.MemoryImage? bgImg;
-      if (activeSettings['bgUrl'].toString().isNotEmpty) {
-        try {
-          final bgUrl = activeSettings['bgUrl'].toString();
-          if (bgUrl.startsWith('data:image')) {
-            final base64Data = bgUrl.split(',').last;
-            final imageBytes = base64Decode(base64Data);
-            bgImg = pw.MemoryImage(imageBytes);
-          } else {
-            bgImg = await _loadNetworkImage(bgUrl);
-          }
-        } catch (e) {
-          // Background image loading failed, continue without background
-        }
-      }
+      if (activeSettings['bgUrl'].toString().isNotEmpty) bgImg = await _loadNetworkImage(activeSettings['bgUrl']);
       for (var item in items) {
         final studentName = item['name']!.toUpperCase();
         final rankValue = item['rank']!;
@@ -1747,20 +1489,8 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
           return pw.Stack(children: [
             if (bgImg != null) pw.Positioned.fill(child: pw.Image(bgImg!, fit: pw.BoxFit.fill)),
             pw.Container(margin: const pw.EdgeInsets.all(40), padding: const pw.EdgeInsets.all(20), decoration: bgImg == null ? pw.BoxDecoration(border: pw.Border.all(color: isWinner ? PdfColors.orange : PdfColors.indigo, width: 5)) : null, child: pw.Column(mainAxisAlignment: pw.MainAxisAlignment.center, children: [
-              if (logoImg != null) ...[
-                pw.Center(
-                  child: pw.Container(
-                    height: 100,
-                    width: 100,
-                    decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: PdfColors.grey300, width: 2),
-                      borderRadius: pw.BorderRadius.circular(8),
-                    ),
-                    child: pw.Image(logoImg!, fit: pw.BoxFit.contain),
-                  ),
-                ),
-                pw.SizedBox(height: 20),
-              ],
+              if (logoImg != null) pw.Container(height: 70, width: 70, child: pw.Image(logoImg!)),
+              pw.SizedBox(height: 10),
               pw.Text(activeSettings['title'], style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold, color: bgImg == null ? (isWinner ? PdfColors.orange : PdfColors.indigo) : PdfColors.black)),
               pw.SizedBox(height: 10),
               pw.Text(activeSettings['subtitle'], style: const pw.TextStyle(fontSize: 16)),
@@ -1824,14 +1554,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
       Navigator.pop(context);
 
       final participants = snap.docs
-          .map((d) {
-            final data = d.data() as Map<String, dynamic>;
-            if (_isTeamEvent) {
-              final tName = data['teamName']?.toString().trim();
-              if (tName != null && tName.isNotEmpty) return tName;
-            }
-            return data['studentName']?.toString() ?? '';
-          })
+          .map((d) => (d.data() as Map<String, dynamic>)['studentName']?.toString() ?? '')
           .where((n) => n.isNotEmpty)
           .toSet()
           .toList();
@@ -1840,8 +1563,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
       String? s1 = _manualWinners['1st'];
       String? s2 = _manualWinners['2nd'];
       String? s3 = _manualWinners['3rd'];
-      int activeRank = 1;
-      String searchQuery = '';
 
       showGeneralDialog(
         context: context,
@@ -1870,7 +1591,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                     constraints: const BoxConstraints(maxWidth: 500),
                     padding: const EdgeInsets.all(24),
                     child: StatefulBuilder(
-                      builder: (context, setDialogState) => SingleChildScrollView(
+                      builder: (sbContext, setDialogState) => SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
@@ -1880,7 +1601,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                               children: [
                                 Expanded(
                                   child: Text(
-                                    (_certsApproved || widget.isFacultyView || _isApprovalRequestPending) ? "Winners List" : "Announce Winners",
+                                    (_certsApproved || widget.isFacultyView) ? "Winners List" : "Announce Winners",
                                     style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22, letterSpacing: -1),
                                   ),
                                 ),
@@ -1897,102 +1618,23 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                               style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.black54),
                             ),
                             const SizedBox(height: 24),
-                            // Display current winners
-                            if (s1 != null && s1!.isNotEmpty || s2 != null && s2!.isNotEmpty || s3 != null && s3!.isNotEmpty)
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.white10 : Colors.blue[50],
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: isDark ? Colors.white24 : Colors.blue[200]!, width: 1),
-                                ),
+                            IgnorePointer(
+                              ignoring: _certsApproved || widget.isFacultyView,
+                              child: Opacity(
+                                opacity: (_certsApproved || widget.isFacultyView) ? 0.7 : 1.0,
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      "Current Winners:",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 14,
-                                        color: isDark ? Colors.white : Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    if (s1 != null && s1!.isNotEmpty)
-                                      _buildWinnerDisplay("🥇 1st Place", s1!, Colors.amber.shade700),
-                                    if (s2 != null && s2!.isNotEmpty)
-                                      _buildWinnerDisplay("🥈 2nd Place", s2!, Colors.blueGrey.shade700),
-                                    if (s3 != null && s3!.isNotEmpty)
-                                      _buildWinnerDisplay("🥉 3rd Place", s3!, Colors.brown.shade700),
+                                    _buildWinnerDropdown("1st Place", Colors.amber.shade700, participants, s1, (val) => setDialogState(() => s1 = val)),
+                                    const SizedBox(height: 16),
+                                    _buildWinnerDropdown("2nd Place", Colors.blueGrey.shade700, participants, s2, (val) => setDialogState(() => s2 = val)),
+                                    const SizedBox(height: 16),
+                                    _buildWinnerDropdown("3rd Place", Colors.brown.shade700, participants, s3, (val) => setDialogState(() => s3 = val)),
                                   ],
                                 ),
                               ),
-                            if (s1 != null && s1!.isNotEmpty || s2 != null && s2!.isNotEmpty || s3 != null && s3!.isNotEmpty)
-                              const SizedBox(height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildRankChip("1st", activeRank == 1, () => setDialogState(() => activeRank = 1)),
-                                _buildRankChip("2nd", activeRank == 2, () => setDialogState(() => activeRank = 2)),
-                                _buildRankChip("3rd", activeRank == 3, () => setDialogState(() => activeRank = 3)),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                              onChanged: (value) => setDialogState(() => searchQuery = value.trim().toLowerCase()),
-                              decoration: InputDecoration(
-                                hintText: 'Search participants...',
-                                hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black45),
-                                prefixIcon: Icon(Icons.search, color: isDark ? Colors.white54 : Colors.black45),
-                                fillColor: isDark ? Colors.white10 : Colors.grey[200],
-                                filled: true,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Container(
-                              constraints: const BoxConstraints(maxHeight: 220),
-                              child: searchQuery.isEmpty
-                                  ? Center(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(12),
-                                        child: Text(
-                                          "Type to search participants...",
-                                          style: TextStyle(color: isDark ? Colors.white54 : Colors.black45, fontSize: 14),
-                                        ),
-                                      ),
-                                    )
-                                  : ListView(
-                                      shrinkWrap: true,
-                                      physics: const BouncingScrollPhysics(),
-                                      children: participants
-                                          .where((p) => p.toLowerCase().contains(searchQuery))
-                                          .map((participantName) {
-                                            final isSelected = (activeRank == 1 && s1 == participantName) ||
-                                                (activeRank == 2 && s2 == participantName) ||
-                                                (activeRank == 3 && s3 == participantName);
-                                            return ListTile(
-                                              dense: true,
-                                              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                                              title: Text(participantName, style: TextStyle(color: isDark ? Colors.white : Colors.black)),
-                                              trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.green, size: 20) : null,
-                                              onTap: _certsApproved || widget.isFacultyView || _isApprovalRequestPending
-                                                  ? null
-                                                  : () {
-                                                      setDialogState(() {
-                                                        if (activeRank == 1) s1 = participantName;
-                                                        if (activeRank == 2) s2 = participantName;
-                                                        if (activeRank == 3) s3 = participantName;
-                                                      });
-                                                    },
-                                            );
-                                          })
-                                          .toList(),
-                                    ),
                             ),
                             const SizedBox(height: 24),
-                            if (!(_certsApproved || widget.isFacultyView || _isApprovalRequestPending))
+                            if (!(_certsApproved || widget.isFacultyView))
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
@@ -2005,7 +1647,9 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                                     FirebaseFirestore.instance.collection('events').doc(widget.eventId).update({
                                       'manualWinners': _manualWinners,
                                     }).then((_) {
-                                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Winners saved!")));
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Winners saved!")));
+                                      }
                                     });
                                     Navigator.pop(ctx);
                                   },
@@ -2046,54 +1690,27 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
     }
   }
 
-  Widget _buildRankChip(String label, bool selected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? Colors.blueAccent : Colors.grey.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: selected ? Colors.blue : Colors.transparent),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : Colors.black87,
-            fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-            fontSize: 12,
-          ),
-        ),
+  Widget _buildWinnerDropdown(String label, Color iconColor, List<String> options, String? currentValue, Function(String?) onChanged) {
+    String? value = (currentValue != null && options.contains(currentValue)) ? currentValue : null;
+    return DropdownButtonFormField<String>(
+      value: value,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: iconColor, fontWeight: FontWeight.w900, fontSize: 13),
+        prefixIcon: Icon(Icons.workspace_premium, color: iconColor, size: 20),
+        filled: true,
+        fillColor: iconColor.withOpacity(0.05),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: iconColor, width: 2)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
-    );
-  }
-
-  Widget _buildWinnerDisplay(String label, String winnerName, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-              color: color,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              winnerName,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
+      style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w700),
+      items: [
+        const DropdownMenuItem<String>(value: null, child: Text("Not Assigned", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500))),
+        ...options.map((name) => DropdownMenuItem<String>(value: name, child: Text(name, style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis))),
+      ],
+      onChanged: onChanged,
     );
   }
 }

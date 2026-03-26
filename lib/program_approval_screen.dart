@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'vibrant_background.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:ui';
+import 'notification_sync_service.dart';
+import 'notification_service.dart';
 
 class ProgramApprovalScreen extends StatefulWidget {
   final String clubId;
@@ -363,12 +365,21 @@ class _ApprovalCard extends StatelessWidget {
             .doc(clubId)
             .collection('notifications')
             .add({
-          'title': 'Event Approved',
-          'message': 'Your event "${data['name']}" has been approved and published.',
-          'timestamp': FieldValue.serverTimestamp(),
           'type': 'approval',
           'read': false,
         });
+
+        // 🔹 Trigger Notification for Club Coordinator
+        final coordinatorId = data['coordinatorId'];
+        if (coordinatorId != null) {
+          await NotificationSyncService.sendNotification(
+            targetUid: coordinatorId,
+            channelId: NotificationService.successChannelId,
+            title: 'Event Approved 🎉',
+            body: 'Your event "${data['name']}" has been approved successfully.',
+            data: {'type': 'approval_success', 'screen': 'event_details'},
+          );
+        }
 
 
       }
@@ -469,8 +480,19 @@ class _ApprovalCard extends StatelessWidget {
                   'message': 'Your request for "${data['name']}" was rejected. Reason: ${reasonController.text.trim()}',
                   'timestamp': FieldValue.serverTimestamp(),
                   'type': 'rejection',
-                  'read': false,
                 });
+
+                // 🔹 Trigger Notification for Club Coordinator (Alert channel)
+                final coordinatorId = data['coordinatorId'];
+                if (coordinatorId != null) {
+                  await NotificationSyncService.sendNotification(
+                    targetUid: coordinatorId,
+                    channelId: NotificationService.alertChannelId,
+                    title: 'Event Request Rejected ❌',
+                    body: 'Your event "${data['name']}" was rejected. Reason: ${reasonController.text.trim()}',
+                    data: {'type': 'approval_rejection', 'screen': 'manage_programs'},
+                  );
+                }
 
 
               },

@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'notification_sync_service.dart';
 
 import 'faculty_home.dart';
 import 'main_faculty_dashboard.dart' as main_fac;
@@ -124,18 +125,21 @@ Future<void> _saveTokenToFirestore(String token) async {
     } else {
       String name = '';
       String role = 'STUDENT';
+      String college = '';
       final studentSnap = await FirebaseFirestore.instance.collection('student').doc(user.uid).get();
       if (studentSnap.exists) {
         name = studentSnap.data()?['name'] ?? '';
         role = 'STUDENT';
+        college = studentSnap.data()?['college'] ?? '';
       } else {
         final facultySnap = await FirebaseFirestore.instance.collection('faculty').doc(user.uid).get();
         if (facultySnap.exists) {
           name = facultySnap.data()?['name'] ?? '';
           role = 'FACULTY';
+          college = facultySnap.data()?['college'] ?? '';
         }
       }
-      await userRef.set({'name': name, 'role': role, 'fcmToken': token});
+      await userRef.set({'name': name, 'role': role, 'fcmToken': token, 'college': college});
     }
   } catch (e) {
     debugPrint("Error saving token: $e");
@@ -412,7 +416,11 @@ class AuthWrapper extends StatelessWidget {
                   body: Center(child: CircularProgressIndicator()),
                 );
               }
-              return screenSnapshot.data ?? const WelcomeScreen();
+              if (screenSnapshot.hasData) {
+                NotificationSyncService.startListening();
+                return screenSnapshot.data!;
+              }
+              return const WelcomeScreen();
             },
           );
         }

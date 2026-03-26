@@ -19,6 +19,9 @@ import 'profile_screen.dart';
 import 'student_home.dart';
 import 'vibrant_background.dart';
 import 'event_registrations_list.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'notification_service.dart';
+import 'push_notification_sender.dart';
 
 class ClubCoordinatorDashboard extends StatefulWidget {
   final String? initialClubId;
@@ -130,6 +133,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         appBar: AppBar(
           title: Text(
             clubName ?? 'Coordinator Dashboard',
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
             style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: -1.0),
           ),
           backgroundColor: Colors.transparent,
@@ -159,6 +164,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
               icon: const Icon(Icons.notifications_outlined),
               onPressed: _showNotifications,
             ),
+
             IconButton(
               icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
               onPressed: _toggleTheme,
@@ -178,16 +184,22 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         ),
         bottomNavigationBar: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          height: _isNavbarVisible ? 80 : 0,
-          child: _isNavbarVisible ? BottomNavigationBar(
-            currentIndex: _selectedIndex > 2 ? 0 : _selectedIndex,
-            onTap: _onItemTapped,
-            selectedItemColor: Colors.blueAccent,
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Home'),
-              BottomNavigationBarItem(icon: Icon(Icons.add_circle_outline_rounded), label: 'Create'),
-              BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'Profile'),
-            ],
+          height: _isNavbarVisible ? (kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom) : 0,
+          child: _isNavbarVisible ? SingleChildScrollView(
+            physics: const NeverScrollableScrollPhysics(),
+            child: BottomNavigationBar(
+              type: BottomNavigationBarType.fixed,
+              selectedFontSize: 12,
+              unselectedFontSize: 10,
+              currentIndex: _selectedIndex > 2 ? 0 : _selectedIndex,
+              onTap: _onItemTapped,
+              selectedItemColor: Colors.blueAccent,
+              items: const [
+                BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Home'),
+                BottomNavigationBarItem(icon: Icon(Icons.add_circle_outline_rounded), label: 'Create'),
+                BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'Profile'),
+              ],
+            ),
           ) : const SizedBox.shrink(),
         ),
       ),
@@ -618,6 +630,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   const SizedBox(height: 12),
                   Text(
                     title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontWeight: FontWeight.w900,
                       fontSize: 15,
@@ -629,6 +643,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   Text(
                     subtitle,
                     textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -1769,6 +1785,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     return link;
   }
 
+
   void _showNotifications() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
@@ -2611,18 +2628,22 @@ class ProgramCard extends StatelessWidget {
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blueAccent.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      programData['category']?.toString().toUpperCase() ?? 'GENERAL',
-                                      style: const TextStyle(
-                                        color: Colors.blueAccent,
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.w900,
+                                  Flexible(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blueAccent.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        programData['category']?.toString().toUpperCase() ?? 'GENERAL',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.blueAccent,
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.w900,
+                                        ),
                                       ),
                                     ),
                                   ),

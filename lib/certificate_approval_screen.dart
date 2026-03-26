@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'vibrant_background.dart';
 import 'event_registrations_list.dart';
+import 'notification_sync_service.dart';
 
 class CertificateApprovalScreen extends StatefulWidget {
   final String clubId;

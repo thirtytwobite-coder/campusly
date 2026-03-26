@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'vibrant_background.dart';
+import 'notification_sync_service.dart';
+import 'notification_service.dart';
 
 class ManageProgramsScreen extends StatefulWidget {
   final String clubId;
@@ -82,7 +84,7 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                   crossAxisCount: 2,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
-                  childAspectRatio: 0.75,
+                  childAspectRatio: 0.68, // Increased height to prevent vertical overflow
                 ),
                 itemCount: snapshot.data!.docs.length,
                 itemBuilder: (context, index) {
@@ -284,6 +286,18 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
+    // 🔹 Trigger Notification for Faculty Approval (Alert channel)
+    final String college = widget.clubName.contains(' - ') ? widget.clubName.split(' - ').last : '';
+
+    await NotificationSyncService.sendNotification(
+      targetRole: 'FACULTY',
+      targetCollege: college.isEmpty ? null : college,
+      channelId: NotificationService.alertChannelId,
+      title: 'New Event Approval Required',
+      body: 'A new event "$name" has been created and needs your approval.',
+      data: {'type': 'approval_request', 'screen': 'event_approval'},
+    );
+
 
   }
 
@@ -319,6 +333,20 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
     final eventQuery = await FirebaseFirestore.instance.collection('events').where('programId', isEqualTo: programId).get();
     for (var doc in eventQuery.docs) {
       await doc.reference.update({'status': newStatus, 'updatedAt': FieldValue.serverTimestamp()});
+    }
+
+    // 🔹 Trigger Notification for Students when event starts
+    if (newStatus == 'ongoing') {
+      final progDoc = await programRef.get();
+      final name = progDoc.data()?['name'] ?? 'Event';
+      
+      await NotificationSyncService.sendNotification(
+        targetRole: 'STUDENT',
+        targetCollege: widget.clubName.contains(' - ') ? widget.clubName.split(' - ').last : null,
+        title: 'Event Started',
+        body: 'Your registered event "$name" has started. Join now!',
+        data: {'type': 'event_start', 'screen': 'live_event'},
+      );
     }
 
 
@@ -393,8 +421,21 @@ class ProgramCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(statusIcon, size: 16, color: statusColor),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(statusIcon, size: 14, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        status.toUpperCase(),
+                        style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: statusColor),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(icon: const Icon(Icons.edit, size: 16, color: Colors.blue), onPressed: onEdit, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
                     IconButton(icon: Icon(Icons.delete, size: 16, color: isDark ? Colors.redAccent : Colors.red), onPressed: onDelete, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
