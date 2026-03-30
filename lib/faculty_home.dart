@@ -902,7 +902,9 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
           builder: (context, setDialogState) {
             final filteredStudents = students.where((student) {
               final name = (student['name'] as String? ?? '').toLowerCase();
-              return name.contains(searchQuery.toLowerCase());
+              final ktuId = (student['ktuId'] as String? ?? '').toLowerCase();
+              return name.contains(searchQuery.toLowerCase()) || 
+                     ktuId.contains(searchQuery.toLowerCase());
             }).toList();
 
             return AlertDialog(
@@ -918,7 +920,7 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                         onChanged: (value) =>
                             setDialogState(() => searchQuery = value),
                         decoration: const InputDecoration(
-                          labelText: 'Search by name',
+                          labelText: 'Search by name or KTU ID',
                           prefixIcon: Icon(Icons.search),
                         ),
                       ),
@@ -928,8 +930,12 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                         itemCount: filteredStudents.length,
                         itemBuilder: (context, index) {
                           final student = filteredStudents[index];
+                          final studentName = student['name'] ?? 'Unnamed Student';
+                          final studentKtuId = student['ktuId'] ?? 'No KTU ID';
+                          
                           return ListTile(
-                            title: Text(student['name'] ?? 'Unnamed Student'),
+                            title: Text(studentName),
+                            subtitle: Text(studentKtuId),
                             onTap: () async {
                               final clubId = widget.clubMappingDoc['clubId'];
                               final studentEmail = student['email'];
@@ -941,8 +947,9 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                                       'coordinators': FieldValue.arrayUnion([
                                         {
                                           'studentId': student.id,
-                                          'studentName': student['name'],
+                                          'studentName': studentName,
                                           'studentEmail': studentEmail,
+                                          'studentKtuId': studentKtuId,
                                         },
                                       ]),
                                       'coordinatorEmails':
@@ -1197,6 +1204,8 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                       separatorBuilder: (context, index) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final coordinator = coordinators[index];
+                        final studentKtuId = coordinator['studentKtuId'] ?? 'No KTU ID';
+                        
                         return GlassCard(
                           borderRadius: 20,
                           child: ListTile(
@@ -1210,7 +1219,7 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                             subtitle: Text(
-                              coordinator['studentEmail'] ?? 'No email',
+                              "${coordinator['studentEmail'] ?? 'No email'} • $studentKtuId",
                               style: const TextStyle(fontSize: 12),
                             ),
                             trailing: Row(
