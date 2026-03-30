@@ -5,12 +5,20 @@
 /// It includes a bottom navigation bar for easy access to various administrative tasks.
 
 import 'dart:ui' as ui;
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/rendering.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 
 import 'main.dart';
 import 'login_screen.dart';
@@ -18,6 +26,7 @@ import 'profile_screen.dart';
 import 'program_approval_screen.dart';
 import 'program_status_screen.dart';
 import 'certificate_approval_screen.dart';
+import 'certificates_screen.dart';
 import 'change_password.dart';
 import 'analytics_screen.dart';
 import 'vibrant_background.dart';
@@ -126,8 +135,12 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        _onWillPop();
+      },
       child: Scaffold(
         extendBodyBehindAppBar: true,
         appBar: AppBar(
@@ -146,7 +159,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
             child: BackdropFilter(
               filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
               child: Container(
-                color: (isDark ? Colors.black : Colors.white).withOpacity(isDark ? 0.4 : 0.6),
+                color: (isDark ? Colors.black : Colors.white).withValues(alpha: isDark ? 0.4 : 0.6),
               ),
             ),
           ),
@@ -233,10 +246,6 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
 
                         // Ensure _selectedClubId is valid
                         bool isValidSelection = docs.any((d) => (d.data() as Map<String, dynamic>)['clubId'] == _selectedClubId);
-                        if (!isValidSelection && docs.isNotEmpty) {
-                          // Post-frame callback to avoid setting state during build, but we can just use a local var
-                          // Actually, we can just let it be invalid for a moment, and fall back to the first doc below.
-                        }
                         
                         final selectedDoc = isValidSelection 
                             ? docs.firstWhere((d) => (d.data() as Map<String, dynamic>)['clubId'] == _selectedClubId) 
@@ -294,8 +303,8 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                                           decoration: BoxDecoration(
                                             gradient: LinearGradient(
                                               colors: [
-                                                Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                                                Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                                                Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                                                Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
                                               ],
                                             ),
                                             borderRadius: BorderRadius.circular(20),
@@ -360,13 +369,13 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                                                         ? LinearGradient(
                                                             colors: [
                                                               Theme.of(context).colorScheme.primary,
-                                                              Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                                                              Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
                                                             ],
                                                           )
                                                         : LinearGradient(
                                                             colors: [
-                                                              isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-                                                              isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.02),
+                                                              isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                                                              isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.02),
                                                             ],
                                                           ),
                                                     borderRadius: BorderRadius.circular(14),
@@ -379,7 +388,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                                                     boxShadow: isSelected
                                                         ? [
                                                             BoxShadow(
-                                                              color: Theme.of(context).colorScheme.primary.withOpacity(0.25),
+                                                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
                                                               blurRadius: 16,
                                                               offset: const Offset(0, 6),
                                                             )
@@ -417,7 +426,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                                 ),
                               )
                             else
-                              SliverToBoxAdapter(
+                              const SliverToBoxAdapter(
                                 child: SizedBox(
                                   height: 12,
                                 ),
@@ -426,7 +435,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                             // Dashboard Cards Section
                             SliverPadding(
                               padding: const EdgeInsets.symmetric(horizontal: 24),
-                              sliver: SliverToBoxAdapter(
+                              child: SliverToBoxAdapter(
                                 child: AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 400),
                                   switchInCurve: Curves.easeOutCubic,
@@ -575,11 +584,30 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
             _buildApprovalCard(clubId, clubName),
             _buildCertificateCard(clubId, clubName),
             _buildDashboardCard(
+              icon: Icons.workspace_premium_rounded,
+              title: "Certificates Hub",
+              subtitle: "View & Coordinator Certs",
+              colors: [const Color(0xFFD946EF), const Color(0xFFA21CAF)],
+              index: 4,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CertificatesScreen(
+                      clubId: clubId,
+                      clubName: clubName,
+                      isFaculty: true,
+                    ),
+                  ),
+                );
+              },
+            ),
+            _buildDashboardCard(
               icon: Icons.check_circle_rounded,
               title: "Approved",
               subtitle: "Success",
               colors: [const Color(0xFF10B981), const Color(0xFF059669)],
-              index: 4,
+              index: 5,
               onTap: () {
                 Navigator.push(
                   context,
@@ -598,7 +626,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
               title: "Rejected",
               subtitle: "Declined",
               colors: [const Color(0xFFF43F5E), const Color(0xFFE11D48)],
-              index: 5,
+              index: 6,
               onTap: () {
                 Navigator.push(
                   context,
@@ -615,86 +643,8 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
           ],
         ),
         const SizedBox(height: 12),
-
-        const SizedBox(height: 12),
       ],
     );
-  }
-
-  Widget _buildStatCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required List<Color> colors,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return GlassCard(
-      borderRadius: 18,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [colors[0].withOpacity(0.1), colors[1].withOpacity(0.05)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          border: Border.all(
-            color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.05),
-          ),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: colors),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: colors[0].withOpacity(0.25),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  )
-                ],
-              ),
-              child: Icon(icon, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white38 : Colors.black38,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: isDark ? Colors.white : Colors.black87,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1);
   }
 
   Widget _buildDashboardCard({
@@ -716,12 +666,12 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [colors[0].withOpacity(0.12), colors[1].withOpacity(0.04)],
+              colors: [colors[0].withValues(alpha: 0.12), colors[1].withValues(alpha: 0.04)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             border: Border.all(
-              color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+              color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
               width: 1,
             ),
             borderRadius: BorderRadius.circular(22),
@@ -735,7 +685,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: colors[0].withOpacity(0.3),
+                      color: colors[0].withValues(alpha: 0.3),
                       blurRadius: 15,
                       offset: const Offset(0, 6),
                     )
@@ -797,7 +747,6 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
           .snapshots(),
       builder: (context, snapshot) {
         final int pendingCount = snapshot.data?.docs.length ?? 0;
-        final isDark = Theme.of(context).brightness == Brightness.dark;
 
         return Stack(
           clipBehavior: Clip.none,
@@ -833,7 +782,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFF3B30).withOpacity(0.35),
+                        color: const Color(0xFFFF3B30).withValues(alpha: 0.35),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -848,7 +797,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                       letterSpacing: -0.5,
                     ),
                   ),
-                ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2.seconds, color: Colors.white.withOpacity(0.2)).scale(begin: const Offset(0.8, 0.8)),
+                ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2.seconds, color: Colors.white.withValues(alpha: 0.2)).scale(begin: const Offset(0.8, 0.8)),
               ),
           ],
         );
@@ -865,7 +814,6 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
           .snapshots(),
       builder: (context, snapshot) {
         final int pendingCount = snapshot.data?.docs.length ?? 0;
-        final isDark = Theme.of(context).brightness == Brightness.dark;
 
         return Stack(
           clipBehavior: Clip.none,
@@ -901,7 +849,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFF3B30).withOpacity(0.35),
+                        color: const Color(0xFFFF3B30).withValues(alpha: 0.35),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -916,15 +864,13 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                       letterSpacing: -0.5,
                     ),
                   ),
-                ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2.seconds, color: Colors.white.withOpacity(0.2)).scale(begin: const Offset(0.8, 0.8)),
+                ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2.seconds, color: Colors.white.withValues(alpha: 0.2)).scale(begin: const Offset(0.8, 0.8)),
               ),
           ],
         );
       },
     );
   }
-
-
 }
 
 class ClubManagementScreen extends StatefulWidget {
@@ -1031,16 +977,131 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
     final updateData = {
       'coordinators': FieldValue.arrayRemove([coordinator]),
     };
-    if (studentEmail != null)
+    if (studentEmail != null) {
       updateData['coordinatorEmails'] = FieldValue.arrayRemove([studentEmail]);
+    }
     await FirebaseFirestore.instance
         .collection('clubs')
         .doc(clubId)
         .update(updateData);
-    if (mounted)
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${coordinator['studentName']} removed.')),
       );
+    }
+  }
+
+  Future<void> _generateCoordinatorCert(String email, String clubId, String clubName) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => const Center(child: Card(child: Padding(padding: EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [CircularProgressIndicator(), SizedBox(height: 16), Text("Generating Certificate...", style: TextStyle(fontWeight: FontWeight.bold))])))),
+    );
+
+    try {
+      final clubSnap = await FirebaseFirestore.instance.collection('clubs').doc(clubId).get();
+      final clubData = clubSnap.data() as Map<String, dynamic>;
+
+      final userSnap = await FirebaseFirestore.instance.collection('student').where('email', isEqualTo: email).limit(1).get();
+      String name = email.split('@')[0].toUpperCase();
+      if (userSnap.docs.isNotEmpty) {
+        name = (userSnap.docs.first.data())['name']?.toString().toUpperCase() ?? name;
+      }
+
+      final pdf = pw.Document();
+      pw.MemoryImage? logoImg;
+      pw.MemoryImage? sigImg;
+      pw.MemoryImage? facSigImg;
+
+      if (clubData['profilePic'] != null && clubData['profilePic'].toString().isNotEmpty) {
+        logoImg = await _loadCertImage(clubData['profilePic']);
+      }
+      if (clubData['signatureUrl'] != null && clubData['signatureUrl'].toString().isNotEmpty) {
+        sigImg = await _loadCertImage(clubData['signatureUrl']);
+      }
+      if (clubData['facultySignatureUrl'] != null && clubData['facultySignatureUrl'].toString().isNotEmpty) {
+        facSigImg = await _loadCertImage(clubData['facultySignatureUrl']);
+      }
+
+      pdf.addPage(pw.Page(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: pw.EdgeInsets.zero,
+        build: (pw.Context context) {
+          return pw.Container(
+            margin: const pw.EdgeInsets.all(30),
+            padding: const pw.EdgeInsets.all(20),
+            decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.blueGrey900, width: 5)),
+            child: pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.center,
+              children: [
+                if (logoImg != null) pw.Container(height: 80, width: 80, child: pw.Image(logoImg!)),
+                pw.SizedBox(height: 20),
+                pw.Text("CERTIFICATE OF LEADERSHIP", style: pw.TextStyle(fontSize: 32, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+                pw.SizedBox(height: 10),
+                pw.Text("This is to certify that", style: pw.TextStyle(fontSize: 18, fontStyle: pw.FontStyle.italic)),
+                pw.SizedBox(height: 20),
+                pw.Text(name, style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold, decoration: pw.TextDecoration.underline)),
+                pw.SizedBox(height: 20),
+                pw.Text("has exceptionally served as the Club Coordinator for", style: const pw.TextStyle(fontSize: 16)),
+                pw.Text(clubName.toUpperCase(), style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                pw.Text("during the academic period and has demonstrated outstanding commitment and leadership.", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 16)),
+                pw.SizedBox(height: 50),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                  children: [
+                    pw.Column(children: [
+                      if (sigImg != null) pw.Container(height: 40, width: 100, child: pw.Image(sigImg!)),
+                      pw.Container(width: 140, height: 1, color: PdfColors.black),
+                      pw.Text("Coordinator", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                    ]),
+                    pw.Column(children: [
+                      if (facSigImg != null) pw.Container(height: 40, width: 100, child: pw.Image(facSigImg!)),
+                      pw.Container(width: 140, height: 1, color: PdfColors.black),
+                      pw.Text("Faculty In-Charge", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                    ]),
+                  ],
+                ),
+                pw.SizedBox(height: 20),
+                pw.Text("Generated on ${DateFormat('dd MMMM yyyy').format(DateTime.now())}", style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+              ],
+            ),
+          );
+        },
+      ));
+
+      if (mounted) Navigator.pop(context);
+      final output = await getTemporaryDirectory();
+      final file = File("${output.path}/coordinator_cert_${name.replaceAll(' ', '_')}.pdf");
+      await file.writeAsBytes(await pdf.save());
+      await OpenFile.open(file.path);
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
+  }
+
+  Future<pw.MemoryImage?> _loadCertImage(String data) async {
+    try {
+      if (data.startsWith('data:image')) {
+        return pw.MemoryImage(base64Decode(data.split(',').last));
+      } else {
+        final link = _convertGoogleDriveLink(data);
+        final response = await http.get(Uri.parse(link));
+        if (response.statusCode == 200) return pw.MemoryImage(response.bodyBytes);
+      }
+    } catch (e) {
+      debugPrint("Image load error: $e");
+    }
+    return null;
+  }
+
+  String _convertGoogleDriveLink(String link) {
+    if (link.isEmpty) return '';
+    if (link.contains('drive.google.com/uc?export=view')) return link;
+    final regex = RegExp(r'(?:drive\.google\.com/file/d/|id=)([a-zA-Z0-9-_]+)');
+    final match = regex.firstMatch(link);
+    if (match != null) return 'https://drive.google.com/uc?export=view&id=${match.group(1)}';
+    return link;
   }
 
   @override
@@ -1059,7 +1120,7 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
           child: BackdropFilter(
             filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
-              color: (Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white).withOpacity(0.2),
+              color: (Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white).withValues(alpha: 0.2),
             ),
           ),
         ),
@@ -1098,8 +1159,9 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                       .doc(clubId)
                       .snapshots(),
                   builder: (context, snapshot) {
-                    if (!snapshot.hasData)
+                    if (!snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
+                    }
                     final clubData = snapshot.data!.data() as Map<String, dynamic>?;
                     final coordinators =
                         (clubData?['coordinators'] as List<dynamic>?)
@@ -1140,7 +1202,7 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                           child: ListTile(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                             leading: CircleAvatar(
-                              backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                               child: Icon(Icons.person_rounded, color: Theme.of(context).colorScheme.primary),
                             ),
                             title: Text(
@@ -1151,12 +1213,22 @@ class _ClubManagementScreenState extends State<ClubManagementScreen> {
                               coordinator['studentEmail'] ?? 'No email',
                               style: const TextStyle(fontSize: 12),
                             ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.remove_circle_outline_rounded, color: Colors.redAccent),
-                              onPressed: () => _removeCoordinator(coordinator),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.workspace_premium_rounded, color: Colors.orangeAccent),
+                                  tooltip: 'Generate Certificate',
+                                  onPressed: () => _generateCoordinatorCert(coordinator['studentEmail'], clubId, clubName),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline_rounded, color: Colors.redAccent),
+                                  onPressed: () => _removeCoordinator(coordinator),
+                                ),
+                              ],
                             ),
                           ),
-                        ).animate().fadeIn(delay: (index * 100).ms).slideY(begin: 0.1);
+                        ).animate().fadeIn(delay: (100 * index).ms).slideY(begin: 0.1);
                       },
                     );
                   },
