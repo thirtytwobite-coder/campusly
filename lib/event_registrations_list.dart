@@ -811,13 +811,8 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
             collapsedShape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
             tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            leading: GestureDetector(
-              onTap: () => _showStudentProfilePopup(context, data['userId'] ?? ''),
-              child: _buildLeading(doc, isWinner, participated, isCompleted),
-            ),
-            title: GestureDetector(
-              onTap: () => _showStudentProfilePopup(context, data['userId'] ?? ''),
-              child: Text(
+            leading: _buildLeading(doc, isWinner, participated, isCompleted),
+            title: Text(
                 name,
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
@@ -826,7 +821,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                   color: isDark ? Colors.white : Colors.black,
                 ),
               ),
-            ),
             subtitle: Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Wrap(

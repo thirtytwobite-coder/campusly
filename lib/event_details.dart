@@ -865,25 +865,25 @@ View event details here: $deepLink
                   final String userId = regData['userId'] ?? '';
                   final String name = regData['studentName'] ?? 'Student';
 
-                  return GestureDetector(
-                    onTap: () => _showStudentProfilePopup(context, userId),
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 20.0),
-                      child: Column(
-                        children: [
-                          _participantAvatar(userId, theme),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            width: 60,
-                            child: Text(
-                              name.split(' ')[0],
-                              textAlign: TextAlign.center,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 20.0),
+                    child: Column(
+                      children: [
+                        _participantAvatar(userId, theme),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: 60,
+                          child: Text(
+                            name.split(' ')[0],
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   );
                 },
