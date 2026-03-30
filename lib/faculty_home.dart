@@ -435,7 +435,7 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                             // Dashboard Cards Section
                             SliverPadding(
                               padding: const EdgeInsets.symmetric(horizontal: 24),
-                              child: SliverToBoxAdapter(
+                              sliver: SliverToBoxAdapter(
                                 child: AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 400),
                                   switchInCurve: Curves.easeOutCubic,

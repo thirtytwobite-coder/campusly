@@ -21,6 +21,7 @@ import 'package:open_file/open_file.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'vibrant_background.dart';
+import 'dart:convert';
 
 class EventRegistrationsListScreen extends StatefulWidget {
   final String eventId;
@@ -810,14 +811,20 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
             collapsedShape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
             tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            leading: _buildLeading(doc, isWinner, participated, isCompleted),
-            title: Text(
-              name,
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 16,
-                letterSpacing: -0.5,
-                color: isDark ? Colors.white : Colors.black,
+            leading: GestureDetector(
+              onTap: () => _showStudentProfilePopup(context, data['userId'] ?? ''),
+              child: _buildLeading(doc, isWinner, participated, isCompleted),
+            ),
+            title: GestureDetector(
+              onTap: () => _showStudentProfilePopup(context, data['userId'] ?? ''),
+              child: Text(
+                name,
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                  letterSpacing: -0.5,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
               ),
             ),
             subtitle: Padding(
@@ -1960,6 +1967,273 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
         ...options.map((name) => DropdownMenuItem<String>(value: name, child: Text(name, style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis))),
       ],
       onChanged: onChanged,
+    );
+  }
+
+  void _showStudentProfilePopup(BuildContext context, String userId) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (ctx, anim1, anim2) => Center(
+        child: FutureBuilder<DocumentSnapshot>(
+          future: FirebaseFirestore.instance.collection('student').doc(userId).get(),
+          builder: (context, snapshot) {
+            String name = "Loading...";
+            String photo = "";
+            String college = "N/A";
+            String year = "N/A";
+            String department = "N/A";
+            String semester = "N/A";
+            String ktuId = "N/A";
+            bool isReady = false;
+
+            if (snapshot.hasData && snapshot.data!.exists) {
+              final data = snapshot.data!.data() as Map<String, dynamic>;
+              name = data['name'] ?? 'Unknown Student';
+              photo = data['profilePic'] ?? '';
+              college = data['college'] ?? 'N/A';
+              year = data['year']?.toString() ?? 'N/A';
+              department = data['department'] ?? 'N/A';
+              semester = data['semester']?.toString() ?? 'N/A';
+              ktuId = data['ktuId'] ?? 'N/A';
+              isReady = true;
+            }
+
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final primaryColor = Theme.of(context).primaryColor;
+
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 32),
+              constraints: const BoxConstraints(maxWidth: 400),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                borderRadius: BorderRadius.circular(40),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 40,
+                    offset: const Offset(0, 20),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(40),
+                child: Material(
+                  color: Colors.transparent,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header Background
+                      Stack(
+                        alignment: Alignment.center,
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            height: 120,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  primaryColor.withOpacity(0.8),
+                                  primaryColor.withOpacity(0.4),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 60,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Container(
+                                    width: 110,
+                                    height: 110,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: primaryColor.withOpacity(0.2),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: ClipOval(
+                                      child: photo.isNotEmpty
+                                          ? (photo.startsWith('data:image')
+                                              ? Image.memory(base64Decode(photo.split(',').last), fit: BoxFit.cover)
+                                              : Image.network(photo, fit: BoxFit.cover))
+                                          : Container(
+                                              color: primaryColor.withOpacity(0.1),
+                                              child: Icon(Icons.person_rounded, color: primaryColor, size: 60),
+                                            ),
+                                    ),
+                                  ),
+                                  if (!isReady)
+                                    const SizedBox(
+                                      width: 120,
+                                      height: 120,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 65),
+                      
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(28, 0, 28, 32),
+                        child: Column(
+                          children: [
+                            Text(
+                              name,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _buildBadge(department, Colors.blue),
+                                const SizedBox(width: 8),
+                                _buildBadge("Year $year", Colors.orange),
+                              ],
+                            ),
+                            const SizedBox(height: 28),
+                            
+                            _buildInfoRow(Icons.school_rounded, "College", college, isDark),
+                            const SizedBox(height: 16),
+                            _buildInfoRow(Icons.history_rounded, "Semester", "Semester $semester", isDark),
+                            
+                            const SizedBox(height: 36),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isDark ? Colors.white.withOpacity(0.08) : Colors.black,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 20),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                  elevation: 0,
+                                ),
+                                child: const Text(
+                                  "CLOSE",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.5,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+      transitionBuilder: (ctx, anim1, anim2, child) => FadeTransition(
+        opacity: anim1,
+        child: ScaleTransition(
+          scale: anim1.drive(CurveTween(curve: Curves.easeOutBack)),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBadge(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2), width: 1),
+      ),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value, bool isDark, {bool isHighlight = false}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isHighlight 
+            ? (isDark ? Colors.blueAccent.withOpacity(0.1) : Colors.blue.withOpacity(0.05))
+            : (isDark ? Colors.white.withOpacity(0.03) : Colors.grey[50]),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isHighlight 
+              ? (isDark ? Colors.blueAccent.withOpacity(0.2) : Colors.blue.withOpacity(0.1))
+              : (isDark ? Colors.white10 : Colors.grey[200]!),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isHighlight ? Colors.blue.withOpacity(0.1) : (isDark ? Colors.white.withOpacity(0.05) : Colors.white),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 18, color: isHighlight ? Colors.blue : Colors.grey[400]),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: isHighlight ? Colors.blue.withOpacity(0.7) : Colors.grey,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? (isHighlight ? Colors.blueAccent : Colors.white) : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1402,8 +1402,28 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                                 Row(
                                   children: [
                                     Expanded(child: _buildProposalField(dateController, 'Date *', isDark, readOnly: true, onTap: () async {
-                                        final d = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2100));
-                                        if (d != null) dateController.text = DateFormat('yyyy-MM-dd').format(d);
+                                        final now = DateTime.now();
+                                        final firstDate = DateUtils.dateOnly(now);
+                                        final d = await showDatePicker(
+                                          context: context, 
+                                          initialDate: firstDate, 
+                                          firstDate: firstDate, 
+                                          lastDate: DateTime(2100)
+                                        );
+                                        if (d != null) {
+                                          setDialogState(() {
+                                            dateController.text = DateFormat('yyyy-MM-dd').format(d);
+                                            // If new event date is before current deadline, clear deadline
+                                            if (deadlineDateController.text.isNotEmpty) {
+                                              try {
+                                                final deadline = DateFormat('yyyy-MM-dd').parse(deadlineDateController.text);
+                                                if (deadline.isAfter(d)) {
+                                                  deadlineDateController.clear();
+                                                }
+                                              } catch (_) {}
+                                            }
+                                          });
+                                        }
                                     })),
                                     const SizedBox(width: 12),
                                     Expanded(child: _buildProposalField(timeController, 'Time *', isDark, readOnly: true, onTap: () async {
@@ -1487,7 +1507,21 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                                 Row(
                                   children: [
                                     Expanded(child: _buildProposalField(deadlineDateController, 'Deadline Date *', isDark, readOnly: true, onTap: () async {
-                                        final d = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime(2100));
+                                        final now = DateTime.now();
+                                        final firstDate = DateUtils.dateOnly(now);
+                                        DateTime lastDate = DateTime(2100);
+                                        if (dateController.text.isNotEmpty) {
+                                          try {
+                                            lastDate = DateFormat('yyyy-MM-dd').parse(dateController.text);
+                                          } catch (_) {}
+                                        }
+                                        
+                                        final d = await showDatePicker(
+                                          context: context, 
+                                          initialDate: firstDate.isAfter(lastDate) ? lastDate : firstDate, 
+                                          firstDate: firstDate, 
+                                          lastDate: lastDate
+                                        );
                                         if (d != null) deadlineDateController.text = DateFormat('yyyy-MM-dd').format(d);
                                     })),
                                     const SizedBox(width: 12),
@@ -2128,13 +2162,35 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 ),
                 const SizedBox(height: 12),
                 _buildProposalField(dateController, 'Date (YYYY-MM-DD) *', isDark, readOnly: true, onTap: () async {
+                    final now = DateTime.now();
+                    final firstDate = DateUtils.dateOnly(now);
+                    DateTime initialDate = firstDate;
+                    if (dateController.text.isNotEmpty) {
+                      try {
+                        final parsed = DateFormat('yyyy-MM-dd').parse(dateController.text);
+                        if (parsed.isAfter(firstDate)) initialDate = parsed;
+                      } catch (_) {}
+                    }
                     final pickedDate = await showDatePicker(
                       context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2020),
+                      initialDate: initialDate,
+                      firstDate: firstDate,
                       lastDate: DateTime(2100),
                     );
-                    if (pickedDate != null) dateController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+                    if (pickedDate != null) {
+                      setDialogState(() {
+                        dateController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+                        // If new event date is before current deadline, clear deadline
+                        if (deadlineDateController.text.isNotEmpty) {
+                          try {
+                            final deadline = DateFormat('yyyy-MM-dd').parse(deadlineDateController.text);
+                            if (deadline.isAfter(pickedDate)) {
+                              deadlineDateController.clear();
+                            }
+                          } catch (_) {}
+                        }
+                      });
+                    }
                 }),
                 const SizedBox(height: 12),
                 _buildProposalField(timeController, 'Time (HH:MM) *', isDark, readOnly: true, onTap: () async {
@@ -2194,7 +2250,28 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 Text('Registration Deadline', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
                 const SizedBox(height: 12),
                 _buildProposalField(deadlineDateController, 'Deadline Date (YYYY-MM-DD) *', isDark, readOnly: true, onTap: () async {
-                    final d = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2100));
+                    final now = DateTime.now();
+                    final firstDate = DateUtils.dateOnly(now);
+                    DateTime initialDate = firstDate;
+                    if (deadlineDateController.text.isNotEmpty) {
+                      try {
+                        final parsed = DateFormat('yyyy-MM-dd').parse(deadlineDateController.text);
+                        if (parsed.isAfter(firstDate)) initialDate = parsed;
+                      } catch (_) {}
+                    }
+                    DateTime lastDate = DateTime(2100);
+                    if (dateController.text.isNotEmpty) {
+                      try {
+                        lastDate = DateFormat('yyyy-MM-dd').parse(dateController.text);
+                      } catch (_) {}
+                    }
+                    
+                    final d = await showDatePicker(
+                      context: context, 
+                      initialDate: initialDate.isAfter(lastDate) ? lastDate : initialDate, 
+                      firstDate: firstDate, 
+                      lastDate: lastDate
+                    );
                     if (d != null) deadlineDateController.text = DateFormat('yyyy-MM-dd').format(d);
                 }),
                 const SizedBox(height: 12),
