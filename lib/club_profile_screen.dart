@@ -1,3 +1,8 @@
+/// This screen displays the detailed profile of a club.
+/// It shows club information including description, executive committee members, photo gallery,
+/// and other details fetched from Firestore. The screen provides a scrollable view
+/// with sections for different aspects of the club's profile and allows navigation to event details.
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';

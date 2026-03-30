@@ -1,3 +1,8 @@
+/// This screen displays feedback and ratings for events organized by a specific club.
+/// It fetches all events for the club and shows associated feedback from participants.
+/// The screen aggregates feedback data and presents it in a readable format for club coordinators
+/// to understand participant satisfaction and event performance.
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

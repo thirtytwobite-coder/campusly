@@ -1,3 +1,9 @@
+/// Custom scooped navigation bar widget for the Campusly app.
+/// This widget provides a modern, curved navigation bar with smooth animations.
+/// It supports multiple navigation items with icons and labels, and handles
+/// active state styling with customizable colors. The scooped design gives
+/// a distinctive look to the app's bottom navigation.
+
 import 'package:flutter/material.dart';
 
 class ScoopedNavItem {

@@ -1,3 +1,9 @@
+/// This is the unified login screen for the Campusly app.
+/// It handles authentication for students, faculty, and administrators using Firebase Auth.
+/// The screen supports email/password login, biometric authentication, and role-based navigation
+/// to appropriate dashboards (student home, faculty home, main faculty dashboard, etc.).
+/// It also provides options for password reset and account creation.
+
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';

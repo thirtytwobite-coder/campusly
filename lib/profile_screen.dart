@@ -1,3 +1,9 @@
+/// This screen displays and allows editing of user profiles.
+/// It shows user information like name, phone, department, year, semester, and KTU ID.
+/// Users can edit their profile details, change profile pictures, and manage biometric settings.
+/// The screen supports viewing other users' profiles (read-only) and personal profile editing.
+/// It integrates with Firebase Auth and Firestore for data management.
+
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';

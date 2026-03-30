@@ -1,3 +1,9 @@
+/// This is the main dashboard screen for club coordinators.
+/// It provides navigation between different sections like analytics, certificates, programs, and profile.
+/// The dashboard displays club information, handles notifications, and allows coordinators
+/// to manage their club's events, programs, and member interactions through various sub-screens.
+/// It includes a bottom navigation bar for easy access to different functionalities.
+
 import 'dart:convert';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,7 +14,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/rendering.dart';
-
 import 'analytics_dashboard_screen.dart';
 import 'analytics_screen.dart';
 import 'certificates_screen.dart';

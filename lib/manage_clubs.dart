@@ -1,3 +1,8 @@
+/// This screen allows administrators to manage clubs in the system.
+/// It displays a list of all clubs with options to view details or delete clubs.
+/// The screen supports both guest view (read-only) and admin view (with delete functionality).
+/// Clubs are fetched from Firestore and displayed in a scrollable list with confirmation dialogs for deletions.
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 

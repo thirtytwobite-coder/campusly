@@ -1,3 +1,9 @@
+/// This screen displays detailed information about a specific event.
+/// It shows event title, date, time, venue, description, and organizer details.
+/// The screen allows users to register for the event, share event details with others,
+/// and view event images. It also provides navigation to the event registration screen
+/// and handles deep linking for event sharing.
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

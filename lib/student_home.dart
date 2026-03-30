@@ -1,3 +1,9 @@
+/// This is the main home screen for students in the Campusly app.
+/// It displays events categorized by public events, college-specific events, and registered events.
+/// The screen includes search functionality, category filtering, date filtering, and navigation
+/// between different event views. Students can browse events, register for them, and access
+/// their profile and participation history through the bottom navigation bar.
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

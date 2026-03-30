@@ -1,7 +1,19 @@
+/// This screen displays certificates for events organized by a specific club.
+/// It allows club coordinators and faculty to view and manage certificates for their programs.
+/// The screen fetches program IDs and shows certificate-related information with search functionality.
+/// Users can navigate to detailed event registration lists and approval screens from this view.
+
 import 'dart:ui' as ui;
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'event_registrations_list.dart';
 import 'list_approval_screen.dart';
 import 'vibrant_background.dart';
@@ -71,6 +83,153 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
     return link;
   }
 
+  Future<void> _showCoordinatorCertDialog() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        title: Text("Coordinator Certificates", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance.collection('clubs').doc(widget.clubId).get(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+              if (!snapshot.hasData || !snapshot.data!.exists) return const Text("Club not found");
+              
+              final clubData = snapshot.data!.data() as Map<String, dynamic>;
+              final List<String> coordinatorEmails = List<String>.from(clubData['coordinatorEmails'] ?? []);
+
+              if (coordinatorEmails.isEmpty) return const Text("No coordinators assigned.");
+
+              return ListView.builder(
+                shrinkWrap: true,
+                itemCount: coordinatorEmails.length,
+                itemBuilder: (context, index) {
+                  final email = coordinatorEmails[index];
+                  return ListTile(
+                    title: Text(email, style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
+                    trailing: const Icon(Icons.file_download_rounded, color: Colors.blueAccent),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await _generateCoordinatorCert(email, clubData);
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close")),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _generateCoordinatorCert(String email, Map<String, dynamic> clubData) async {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => const Center(child: Card(child: Padding(padding: EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [CircularProgressIndicator(), SizedBox(height: 16), Text("Generating Certificate...", style: TextStyle(fontWeight: FontWeight.bold))])))),
+    );
+
+    try {
+      final userSnap = await FirebaseFirestore.instance.collection('student').where('email', isEqualTo: email).limit(1).get();
+      String name = email.split('@')[0].toUpperCase();
+      if (userSnap.docs.isNotEmpty) {
+        name = (userSnap.docs.first.data())['name']?.toString().toUpperCase() ?? name;
+      }
+
+      final pdf = pw.Document();
+      pw.MemoryImage? logoImg;
+      pw.MemoryImage? sigImg;
+      pw.MemoryImage? facSigImg;
+
+      if (clubData['profilePic'] != null && clubData['profilePic'].toString().isNotEmpty) {
+        logoImg = await _loadCertImage(clubData['profilePic']);
+      }
+      if (clubData['signatureUrl'] != null && clubData['signatureUrl'].toString().isNotEmpty) {
+        sigImg = await _loadCertImage(clubData['signatureUrl']);
+      }
+      if (clubData['facultySignatureUrl'] != null && clubData['facultySignatureUrl'].toString().isNotEmpty) {
+        facSigImg = await _loadCertImage(clubData['facultySignatureUrl']);
+      }
+
+      pdf.addPage(pw.Page(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: pw.EdgeInsets.zero,
+        build: (pw.Context context) {
+          return pw.Container(
+            margin: const pw.EdgeInsets.all(30),
+            padding: const pw.EdgeInsets.all(20),
+            decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.blueGrey900, width: 5)),
+            child: pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.center,
+              children: [
+                if (logoImg != null) pw.Container(height: 80, width: 80, child: pw.Image(logoImg!)),
+                pw.SizedBox(height: 20),
+                pw.Text("CERTIFICATE OF LEADERSHIP", style: pw.TextStyle(fontSize: 32, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+                pw.SizedBox(height: 10),
+                pw.Text("This is to certify that", style: pw.TextStyle(fontSize: 18, fontStyle: pw.FontStyle.italic)),
+                pw.SizedBox(height: 20),
+                pw.Text(name, style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold, decoration: pw.TextDecoration.underline)),
+                pw.SizedBox(height: 20),
+                pw.Text("has exceptionally served as the Club Coordinator for", style: const pw.TextStyle(fontSize: 16)),
+                pw.Text(widget.clubName.toUpperCase(), style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                pw.Text("during the academic period and has demonstrated outstanding commitment and leadership.", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 16)),
+                pw.SizedBox(height: 50),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                  children: [
+                    pw.Column(children: [
+                      if (sigImg != null) pw.Container(height: 40, width: 100, child: pw.Image(sigImg!)),
+                      pw.Container(width: 140, height: 1, color: PdfColors.black),
+                      pw.Text("Coordinator", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                    ]),
+                    pw.Column(children: [
+                      if (facSigImg != null) pw.Container(height: 40, width: 100, child: pw.Image(facSigImg!)),
+                      pw.Container(width: 140, height: 1, color: PdfColors.black),
+                      pw.Text("Faculty In-Charge", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                    ]),
+                  ],
+                ),
+                pw.SizedBox(height: 20),
+                pw.Text("Generated on ${DateFormat('dd MMMM yyyy').format(DateTime.now())}", style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+              ],
+            ),
+          );
+        },
+      ));
+
+      if (mounted) Navigator.pop(context);
+      final output = await getTemporaryDirectory();
+      final file = File("${output.path}/coordinator_cert_${name.replaceAll(' ', '_')}.pdf");
+      await file.writeAsBytes(await pdf.save());
+      await OpenFile.open(file.path);
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
+  }
+
+  Future<pw.MemoryImage?> _loadCertImage(String data) async {
+    try {
+      if (data.startsWith('data:image')) {
+        return pw.MemoryImage(base64Decode(data.split(',').last));
+      } else {
+        final response = await http.get(Uri.parse(_convertGoogleDriveLink(data)));
+        if (response.statusCode == 200) return pw.MemoryImage(response.bodyBytes);
+      }
+    } catch (e) {
+      debugPrint("Image load error: $e");
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -94,11 +253,16 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
           child: BackdropFilter(
             filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
             child: Container(
-              color: (isDark ? Colors.black : Colors.white).withOpacity(isDark ? 0.4 : 0.6),
+              color: (isDark ? Colors.black : Colors.white).withValues(alpha: isDark ? 0.4 : 0.6),
             ),
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.stars_rounded),
+            tooltip: 'Coordinator Certificates',
+            onPressed: _showCoordinatorCertDialog,
+          ),
           if (widget.isFaculty)
             IconButton(
               icon: const Icon(Icons.playlist_add_check_rounded),
@@ -180,7 +344,7 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.event_busy_rounded, size: 80, color: isDark ? Colors.white10 : Colors.black.withOpacity(0.1)),
+                                  Icon(Icons.event_busy_rounded, size: 80, color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.1)),
                                   const SizedBox(height: 16),
                                   Text("No events found", style: TextStyle(color: isDark ? Colors.white38 : Colors.grey[600], fontSize: 16)),
                                 ],
@@ -244,7 +408,7 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.workspace_premium_rounded, color: theme.colorScheme.primary, size: 32),

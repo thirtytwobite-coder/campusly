@@ -1,3 +1,9 @@
+/// This screen handles student registration and account creation.
+/// It collects student information including personal details, academic information,
+/// and generates KTU ID automatically based on college code, admission year, department, and roll number.
+/// The screen validates input data, creates Firebase Auth accounts, and stores
+/// student information in Firestore for future use in the application.
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';

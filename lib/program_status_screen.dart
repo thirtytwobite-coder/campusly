@@ -1,3 +1,8 @@
+/// This screen displays programs filtered by their approval status.
+/// It shows approved, rejected, or all programs for a specific club.
+/// The screen allows faculty to view the status of program requests and track
+/// the approval workflow. Different statuses are displayed with appropriate color coding.
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 

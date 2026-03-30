@@ -1,3 +1,8 @@
+/// This is the main faculty dashboard for college administrators.
+/// It provides administrative functions for managing the college's clubs, faculty, and students.
+/// The dashboard includes navigation to analytics, profile management, and other administrative tasks.
+/// Main faculty can oversee multiple clubs and have broader permissions compared to regular faculty.
+
 import 'dart:ui' as ui;
 import 'dart:convert';
 import 'dart:io';

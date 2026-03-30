@@ -1,3 +1,9 @@
+/// Service for sending push notifications using Firebase Cloud Messaging (FCM).
+/// This class handles OAuth 2.0 authentication with Firebase service account credentials
+/// to send push notifications to specific devices or topics. It manages access token caching
+/// and provides methods to send notifications with custom titles, bodies, and data payloads.
+/// Note: Storing service account keys on the client side is not recommended for production apps.
+
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart' as jwt;
 import 'package:http/http.dart' as http;
 import 'dart:convert';

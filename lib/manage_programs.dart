@@ -1,3 +1,8 @@
+/// This screen allows club coordinators to manage their programs and events.
+/// It displays a list of all programs for the club, ordered by creation date.
+/// Coordinators can view program details, create new programs, and manage existing ones.
+/// The screen integrates with notification services for program-related updates.
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';

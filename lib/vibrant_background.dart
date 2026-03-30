@@ -1,3 +1,8 @@
+/// Custom background widget that provides a vibrant, animated gradient background.
+/// This widget creates a visually appealing backdrop with circular gradient overlays
+/// that adapt to the current theme (light/dark mode). It uses radial gradients
+/// and positioning to create depth and visual interest across the app's screens.
+
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 

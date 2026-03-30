@@ -1,3 +1,8 @@
+/// This screen displays a searchable directory of all students in the system.
+/// It allows users to search for students by name and view their basic information.
+/// The directory is fetched from Firestore and presented in a scrollable list
+/// with search functionality for easy navigation through student records.
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'vibrant_background.dart';

@@ -1,3 +1,9 @@
+/// This screen handles event registration for students.
+/// It provides forms for both individual and team registrations, collecting student details
+/// like name, phone, department, year, semester, and KTU ID. The screen validates input,
+/// checks for existing registrations, and saves registration data to Firestore.
+/// It also supports team member selection for group events and handles different registration types.
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,6 +34,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
   late TextEditingController _yearController;
   late TextEditingController _semController;
   late TextEditingController _ktuIdController;
+  late TextEditingController _teamNameController;
 
   final List<Map<String, dynamic>> _selectedTeamMembers = [];
   List<Map<String, dynamic>> _collegeStudents = [];
@@ -43,6 +50,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
     _yearController = TextEditingController();
     _semController = TextEditingController();
     _ktuIdController = TextEditingController();
+    _teamNameController = TextEditingController();
     _fetchStudentData();
   }
 
@@ -55,6 +63,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
     _yearController.dispose();
     _semController.dispose();
     _ktuIdController.dispose();
+    _teamNameController.dispose();
     super.dispose();
   }
 
@@ -243,6 +252,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
           .set(updatedData, SetOptions(merge: true));
 
       final String teamId = (isTeamEvent && regType == 'participant') ? "${widget.event.id}_${user.uid}" : "";
+      final String teamName = (isTeamEvent && regType == 'participant') ? _teamNameController.text.trim() : "";
 
       await FirebaseFirestore.instance.collection('registrations').add({
         'userId': user.uid,
@@ -259,6 +269,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
         'registrationType': regType,
         'registeredAt': FieldValue.serverTimestamp(),
         if (isTeamEvent && regType == 'participant') 'teamId': teamId,
+        if (isTeamEvent && regType == 'participant') 'teamName': teamName,
         if (isTeamEvent && regType == 'participant') 'isTeamLeader': true,
         if (isTeamEvent && regType == 'participant') 'status': 'confirmed',
       });
@@ -280,6 +291,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
              'registrationType': 'participant',
              'registeredAt': FieldValue.serverTimestamp(),
              'teamId': teamId,
+             'teamName': teamName,
              'isTeamLeader': false,
              'status': 'pending',
            });
@@ -287,7 +299,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
            await FirebaseFirestore.instance.collection('student').doc(memberData['id']).collection('notifications').add({
              'type': 'team_invite',
              'title': 'Team Invitation',
-             'message': '${updatedData['name']} invited you to join their team for ${eventData['title'] ?? 'an event'}.',
+             'message': '${updatedData['name']} invited you to join their team "${teamName}" for ${eventData['title'] ?? 'an event'}.',
              'eventId': widget.event.id,
              'regId': pendingRegRef.id,
              'read': false,
@@ -536,6 +548,14 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Text("Team Information",
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, letterSpacing: -0.5)),
+            const SizedBox(height: 4),
+            Text("Provide a unique name for your team.",
+              style: TextStyle(fontSize: 12, color: Colors.grey.withOpacity(0.8))),
+            const SizedBox(height: 20),
+            _buildTextField(_teamNameController, "Team Name", Icons.group_work_rounded),
+            const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

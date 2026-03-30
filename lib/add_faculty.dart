@@ -1,3 +1,9 @@
+/// This screen allows administrators or coordinators to add faculty members to the system.
+/// It provides a form for manual entry of faculty details (name, email, password, phone, college)
+/// and supports bulk import via CSV file upload. The screen validates input data,
+/// creates Firebase Auth accounts, and stores faculty information in Firestore.
+/// It also handles role assignment and college association for the new faculty members.
+
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';

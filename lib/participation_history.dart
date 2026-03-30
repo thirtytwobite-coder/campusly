@@ -1,3 +1,8 @@
+/// This screen displays the user's participation history and achievements.
+/// It shows all events the user has participated in, their performance, awards, and certificates.
+/// The screen allows users to view detailed participation records, generate PDF certificates,
+/// and submit feedback for completed events. Data is fetched from the registrations collection.
+
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';

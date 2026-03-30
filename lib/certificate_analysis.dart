@@ -1,3 +1,8 @@
+/// This screen provides certificate analysis and statistics for club events.
+/// It displays analytics related to certificate generation, approvals, and event participation.
+/// The screen fetches program data for coordinators and provides navigation to detailed views
+/// of event registrations and approval processes for certificate management.
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';

@@ -1,3 +1,8 @@
+// Certificate Approval Workflow (Faculty)
+// ------------------------------------------------
+// This screen allows faculty to review certificate approval requests from clubs.
+// It reads from `certificate_approvals` and sets status to `approved` or `rejected`.
+
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -357,6 +362,7 @@ class _CertificateApprovalScreenState extends State<CertificateApprovalScreen> {
     );
   }
 
+  // Navigate to event registrations and certificate workflow for a selected event.
   void _navigateToDetails(BuildContext context, String? eventId, String eventName) {
     if (eventId != null) {
       Navigator.push(

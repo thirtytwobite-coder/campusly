@@ -1,3 +1,9 @@
+/// This screen provides a comprehensive analytics dashboard for club coordinators and administrators.
+/// It displays event statistics, registration counts, participation metrics, and performance insights.
+/// The dashboard supports filtering by different criteria and shows visual charts for event data.
+/// It fetches data from Firestore based on the coordinator's clubs and displays aggregated statistics
+/// including total events, registrations, low participation events, and event distribution charts.
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

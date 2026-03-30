@@ -1,3 +1,9 @@
+/// Main entry point for the Campusly Flutter application.
+/// This file initializes Firebase, sets up push notifications, handles theme management,
+/// and manages the app's navigation based on user authentication and roles.
+/// It configures background message handling, local notifications, and FCM token management.
+/// The app supports multiple user types: students, faculty, coordinators, and administrators.
+
 import 'package:animations/animations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:college_event_manager/club_coordinator_dashboard.dart';

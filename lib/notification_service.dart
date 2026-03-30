@@ -1,3 +1,9 @@
+/// Service class for handling local notifications in the Campusly app.
+/// This class manages Flutter Local Notifications plugin, creating notification channels
+/// for different types of notifications (info, alerts, success). It handles notification
+/// initialization, permission requests, and displaying notifications with proper navigation support.
+/// The service supports Android notification channels and integrates with the app's navigation system.
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

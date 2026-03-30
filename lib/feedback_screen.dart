@@ -1,3 +1,8 @@
+/// This screen allows event participants to submit feedback and ratings.
+/// It provides a rating system (1-5 stars) and a text field for comments.
+/// The feedback is saved directly to the participant's registration document in Firestore.
+/// The screen validates that a rating is provided before submission and shows success confirmation.
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';

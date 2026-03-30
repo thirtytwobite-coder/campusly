@@ -1,3 +1,8 @@
+/// This screen displays analytics and statistics for a specific club.
+/// It shows event registrations, program details, and approval lists for club coordinators.
+/// The screen fetches program IDs associated with the coordinator and provides navigation
+/// to detailed event registration lists and approval screens for better club management.
+
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

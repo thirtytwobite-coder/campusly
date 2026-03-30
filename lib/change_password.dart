@@ -1,3 +1,8 @@
+/// This screen allows users to change their password securely.
+/// It requires re-authentication with the current password before allowing a password update.
+/// The screen validates password strength (minimum 6 characters) and confirmation matching.
+/// It uses Firebase Authentication to update the user's password and provides feedback on success or failure.
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_animate/flutter_animate.dart';

@@ -1,3 +1,9 @@
+/// This screen allows users to select their role in the application.
+/// Users can choose to access the app as a student or as a club coordinator.
+/// For coordinators, it fetches and displays the clubs they manage, allowing them
+/// to select which club dashboard to access. The screen handles role-based navigation
+/// to appropriate home screens based on user permissions.
+
 import 'package:flutter/material.dart';
 import 'student_home.dart';
 import 'club_coordinator_dashboard.dart';

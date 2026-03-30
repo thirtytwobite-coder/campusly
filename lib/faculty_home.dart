@@ -1,3 +1,9 @@
+/// This is the main home screen for faculty members.
+/// It provides navigation to different faculty functions including program approvals,
+/// certificate approvals, analytics, and profile management. The screen displays
+/// faculty information and allows switching between different clubs for oversight.
+/// It includes a bottom navigation bar for easy access to various administrative tasks.
+
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';

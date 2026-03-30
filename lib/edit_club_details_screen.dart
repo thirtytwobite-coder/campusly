@@ -1,3 +1,8 @@
+/// This screen allows club coordinators to edit their club's details.
+/// It provides forms to update club description, executive committee members, photo gallery,
+/// and club logo/profile picture. The screen fetches current club data from Firestore
+/// and allows saving changes back to the database with validation.
+
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';

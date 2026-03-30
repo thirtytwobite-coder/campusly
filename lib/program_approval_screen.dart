@@ -1,3 +1,8 @@
+/// This screen allows faculty to approve or reject program/event requests from clubs.
+/// It displays pending programs that require faculty approval before they can proceed.
+/// Faculty can approve individual programs, reject them with reasons, or perform bulk operations.
+/// The screen integrates with notification services to inform coordinators of approval decisions.
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';

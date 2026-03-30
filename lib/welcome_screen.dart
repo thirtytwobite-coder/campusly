@@ -1,3 +1,8 @@
+/// This is the welcome/onboarding screen for the Campusly app.
+/// It provides an introduction to the app's features and purpose with animated text and UI elements.
+/// The screen showcases the app's branding and provides navigation to the login screen.
+/// It uses smooth animations to create an engaging first impression for new users.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 

@@ -1,3 +1,8 @@
+/// This screen displays pending participant lists for faculty approval.
+/// It shows events that have submitted their participant lists and are waiting for approval.
+/// The screen fetches events from Firestore where listsSubmitted is true and provides
+/// a view for faculty to review and approve participant registrations for events.
+
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

@@ -1,3 +1,8 @@
+/// This screen displays a list of colleges and their main faculty administrators.
+/// It shows the status of each college admin (active/inactive) and provides an overview
+/// of college-level administration in the system. The screen fetches data from the faculty collection
+/// and displays it in a scrollable list with visual indicators for admin status.
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';

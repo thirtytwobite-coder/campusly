@@ -1,3 +1,13 @@
+// Event Registrations and Certificate Workflow
+// ------------------------------------------------
+// This screen is used by club coordinators (and faculty view) to:
+// - list registrations for an event
+// - display winners and participants
+// - mark participation status
+// - set winners via manual winner assignment
+// - assign volunteer tasks for volunteer registrants
+// - request certificate approval and generate certificates
+
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -63,15 +73,19 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
   String? _clubId;
   bool _certsApproved = false;
   String _eventStatus = 'approved';
-  bool _isTeamEvent = false;
-  bool _isApprovalRequestPending = false;
 
   @override
   void initState() {
     super.initState();
+    // Initialize screen state by loading event and club certificate settings
     _loadSettings();
   }
 
+  /// Load event and club settings needed for certificate UI and behavior.
+  ///
+  /// - `certsApproved` controls whether certificate actions are editable.
+  /// - `isTeamEvent` affects winner selection by team.
+  /// - `manualWinners` maps 1st/2nd/3rd names.
   Future<void> _loadSettings() async {
     try {
       final eventDoc = await FirebaseFirestore.instance.collection('events').doc(widget.eventId).get();
@@ -139,6 +153,9 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
     return null;
   }
 
+  /// Request faculty approval for event certificates.
+  ///
+  /// Creates a `certificate_approvals` doc in Firestore with `status='pending'`.
   Future<void> _requestUnifiedApproval() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -808,7 +825,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
               child: Wrap(
                 spacing: 8,
                 children: [
-                  if (rank != null)
+                  if (rank != null && !isCompleted)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
@@ -840,7 +857,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                       ),
                     ),
                   ),
-                  if (data['isVolunteer'] == true)
+                  if (data['registrationType']?.toString().toLowerCase() == 'volunteer')
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
@@ -872,8 +889,11 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
               Divider(color: isDark ? Colors.white10 : Colors.black12),
               const SizedBox(height: 16),
               _buildDetailGrid(data),
-              if (data['isVolunteer'] == true) ...[const SizedBox(height: 16), _buildVolunteerSection(doc, data)],
-              if (!widget.isFacultyView && isCompleted && (participated || isWinner)) ..[
+              if (data['registrationType']?.toString().toLowerCase() == 'volunteer') ...[
+                const SizedBox(height: 16),
+                _buildVolunteerSection(doc, data),
+              ],
+              if (!widget.isFacultyView && isCompleted && (participated || isWinner)) ...[
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -917,10 +937,55 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
     );
   }
 
+  Widget _buildDetailItem(IconData icon, String label, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 12, color: isDark ? Colors.white38 : Colors.black38),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label.toUpperCase(),
+                style: TextStyle(fontSize: 8, color: isDark ? Colors.white38 : Colors.grey[500], fontWeight: FontWeight.w900, letterSpacing: 0.5),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildVolunteerSection(QueryDocumentSnapshot doc, Map<String, dynamic> data) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final studentName = data['studentName']?.toString() ?? 'Unknown';
-    final assignedTask = data['volunteerTask']?.toString() ?? '';
+    final assignedTask = data['assignedTask']?.toString() ?? '';
+    final registrationType = data['registrationType']?.toString().toLowerCase() ?? '';
+    
+    // Only show if user is a volunteer
+    if (registrationType != 'volunteer') {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -996,7 +1061,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white87 : Colors.black87,
+                    color: isDark ? Colors.white70 : Colors.black87,
                   ),
                 ),
               ],
@@ -1031,7 +1096,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
   Future<void> _showAssignTaskDialog(QueryDocumentSnapshot doc, Map<String, dynamic> data) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final studentName = data['studentName']?.toString() ?? 'Unknown';
-    final currentTask = data['volunteerTask']?.toString() ?? '';
+    final currentTask = data['assignedTask']?.toString() ?? '';
     final taskController = TextEditingController(text: currentTask);
 
     await showDialog(
@@ -1083,7 +1148,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
               final task = taskController.text.trim();
               if (task.isNotEmpty) {
                 try {
-                  await doc.reference.update({'volunteerTask': task});
+                  await doc.reference.update({'assignedTask': task});
                   if (mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1091,9 +1156,11 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                     );
                   }
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Error: $e")),
-                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Error: $e")),
+                    );
+                  }
                 }
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1110,45 +1177,6 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDetailItem(IconData icon, String label, String value) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 12, color: isDark ? Colors.white38 : Colors.black38),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                label.toUpperCase(),
-                style: TextStyle(fontSize: 8, color: isDark ? Colors.white38 : Colors.grey[500], fontWeight: FontWeight.w900, letterSpacing: 0.5),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white70 : Colors.black87,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -1756,6 +1784,9 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
     return link;
   }
 
+  /// Shows a dialog letting the coordinator assign 1st/2nd/3rd winners.
+  ///
+  /// It reads all registered participants, allows search, and updates event `manualWinners`.
   void _showWinnersDialog() async {
     showDialog(
       context: context,
@@ -1811,7 +1842,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                     constraints: const BoxConstraints(maxWidth: 500),
                     padding: const EdgeInsets.all(24),
                     child: StatefulBuilder(
-                      builder: (sbContext, setDialogState) => SingleChildScrollView(
+                      builder: (context, setDialogState) => SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
@@ -1867,9 +1898,7 @@ class _EventRegistrationsListScreenState extends State<EventRegistrationsListScr
                                     FirebaseFirestore.instance.collection('events').doc(widget.eventId).update({
                                       'manualWinners': _manualWinners,
                                     }).then((_) {
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Winners saved!")));
-                                      }
+                                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Winners saved!")));
                                     });
                                     Navigator.pop(ctx);
                                   },
