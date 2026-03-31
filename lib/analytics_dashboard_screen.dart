@@ -94,12 +94,14 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
       } else if (widget.clubIds != null && widget.clubIds!.isNotEmpty) {
         eventDocs = await _fetchEventsForClubIds(widget.clubIds!);
       } else if (widget.collegeName != null) {
-        final clubsSnap = await FirebaseFirestore.instance
-            .collection('clubs')
-            .where('college', isEqualTo: widget.collegeName)
-            .get();
+        final currentCollege = widget.collegeName!.trim().toLowerCase();
+        final clubsSnap = await FirebaseFirestore.instance.collection('clubs').get();
+        final clubs = clubsSnap.docs.where((doc) {
+          final data = doc.data();
+          final clubCollege = data['college']?.toString().trim().toLowerCase();
+          return clubCollege == null || clubCollege == '' || clubCollege == currentCollege;
+        }).toList();
 
-        final clubs = clubsSnap.docs;
         clubIds = clubs.map((d) => d.id).toList();
         _totalClubs = clubs.length;
 
@@ -199,6 +201,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
         }
 
         if (missingClubIds.isNotEmpty) {
+          final currentCollege = widget.collegeName!.trim().toLowerCase();
           final missingClubDocs = await Future.wait(
             missingClubIds.map((clubId) => FirebaseFirestore.instance.collection('clubs').doc(clubId).get()),
           );
@@ -206,8 +209,8 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
           for (var clubDoc in missingClubDocs) {
             if (!clubDoc.exists) continue;
             final clubData = clubDoc.data() ?? {};
-            final clubCollege = clubData['college']?.toString();
-            if (clubCollege != null && clubCollege != widget.collegeName && clubCollege.isNotEmpty) {
+            final clubCollege = clubData['college']?.toString().trim().toLowerCase();
+            if (clubCollege != null && clubCollege.isNotEmpty && clubCollege != currentCollege) {
               continue;
             }
 
