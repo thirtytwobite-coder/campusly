@@ -344,13 +344,20 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                 stream: FirebaseFirestore.instance.collection('clubs').snapshots(),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                  final currentCollege = widget.collegeName.trim().toLowerCase();
+                  final currentUser = FirebaseAuth.instance.currentUser;
+                  final currentEmail = currentUser?.email?.trim().toLowerCase();
+                  final currentUid = currentUser?.uid;
+
                   final docs = snapshot.data!.docs.where((doc) {
                     final data = doc.data() as Map<String, dynamic>;
-                    final clubCollege = data['college']?.toString().trim().toLowerCase();
-                    return clubCollege == null || clubCollege == '' || clubCollege == currentCollege;
+                    final createdBy = data['createdBy']?.toString().trim().toLowerCase();
+                    final createdByUid = data['createdByUid']?.toString().trim();
+                    if (currentUid != null && createdByUid == currentUid) return true;
+                    if (currentEmail != null && createdBy == currentEmail) return true;
+                    return false;
                   }).toList();
-                  if (docs.isEmpty) return const Center(child: Text("No local clubs added yet."));
+
+                  if (docs.isEmpty) return const Center(child: Text("No clubs added by you yet."));
 
                   return ListView.separated(
                     padding: const EdgeInsets.all(16),
@@ -441,10 +448,13 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
               ),
               onPressed: () async {
                 if (nameController.text.isEmpty) return;
+                final user = FirebaseAuth.instance.currentUser;
                 await FirebaseFirestore.instance.collection('clubs').add({
                   'clubName': nameController.text.trim(),
                   'college': widget.collegeName,
                   'isEnabled': true,
+                  'createdBy': user?.email?.trim().toLowerCase() ?? 'admin',
+                  'createdByUid': user?.uid ?? '',
                   'createdAt': FieldValue.serverTimestamp(),
                 });
                 if (mounted) Navigator.pop(c);

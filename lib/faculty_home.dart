@@ -188,7 +188,16 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                           return const Center(child: CircularProgressIndicator());
                         }
 
-                        final docs = snapshot.data?.docs ?? [];
+                        final rawDocs = snapshot.data?.docs ?? [];
+                        final uniqueClubDocs = <String, QueryDocumentSnapshot>{};
+                        for (final doc in rawDocs) {
+                          final clubId = (doc.data() as Map<String, dynamic>)['clubId']?.toString();
+                          if (clubId == null) continue;
+                          if (!uniqueClubDocs.containsKey(clubId)) {
+                            uniqueClubDocs[clubId] = doc;
+                          }
+                        }
+                        final docs = uniqueClubDocs.values.toList();
 
                         if (docs.isEmpty) {
                           return CustomScrollView(
