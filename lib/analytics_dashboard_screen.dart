@@ -43,6 +43,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   int _maxEventCount = 0;
   int _totalClubs = 0;
   String _filter = 'All';
+  String _clubSearchQuery = '';
 
   Set<String> _myProgramIds = {};
   List<Map<String, dynamic>> _clubAnalytics = [];
@@ -457,6 +458,13 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     if (widget.collegeName == null || widget.clubId != null || widget.clubIds != null) return const SizedBox.shrink();
     if (_clubAnalytics.isEmpty) return const SizedBox.shrink();
 
+    final filteredClubAnalytics = _clubSearchQuery.trim().isEmpty
+        ? _clubAnalytics
+        : _clubAnalytics.where((club) {
+            final clubName = (club['clubName'] as String).toLowerCase();
+            return clubName.contains(_clubSearchQuery.toLowerCase());
+          }).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -480,16 +488,41 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
             ),
           ],
         ),
+        const SizedBox(height: 12),
+        TextField(
+          decoration: InputDecoration(
+            hintText: 'Search clubs by name',
+            prefixIcon: const Icon(Icons.search),
+            filled: true,
+            fillColor: isDark ? Colors.white10 : Colors.grey.shade100,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide.none,
+            ),
+          ),
+          onChanged: (value) {
+            setState(() {
+              _clubSearchQuery = value;
+            });
+          },
+        ),
         const SizedBox(height: 16),
         SizedBox(
           height: 180,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: _clubAnalytics.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final club = _clubAnalytics[index];
+          child: filteredClubAnalytics.isEmpty
+              ? Center(
+                  child: Text(
+                    'No clubs match your search',
+                    style: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
+                  ),
+                )
+              : ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: filteredClubAnalytics.length,
+                  separatorBuilder: (context, index) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final club = filteredClubAnalytics[index];
               return InkWell(
                 onTap: () {
                   Navigator.push(
@@ -583,21 +616,30 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   }
 
   Widget _buildChartSection(bool isDark) {
-    if (_allEventStats.isEmpty) return const SizedBox.shrink();
-    
-    // Sort by count descending and take top 5
-    final topEvents = List<Map<String, dynamic>>.from(_allEventStats)
-      ..sort((a, b) => (b['count'] as int).compareTo(a['count'] as int));
-    final displayEvents = topEvents.take(5).toList();
+    if (_allEventStats.isEmpty && _clubAnalytics.isEmpty) return const SizedBox.shrink();
 
-    double maxY = displayEvents.isEmpty ? 10.0 : (displayEvents.first['count'] as int).toDouble() * 1.2;
+    final bool showClubs = widget.collegeName != null && _clubAnalytics.isNotEmpty;
+    final dataSource = showClubs
+        ? List<Map<String, dynamic>>.from(_clubAnalytics)
+        : List<Map<String, dynamic>>.from(_allEventStats);
+
+    if (showClubs) {
+      dataSource.sort((a, b) => (b['totalRegistrations'] as int).compareTo(a['totalRegistrations'] as int));
+    } else {
+      dataSource.sort((a, b) => (b['count'] as int).compareTo(a['count'] as int));
+    }
+
+    final displayItems = dataSource.take(5).toList();
+    double maxY = displayItems.isEmpty
+        ? 10.0
+        : ((showClubs ? displayItems.first['totalRegistrations'] as int : displayItems.first['count'] as int).toDouble() * 1.2);
     if (maxY < 5) maxY = 5;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Top Performing Events",
+          showClubs ? "Top Performing Clubs" : "Top Performing Events",
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -619,8 +661,11 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipColor: (group) => isDark ? Colors.black.withOpacity(0.8) : Colors.white.withOpacity(0.9),
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final item = displayItems[group.x.toInt()];
+                      final label = showClubs ? item['clubName'] : item['title'];
+                      final value = showClubs ? item['totalRegistrations'] : item['count'];
                       return BarTooltipItem(
-                        '${displayEvents[group.x.toInt()]['title']}\n',
+                        '$label\n',
                         TextStyle(
                           color: isDark ? Colors.white : Colors.black,
                           fontWeight: FontWeight.bold,
@@ -628,7 +673,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                         ),
                         children: <TextSpan>[
                           TextSpan(
-                            text: rod.toY.toInt().toString(),
+                            text: value.toString(),
                             style: TextStyle(
                               color: isDark ? const Color(0xFF10B981) : const Color(0xFF059669),
                               fontSize: 16,
@@ -648,8 +693,10 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                       reservedSize: 32,
                       getTitlesWidget: (value, meta) {
                         int index = value.toInt();
-                        if (index >= 0 && index < displayEvents.length) {
-                          String title = displayEvents[index]['title'];
+                        if (index >= 0 && index < displayItems.length) {
+                          String title = showClubs
+                              ? displayItems[index]['clubName']
+                              : displayItems[index]['title'];
                           if (title.length > 7) title = title.substring(0, 6) + '..';
                           return Padding(
                             padding: const EdgeInsets.only(top: 8.0),
@@ -697,12 +744,15 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                   ),
                 ),
                 borderData: FlBorderData(show: false),
-                barGroups: List.generate(displayEvents.length, (index) {
+                barGroups: List.generate(displayItems.length, (index) {
+                  final value = showClubs
+                      ? (displayItems[index]['totalRegistrations'] as int).toDouble()
+                      : (displayItems[index]['count'] as int).toDouble();
                   return BarChartGroupData(
                     x: index,
                     barRods: [
                       BarChartRodData(
-                        toY: (displayEvents[index]['count'] as int).toDouble(),
+                        toY: value,
                         gradient: LinearGradient(
                           colors: [
                             isDark ? const Color(0xFFA855F7) : const Color(0xFF9333EA),
