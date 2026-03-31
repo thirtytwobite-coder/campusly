@@ -37,6 +37,7 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
   final _p = TextEditingController();
   final _ph = TextEditingController();
   final _c = TextEditingController();
+  final _cc = TextEditingController();
   bool _isLoading = false;
 
   @override
@@ -110,6 +111,11 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
                             ]),
                         const SizedBox(height: 16),
                         _buildTextField(_c, "College Name", Icons.school_outlined, enabled: widget.autoCollege == null),
+                        if (widget.role == 'Main Faculty') ...[
+                          const SizedBox(height: 16),
+                          _buildTextField(_cc, "College Code (e.g. IDK)", Icons.code_rounded,
+                              inputFormatters: [UpperCaseTextFormatter(), LengthLimitingTextInputFormatter(4)]),
+                        ],
                         const SizedBox(height: 32),
                         _isLoading
                             ? const CircularProgressIndicator()
@@ -146,6 +152,7 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
     if (_p.text.isEmpty) { _showError("Password is required"); return; }
     if (_p.text.length < 6) { _showError("Password must be at least 6 characters"); return; }
     if (_c.text.trim().isEmpty) { _showError("College is required"); return; }
+    if (widget.role == 'Main Faculty' && _cc.text.trim().isEmpty) { _showError("College Code is required"); return; }
 
     setState(() => _isLoading = true);
     try {
@@ -157,6 +164,7 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
         'phone': _ph.text.trim(),
         'role': widget.role,
         'college': _c.text.trim(),
+        'collegeCode': widget.role == 'Main Faculty' ? _cc.text.trim().toUpperCase() : '',
         'isActive': true,
       });
       if (mounted) Navigator.pop(context);
@@ -228,5 +236,15 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Upload Error: $e")));
     }
+  }
+}
+
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    return TextEditingValue(
+      text: newValue.text.toUpperCase(),
+      selection: newValue.selection,
+    );
   }
 }

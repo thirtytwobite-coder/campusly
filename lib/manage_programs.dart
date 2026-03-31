@@ -160,11 +160,13 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                   ),
                   trailing: Icon(Icons.calendar_today, color: isDark ? Colors.blueAccent : Colors.grey),
                   onTap: () async {
+                    final now = DateTime.now();
+                    final firstDate = DateUtils.dateOnly(now);
                     final picked = await showDatePicker(
                       context: ctx,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      initialDate: selectedDate ?? firstDate,
+                      firstDate: firstDate,
+                      lastDate: now.add(const Duration(days: 365)),
                     );
                     if (picked != null) setDialogState(() => selectedDate = picked);
                   },
@@ -234,11 +236,15 @@ class _ManageProgramsScreenState extends State<ManageProgramsScreen> {
                   ),
                   trailing: Icon(Icons.calendar_today, color: isDark ? Colors.blueAccent : Colors.grey),
                   onTap: () async {
+                    final now = DateTime.now();
+                    final firstDate = DateUtils.dateOnly(now);
                     final picked = await showDatePicker(
                       context: ctx,
-                      initialDate: selectedDate ?? DateTime.now(),
-                      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      initialDate: (selectedDate != null && selectedDate!.isAfter(firstDate)) 
+                          ? selectedDate! 
+                          : firstDate,
+                      firstDate: firstDate,
+                      lastDate: now.add(const Duration(days: 365)),
                     );
                     if (picked != null) setDialogState(() => selectedDate = picked);
                   },

@@ -712,13 +712,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildModernInfoGroup([
             _buildModernInfoTile(Icons.phone_iphone_rounded, 'Primary Phone', userData?['phone']?.toString() ?? 'Not provided', theme, Colors.blue),
             _buildModernInfoTile(Icons.account_balance_rounded, 'Institutional Affiliation', userData?['college']?.toString() ?? 'Not provided', theme, Colors.indigo),
+            if (userData?['collegeCode'] != null && (userData?['collegeCode']?.toString().isNotEmpty ?? false))
+              _buildModernInfoTile(Icons.code_rounded, 'College Code', userData?['collegeCode']?.toString() ?? '', theme, Colors.purple),
             _buildModernInfoTile(Icons.badge_rounded, 'Register ID', userData?['ktuId']?.toString() ?? 'Not provided', theme, Colors.amber.shade800, isLast: true),
           ], theme),
           const SizedBox(height: 32),
         ] else ...[
           _buildModernSectionHeader('Institutional Profile', Icons.account_balance_rounded, theme),
           _buildModernInfoGroup([
-            _buildModernInfoTile(Icons.account_balance_rounded, 'Institutional Affiliation', userData?['college']?.toString() ?? 'Not provided', theme, Colors.indigo, isLast: true),
+            _buildModernInfoTile(Icons.account_balance_rounded, 'Institutional Affiliation', userData?['college']?.toString() ?? 'Not provided', theme, Colors.indigo),
+            if (userData?['collegeCode'] != null && (userData?['collegeCode']?.toString().isNotEmpty ?? false))
+              _buildModernInfoTile(Icons.code_rounded, 'College Code', userData?['collegeCode']?.toString() ?? '', theme, Colors.purple, isLast: true)
+            else
+              const SizedBox.shrink(),
           ], theme),
           const SizedBox(height: 32),
         ],

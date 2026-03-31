@@ -212,6 +212,7 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
             _buildCollegeDropdown(),
             
             _buildTextField(_collegeCode, "College Code (e.g. IDK)", Icons.account_balance,
+                readOnly: true,
                 inputFormatters: [UpperCaseTextFormatter(), LengthLimitingTextInputFormatter(4)]),
             _buildTextField(_admissionYear, "Admission Year (e.g. 23)", Icons.date_range,
                 keyboard: TextInputType.number,
@@ -318,11 +319,13 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
             );
           }
 
-          final colleges = snapshot.data!.docs
-              .map((doc) => doc['college'])
-              .whereType<String>()
-              .toSet()
-              .toList();
+          final List<DocumentSnapshot> docs = snapshot.data!.docs;
+          final Map<String, String> collegeToCode = {
+            for (var doc in docs)
+              if (doc.data().toString().contains('college') && doc.data().toString().contains('collegeCode'))
+                doc['college'] as String: doc['collegeCode'] as String
+          };
+          final colleges = collegeToCode.keys.toList();
 
           // Ensure the currently selected college is still valid, otherwise reset it.
           final selectedCollege = colleges.contains(_selectedCollege)
@@ -345,6 +348,9 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
             onChanged: (value) {
               setState(() {
                 _selectedCollege = value;
+                if (value != null && collegeToCode.containsKey(value)) {
+                  _collegeCode.text = collegeToCode[value]!;
+                }
               });
             },
             validator: (value) {
@@ -360,11 +366,12 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
   }
 
   Widget _buildTextField(TextEditingController controller, String label, IconData icon,
-      {bool obscure = false, TextInputType keyboard = TextInputType.text, Widget? suffixIcon, List<TextInputFormatter>? inputFormatters}) {
+      {bool obscure = false, bool readOnly = false, TextInputType keyboard = TextInputType.text, Widget? suffixIcon, List<TextInputFormatter>? inputFormatters}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: TextField(
         controller: controller,
+        readOnly: readOnly,
         obscureText: obscure,
         keyboardType: keyboard,
         inputFormatters: inputFormatters,
