@@ -37,8 +37,12 @@ async function sendSms(to, body) {
 }
 
 // --------- helper functions for FCM tokens ---------
-async function getTokensByRole(role) {
-  const usersSnap = await admin.firestore().collection('users').where('role', '==', role).get();
+async function getTokensByRole(role, college = null) {
+  let query = admin.firestore().collection('users').where('role', '==', role.toUpperCase());
+  if (college && String(college).trim().length > 0) {
+    query = query.where('college', '==', String(college).toUpperCase());
+  }
+  const usersSnap = await query.get();
   const tokens = [];
   usersSnap.forEach(doc => {
     const t = doc.data().fcmToken;
@@ -152,12 +156,19 @@ exports.notifyOnEventStatusChange = functions.firestore
     return null;
   });
 
-// Scenario 4: When Coordinator sends certificate for verification -> Send notification to Faculty
+// Scenario 4: When Coordinator sends certificate for verification -> Send notification to Main Faculty
 exports.notifyOnCertificatePending = functions.firestore
   .document('certificate_approvals/{certId}')
   .onCreate(async (snap, context) => {
     const data = snap.data() || {};
     if (data.status !== 'pending') return null;
+
+    const clubDoc = await admin.firestore().collection('clubs').doc(data.clubId).get();
+    let college = null;
+    if (clubDoc.exists) {
+      const clubData = clubDoc.data() || {};
+      college = clubData.college || clubData.collegeCode || null;
+    }
 
     const payload = {
       notification: {
@@ -170,7 +181,7 @@ exports.notifyOnCertificatePending = functions.firestore
       },
     };
 
-    const tokens = await getTokensByRole('FACULTY');
+    const tokens = await getTokensByRole('MAIN FACULTY', college);
     if (tokens.length > 0) {
       await admin.messaging().sendToDevice(tokens, payload, { priority: 'high', timeToLive: 86400 });
     }

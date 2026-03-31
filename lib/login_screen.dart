@@ -993,9 +993,24 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
               ),
               onPressed: () async {
                 if (clubName.text.isEmpty) return;
+                String college = '';
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+                  if (userDoc.exists) {
+                    college = userDoc.data()?['college'] ?? '';
+                  }
+                  if (college.isEmpty) {
+                    final facultyDoc = await FirebaseFirestore.instance.collection('faculty').doc(user.uid).get();
+                    if (facultyDoc.exists) {
+                      college = facultyDoc.data()?['college'] ?? '';
+                    }
+                  }
+                }
                 await FirebaseFirestore.instance.collection('clubs').add({
                   'clubName': clubName.text.trim(),
                   'description': clubDesc.text.trim(),
+                  'college': college,
                   'isEnabled': true,
                   'createdBy': FirebaseAuth.instance.currentUser?.email ?? 'admin',
                   'createdAt': FieldValue.serverTimestamp(),

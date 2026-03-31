@@ -41,9 +41,11 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   int _totalEvents = 0;
   int _lowParticipationCount = 0;
   int _maxEventCount = 0;
+  int _totalClubs = 0;
   String _filter = 'All';
 
   Set<String> _myProgramIds = {};
+  List<Map<String, dynamic>> _clubAnalytics = [];
 
   @override
   void initState() {
@@ -64,32 +66,67 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     await _fetchAnalyticsData();
   }
 
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _fetchEventsForClubIds(List<String> clubIds) async {
+    final events = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+    const batchSize = 10;
+
+    for (var i = 0; i < clubIds.length; i += batchSize) {
+      final chunk = clubIds.sublist(i, min(i + batchSize, clubIds.length));
+      final snap = await FirebaseFirestore.instance
+          .collection('events')
+          .where('clubId', whereIn: chunk)
+          .get();
+      events.addAll(snap.docs);
+    }
+    return events;
+  }
+
   Future<void> _fetchAnalyticsData() async {
     try {
       Query<Map<String, dynamic>> eventsQuery = FirebaseFirestore.instance.collection('events');
+      List<String>? clubIds;
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> eventDocs;
 
       if (widget.clubId != null) {
         eventsQuery = eventsQuery.where('clubId', isEqualTo: widget.clubId);
+        final eventsSnap = await eventsQuery.get();
+        eventDocs = eventsSnap.docs;
       } else if (widget.clubIds != null && widget.clubIds!.isNotEmpty) {
-        eventsQuery = eventsQuery.where('clubId', whereIn: widget.clubIds);
+        eventDocs = await _fetchEventsForClubIds(widget.clubIds!);
       } else if (widget.collegeName != null) {
         final clubsSnap = await FirebaseFirestore.instance
             .collection('clubs')
             .where('college', isEqualTo: widget.collegeName)
             .get();
 
-        List<String> clubIds = clubsSnap.docs.map((d) => d.id).toList();
+        final clubs = clubsSnap.docs;
+        clubIds = clubs.map((d) => d.id).toList();
+        _totalClubs = clubs.length;
+
         if (clubIds.isEmpty) {
           if (mounted) setState(() => _isLoading = false);
           return;
         }
-        eventsQuery = eventsQuery.where('clubId', whereIn: clubIds);
+
+        _clubAnalytics = clubs.map((clubDoc) {
+          final clubData = clubDoc.data();
+          return {
+            'clubId': clubDoc.id,
+            'clubName': clubData['clubName'] ?? 'Unknown Club',
+            'totalEvents': 0,
+            'totalRegistrations': 0,
+            'lowParticipation': 0,
+          };
+        }).toList();
+
+        eventDocs = await _fetchEventsForClubIds(clubIds);
+      } else {
+        final eventsSnap = await eventsQuery.get();
+        eventDocs = eventsSnap.docs;
       }
 
-      final eventsSnap = await eventsQuery.get();
-
       final now = DateTime.now();
-      final filteredDocs = eventsSnap.docs.where((doc) {
+      final filteredDocs = eventDocs.where((doc) {
         if (widget.coordinatorId != null) {
           final pId = doc.data()['programId'];
           return _myProgramIds.contains(pId);
@@ -142,8 +179,63 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
           'date': eventDate,
           'isUpcoming': isUpcoming,
           'visibility': data['visibility'] ?? 'college',
+          'clubId': data['clubId'],
+          'clubName': data['clubName'] ?? '',
         };
       }));
+
+      if (widget.clubId == null && widget.clubIds == null && widget.collegeName != null) {
+        final statsByClub = <String, Map<String, dynamic>>{};
+        for (var clubStat in _clubAnalytics) {
+          statsByClub[clubStat['clubId'] as String] = clubStat;
+        }
+
+        final missingClubIds = <String>{};
+        for (var eventStat in results) {
+          final clubId = eventStat['clubId'] as String?;
+          if (clubId != null && !statsByClub.containsKey(clubId)) {
+            missingClubIds.add(clubId);
+          }
+        }
+
+        if (missingClubIds.isNotEmpty) {
+          final missingClubDocs = await Future.wait(
+            missingClubIds.map((clubId) => FirebaseFirestore.instance.collection('clubs').doc(clubId).get()),
+          );
+
+          for (var clubDoc in missingClubDocs) {
+            if (!clubDoc.exists) continue;
+            final clubData = clubDoc.data() ?? {};
+            final clubCollege = clubData['college']?.toString();
+            if (clubCollege != null && clubCollege != widget.collegeName && clubCollege.isNotEmpty) {
+              continue;
+            }
+
+            final clubEntry = {
+              'clubId': clubDoc.id,
+              'clubName': clubData['clubName'] ?? 'Unknown Club',
+              'totalEvents': 0,
+              'totalRegistrations': 0,
+              'lowParticipation': 0,
+            };
+            _clubAnalytics.add(clubEntry);
+            statsByClub[clubDoc.id] = clubEntry;
+          }
+        }
+
+        for (var eventStat in results) {
+          final clubId = eventStat['clubId'] as String?;
+          if (clubId == null || !statsByClub.containsKey(clubId)) continue;
+          final clubData = statsByClub[clubId]!;
+          clubData['totalEvents'] = (clubData['totalEvents'] as int) + 1;
+          clubData['totalRegistrations'] = (clubData['totalRegistrations'] as int) + (eventStat['count'] as int);
+          if ((eventStat['count'] as int) < 5) {
+            clubData['lowParticipation'] = (clubData['lowParticipation'] as int) + 1;
+          }
+        }
+
+        _clubAnalytics.sort((a, b) => (b['totalEvents'] as int).compareTo(a['totalEvents'] as int));
+      }
 
       int totalRegs = 0;
       for (var r in results) {
@@ -220,7 +312,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
           const VibrantBackground(),
           _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : _allEventStats.isEmpty
+              : (_allEventStats.isEmpty && _clubAnalytics.isEmpty)
               ? Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -246,6 +338,8 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                       const SizedBox(height: 8),
                       const SizedBox(height: 8),
                       _buildSummarySection(isDark, theme),
+                      const SizedBox(height: 32),
+                      _buildClubAnalyticsSection(isDark, theme),
                       const SizedBox(height: 32),
                       _buildChartSection(isDark),
                       const SizedBox(height: 32),
@@ -352,6 +446,135 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildClubAnalyticsSection(bool isDark, ThemeData theme) {
+    if (widget.collegeName == null || widget.clubId != null || widget.clubIds != null) return const SizedBox.shrink();
+    if (_clubAnalytics.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Club Insights",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            Text(
+              "$_totalClubs Clubs",
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.white54 : Colors.black54,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 180,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: _clubAnalytics.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final club = _clubAnalytics[index];
+              return InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AnalyticsDashboardScreen(
+                        clubId: club['clubId'] as String,
+                        clubName: club['clubName'] as String,
+                        collegeName: widget.collegeName,
+                      ),
+                    ),
+                  );
+                },
+                child: GlassCard(
+                  borderRadius: 24,
+                  child: Container(
+                    width: 240,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          theme.primaryColor.withOpacity(0.12),
+                          theme.primaryColor.withOpacity(0.04),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          club['clubName'] as String,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildClubStatLine(isDark, "Events", club['totalEvents'].toString()),
+                        _buildClubStatLine(isDark, "Registrations", club['totalRegistrations'].toString()),
+                        _buildClubStatLine(isDark, "Low Parts", club['lowParticipation'].toString()),
+                        const Spacer(),
+                        Text(
+                          "Tap to open club analytics",
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? Colors.white54 : Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildClubStatLine(bool isDark, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Text(
+            "$label:",
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white70 : Colors.black54,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+          ),
+        ],
       ),
     );
   }

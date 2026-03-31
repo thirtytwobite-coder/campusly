@@ -108,12 +108,13 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                     return const Center(child: CircularProgressIndicator());
                   }
 
+                  final currentCollege = widget.collegeName.trim().toLowerCase();
                   final docs = snapshot.data!.docs.where((doc) {
                     final data = doc.data() as Map<String, dynamic>;
-                    final clubCollege = data['college'];
+                    final clubCollege = data['college']?.toString().trim().toLowerCase();
                     return clubCollege == null ||
                         clubCollege == '' ||
-                        clubCollege == widget.collegeName;
+                        clubCollege == currentCollege;
                   }).toList();
 
                   if (docs.isEmpty) {
@@ -235,12 +236,16 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
     String? selectedEmail;
     String? selectedName;
 
-    final facultySnap = await FirebaseFirestore.instance
-        .collection('faculty')
-        .where('college', isEqualTo: widget.collegeName)
-        .get(const GetOptions(source: Source.server));
+    final facultyQuery = await FirebaseFirestore.instance.collection('faculty').get();
+    final currentCollege = widget.collegeName.trim().toLowerCase();
+    final facultyDocs = facultyQuery.docs.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final college = data['college']?.toString().trim().toLowerCase();
+      final code = data['collegeCode']?.toString().trim().toLowerCase();
+      return college == currentCollege || code == currentCollege;
+    }).toList();
 
-    if (facultySnap.docs.isEmpty) {
+    if (facultyDocs.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text("No faculty registered in your college.")));
@@ -273,7 +278,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                   prefixIcon: const Icon(Icons.person_search_rounded),
                 ),
                 dropdownColor: Theme.of(context).cardColor,
-                items: facultySnap.docs
+                items: facultyDocs
                     .map((d) => DropdownMenuItem(
                           value: d['email'] as String,
                           child: Text(d['name'] ?? d['email']),
@@ -281,7 +286,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                     .toList(),
                 onChanged: (v) {
                   selectedEmail = v;
-                  final selectedDoc = facultySnap.docs.firstWhere(
+                  final selectedDoc = facultyDocs.firstWhere(
                     (doc) => doc['email'] == v,
                     orElse: () => throw Exception('Faculty not found'),
                   );
@@ -336,13 +341,15 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
             children: [
               const VibrantBackground(),
               StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('clubs')
-                    .where('college', isEqualTo: widget.collegeName)
-                    .snapshots(),
+                stream: FirebaseFirestore.instance.collection('clubs').snapshots(),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                  final docs = snapshot.data!.docs;
+                  final currentCollege = widget.collegeName.trim().toLowerCase();
+                  final docs = snapshot.data!.docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final clubCollege = data['college']?.toString().trim().toLowerCase();
+                    return clubCollege == null || clubCollege == '' || clubCollege == currentCollege;
+                  }).toList();
                   if (docs.isEmpty) return const Center(child: Text("No local clubs added yet."));
 
                   return ListView.separated(
