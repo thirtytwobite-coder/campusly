@@ -126,25 +126,27 @@ Future<void> _saveTokenToFirestore(String token) async {
   try {
     final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
     final doc = await userRef.get();
-    if (doc.exists) {
-      await userRef.update({'fcmToken': token});
+
+    String name = '';
+    String role = 'STUDENT';
+    String college = '';
+    final studentSnap = await FirebaseFirestore.instance.collection('student').doc(user.uid).get();
+    if (studentSnap.exists) {
+      name = studentSnap.data()?['name'] ?? '';
+      role = 'STUDENT';
+      college = studentSnap.data()?['college'] ?? '';
     } else {
-      String name = '';
-      String role = 'STUDENT';
-      String college = '';
-      final studentSnap = await FirebaseFirestore.instance.collection('student').doc(user.uid).get();
-      if (studentSnap.exists) {
-        name = studentSnap.data()?['name'] ?? '';
-        role = 'STUDENT';
-        college = studentSnap.data()?['college'] ?? '';
-      } else {
-        final facultySnap = await FirebaseFirestore.instance.collection('faculty').doc(user.uid).get();
-        if (facultySnap.exists) {
-          name = facultySnap.data()?['name'] ?? '';
-          role = 'FACULTY';
-          college = facultySnap.data()?['college'] ?? '';
-        }
+      final facultySnap = await FirebaseFirestore.instance.collection('faculty').doc(user.uid).get();
+      if (facultySnap.exists) {
+        name = facultySnap.data()?['name'] ?? '';
+        role = facultySnap.data()?['role']?.toString().toUpperCase() ?? 'FACULTY';
+        college = facultySnap.data()?['college'] ?? '';
       }
+    }
+
+    if (doc.exists) {
+      await userRef.update({'fcmToken': token, 'role': role, 'college': college});
+    } else {
       await userRef.set({'name': name, 'role': role, 'fcmToken': token, 'college': college});
     }
   } catch (e) {

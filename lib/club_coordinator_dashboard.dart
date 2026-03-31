@@ -239,6 +239,9 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
 
         final clubData = snapshot.data!.data() as Map<String, dynamic>;
         final description = clubData['description'] ?? 'No description set.';
+        
+        final currentUserEmail = FirebaseAuth.instance.currentUser?.email;
+        final bool hasCertificate = (clubData['sentCoordinatorCerts'] as List<dynamic>?)?.contains(currentUserEmail) ?? false;
 
         return SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -264,6 +267,12 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                   .animate()
                   .fadeIn(duration: 600.ms, delay: 200.ms)
                   .slideX(begin: -0.2),
+
+              if (hasCertificate) ...[
+                const SizedBox(height: 20),
+                _buildCoordinatorCertificateBanner(),
+              ],
+              
               const SizedBox(height: 25),
 
               _clubDescriptionCard(description),
@@ -318,38 +327,22 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                 ],
               ),
               const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildQuickActionCard(
-                      "Feedback",
-                      "Student Reviews",
-                      Icons.rate_review_rounded,
-                      const Color(0xFF10B981), // Emerald-like color
-                      () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ClubFeedbackScreen(
-                              clubId: clubId!,
-                              clubName: clubName ?? 'Club',
-                            ),
-                          ),
-                        );
-                      },
+              _buildFullWidthActionCard(
+                "Feedback",
+                "Student Reviews",
+                Icons.rate_review_rounded,
+                const Color(0xFF10B981),
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ClubFeedbackScreen(
+                        clubId: clubId!,
+                        clubName: clubName ?? 'Club',
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: _buildQuickActionCard(
-                      "Branding",
-                      "Logo & Style",
-                      Icons.auto_awesome_rounded,
-                      Colors.purpleAccent,
-                      () => _showBrandingDialog(clubData),
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
 
               const SizedBox(height: 30),
@@ -577,6 +570,80 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     ).animate().fadeIn().slideY(begin: 0.1);
   }
 
+  Widget _buildCoordinatorCertificateBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFEAB308), Color(0xFFCA8A04)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFEAB308).withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+            child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  "Certificate Issued!",
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: -0.5),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  "Your leadership certificate is ready to download.",
+                  style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CertificatesScreen(
+                    clubId: clubId!,
+                    clubName: clubName ?? '',
+                    isFaculty: false,
+                  ),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFFCA8A04),
+              elevation: 4,
+              shadowColor: Colors.black26,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text("View", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2);
+  }
+
   Widget _buildQuickActionCard(
       String title,
       String subtitle,
@@ -665,306 +732,102 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2).scale(begin: const Offset(0.9, 0.9));
   }
 
-  void _showBrandingDialog(Map<String, dynamic> clubData) {
+  Widget _buildFullWidthActionCard(
+      String title,
+      String subtitle,
+      IconData icon,
+      Color color,
+      VoidCallback onTap,
+      ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final logoController = TextEditingController(text: clubData['profilePic'] ?? '');
-    final signatureController = TextEditingController(text: clubData['signatureUrl'] ?? '');
-    final facultySignatureController = TextEditingController(text: clubData['facultySignatureUrl'] ?? '');
-
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: '',
-      barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 400),
-      pageBuilder: (ctx, anim1, anim2) => Center(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.6 : 0.2),
-                blurRadius: 32,
-                offset: const Offset(0, 16),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(32),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: Material(
-                color: isDark ? Colors.black.withOpacity(0.85) : Colors.white.withOpacity(0.92),
-                child: Container(
-                  constraints: BoxConstraints(
-                    maxWidth: 500,
-                    maxHeight: MediaQuery.of(context).size.height * 0.8,
-                  ),
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Club Branding",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 24,
-                                    letterSpacing: -1.2,
-                                    color: isDark ? Colors.white : Colors.black,
-                                  ),
-                                ),
-                                Text(
-                                  "Configure certificates logo and signatures",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: (isDark ? Colors.white : Colors.black).withOpacity(0.4),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            icon: const Icon(Icons.close_rounded),
-                            style: IconButton.styleFrom(
-                              backgroundColor: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Content
-                      Flexible(
-                        child: SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          child: StatefulBuilder(
-                            builder: (context, setDialogState) => Column(
-                              children: [
-                                _buildBrandingPicker(
-                                  controller: logoController,
-                                  label: "Club Logo",
-                                  icon: Icons.business_center_rounded,
-                                  isDark: isDark,
-                                  context: context,
-                                  setDialogState: setDialogState,
-                                ),
-                                const SizedBox(height: 16),
-                                _buildBrandingPicker(
-                                  controller: signatureController,
-                                  label: "Coordinator Signature",
-                                  icon: Icons.draw_rounded,
-                                  isDark: isDark,
-                                  context: context,
-                                  setDialogState: setDialogState,
-                                ),
-                                const SizedBox(height: 16),
-                                _buildBrandingPicker(
-                                  controller: facultySignatureController,
-                                  label: "Faculty Signature",
-                                  icon: Icons.verified_user_rounded,
-                                  isDark: isDark,
-                                  context: context,
-                                  setDialogState: setDialogState,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  "Selected images will be embedded in generated certificates.",
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 10, color: (isDark ? Colors.white : Colors.black).withOpacity(0.4), fontWeight: FontWeight.w600),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-                      // Actions
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              height: 56,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                gradient: const LinearGradient(colors: [Color(0xFF2196F3), Color(0xFF1565C0)]),
-                                boxShadow: [
-                                  BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
-                                ],
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(20),
-                                  onTap: () async {
-                                    await FirebaseFirestore.instance
-                                        .collection('clubs')
-                                        .doc(clubId)
-                                        .update({
-                                      'profilePic': logoController.text.trim(),
-                                      'signatureUrl': signatureController.text.trim(),
-                                      'facultySignatureUrl': facultySignatureController.text.trim(),
-                                    });
-                                    if (mounted) {
-                                      Navigator.pop(ctx);
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text("Branding updated successfully!"), backgroundColor: Colors.green),
-                                      );
-                                    }
-                                  },
-                                  child: const Center(
-                                    child: Text(
-                                      "SAVE SETTINGS",
-                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15, letterSpacing: 1),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-      transitionBuilder: (ctx, anim1, anim2, child) => FadeTransition(
-        opacity: anim1,
-        child: ScaleTransition(
-          scale: anim1.drive(CurveTween(curve: Curves.easeOutBack)),
-          child: child,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBrandingPicker({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    required bool isDark,
-    required BuildContext context,
-    required StateSetter setDialogState,
-  }) {
-    final hasImage = controller.text.isNotEmpty;
-
+    
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: (isDark ? Colors.white : Colors.black).withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(isDark ? 0.3 : 0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () async {
-            final picker = ImagePicker();
-            final pickedFile = await picker.pickImage(
-              source: ImageSource.gallery,
-              imageQuality: 50,
-              maxWidth: 500,
-            );
-            if (pickedFile == null) return;
-
-            try {
-              final bytes = await pickedFile.readAsBytes();
-              final base64String = base64Encode(bytes);
-              setDialogState(() {
-                controller.text = 'data:image/jpeg;base64,$base64String';
-              });
-            } catch (e) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Failed to pick image: $e'), backgroundColor: Colors.red),
-                );
-              }
-            }
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: (hasImage ? Colors.green : Colors.blue).withOpacity(0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(hasImage ? Icons.check_circle_rounded : icon, color: hasImage ? Colors.green : Colors.blue, size: 24),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: InkWell(
+            onTap: onTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              decoration: BoxDecoration(
+                color: isDark ? color.withOpacity(0.05) : Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: color.withOpacity(isDark ? 0.2 : 0.4),
+                  width: 1.5,
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label.toUpperCase(),
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: (isDark ? Colors.white : Colors.black).withOpacity(0.4), letterSpacing: 1.2),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        hasImage ? "Image Selected (Tap to Change)" : "Click to select image",
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : Colors.black87),
-                      ),
-                    ],
-                  ),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    color.withOpacity(isDark ? 0.15 : 0.1),
+                    color.withOpacity(isDark ? 0.05 : 0.02),
+                  ],
                 ),
-                if (hasImage)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Builder(
-                      builder: (context) {
-                        try {
-                          final imageData = controller.text;
-                          if (imageData.startsWith('data:image')) {
-                            return Image.memory(
-                              base64Decode(imageData.split(',').last),
-                              width: 40,
-                              height: 40,
-                              fit: BoxFit.cover,
-                              errorBuilder: (ctx, err, stack) => Icon(Icons.broken_image, size: 20, color: Colors.grey),
-                            );
-                          } else if (imageData.isNotEmpty) {
-                            // Fallback for legacy URLs
-                            return Image.network(
-                              imageData,
-                              width: 40,
-                              height: 40,
-                              fit: BoxFit.cover,
-                              errorBuilder: (ctx, err, stack) => Icon(Icons.broken_image, size: 20, color: Colors.grey),
-                            );
-                          }
-                        } catch (e) {
-                          debugPrint("Image decoding error: $e");
-                        }
-                        return Icon(Icons.broken_image, size: 20, color: Colors.grey);
-                      },
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, size: 28, color: color),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                            letterSpacing: -0.5,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white54 : Colors.grey[600],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-              ],
+                  Icon(Icons.chevron_right_rounded, color: isDark ? Colors.white54 : Colors.black38),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    );
+    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2).scale(begin: const Offset(0.9, 0.9));
   }
+
+
 
   void _showAddProgramProcedure(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;

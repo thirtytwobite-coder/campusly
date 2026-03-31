@@ -110,12 +110,15 @@ class ManageClubsScreen extends StatelessWidget {
               onPressed: () {
                 // Now only checks if Club Name is not empty
                 if (clubController.text.trim().isNotEmpty) {
+                  final currentUser = FirebaseAuth.instance.currentUser;
                   FirebaseFirestore.instance.collection('clubs').add({
                     'clubName': clubController.text.trim(),
                     'college': college ?? 'Default College',
                     'facultyEmail': "", // Still initialized for dashboard compatibility
                     'coordinatorName': null,
                     'coordinatorEmail': null,
+                    'createdBy': currentUser?.email?.trim().toLowerCase() ?? '',
+                    'createdByUid': currentUser?.uid ?? '',
                     'createdAt': FieldValue.serverTimestamp(),
                   });
                   Navigator.pop(ctx);

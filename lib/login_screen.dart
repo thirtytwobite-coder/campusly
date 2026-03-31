@@ -993,11 +993,27 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
               ),
               onPressed: () async {
                 if (clubName.text.isEmpty) return;
+                String college = '';
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+                  if (userDoc.exists) {
+                    college = userDoc.data()?['college'] ?? '';
+                  }
+                  if (college.isEmpty) {
+                    final facultyDoc = await FirebaseFirestore.instance.collection('faculty').doc(user.uid).get();
+                    if (facultyDoc.exists) {
+                      college = facultyDoc.data()?['college'] ?? '';
+                    }
+                  }
+                }
                 await FirebaseFirestore.instance.collection('clubs').add({
                   'clubName': clubName.text.trim(),
                   'description': clubDesc.text.trim(),
+                  'college': college,
                   'isEnabled': true,
-                  'createdBy': FirebaseAuth.instance.currentUser?.email ?? 'admin',
+                  'createdBy': user?.email?.trim().toLowerCase() ?? 'admin',
+                  'createdByUid': user?.uid ?? '',
                   'createdAt': FieldValue.serverTimestamp(),
                 });
                 if (mounted) Navigator.pop(context);
@@ -1051,7 +1067,17 @@ class _AdminClubsScreenState extends State<AdminClubsScreen> {
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final docs = snapshot.data!.docs;
+              final currentUser = FirebaseAuth.instance.currentUser;
+              final currentEmail = currentUser?.email?.trim().toLowerCase();
+              final currentUid = currentUser?.uid;
+              final docs = snapshot.data!.docs.where((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final createdBy = data['createdBy']?.toString().trim().toLowerCase();
+                final createdByUid = data['createdByUid']?.toString().trim();
+                if (currentUid != null && createdByUid == currentUid) return true;
+                if (currentEmail != null && createdBy == currentEmail) return true;
+                return false;
+              }).toList();
               if (docs.isEmpty) {
                 return Center(
                   child: Column(

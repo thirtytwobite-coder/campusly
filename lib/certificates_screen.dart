@@ -7,6 +7,7 @@ import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -99,9 +100,24 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
               if (!snapshot.hasData || !snapshot.data!.exists) return const Text("Club not found");
               
               final clubData = snapshot.data!.data() as Map<String, dynamic>;
-              final List<String> coordinatorEmails = List<String>.from(clubData['coordinatorEmails'] ?? []);
+              List<String> coordinatorEmails = List<String>.from(clubData['coordinatorEmails'] ?? []);
 
-              if (coordinatorEmails.isEmpty) return const Text("No coordinators assigned.");
+              if (!widget.isFaculty) {
+                final List<String> sentCerts = List<String>.from(clubData['sentCoordinatorCerts'] ?? []);
+                final currentUserEmail = FirebaseAuth.instance.currentUser?.email;
+                if (currentUserEmail != null && sentCerts.contains(currentUserEmail)) {
+                  coordinatorEmails = [currentUserEmail];
+                } else {
+                  coordinatorEmails = [];
+                }
+              }
+
+              if (coordinatorEmails.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text("Certificate not yet issued by Faculty.", textAlign: TextAlign.center),
+                );
+              }
 
               return ListView.builder(
                 shrinkWrap: true,
@@ -152,9 +168,6 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
       if (clubData['profilePic'] != null && clubData['profilePic'].toString().isNotEmpty) {
         logoImg = await _loadCertImage(clubData['profilePic']);
       }
-      if (clubData['signatureUrl'] != null && clubData['signatureUrl'].toString().isNotEmpty) {
-        sigImg = await _loadCertImage(clubData['signatureUrl']);
-      }
       if (clubData['facultySignatureUrl'] != null && clubData['facultySignatureUrl'].toString().isNotEmpty) {
         facSigImg = await _loadCertImage(clubData['facultySignatureUrl']);
       }
@@ -183,13 +196,8 @@ class _CertificatesScreenState extends State<CertificatesScreen> {
                 pw.Text("during the academic period and has demonstrated outstanding commitment and leadership.", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 16)),
                 pw.SizedBox(height: 50),
                 pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
                   children: [
-                    pw.Column(children: [
-                      if (sigImg != null) pw.Container(height: 40, width: 100, child: pw.Image(sigImg!)),
-                      pw.Container(width: 140, height: 1, color: PdfColors.black),
-                      pw.Text("Coordinator", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                    ]),
                     pw.Column(children: [
                       if (facSigImg != null) pw.Container(height: 40, width: 100, child: pw.Image(facSigImg!)),
                       pw.Container(width: 140, height: 1, color: PdfColors.black),

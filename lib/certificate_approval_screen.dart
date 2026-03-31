@@ -79,7 +79,6 @@ class _CertificateApprovalScreenState extends State<CertificateApprovalScreen> {
                 stream: FirebaseFirestore.instance
                     .collection('certificate_approvals')
                     .where('clubId', isEqualTo: widget.clubId)
-                    .where('status', isEqualTo: 'pending')
                     .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
@@ -159,6 +158,7 @@ class _CertificateApprovalScreenState extends State<CertificateApprovalScreen> {
                             eventId,
                             requestedBy,
                             timestamp,
+                            status: data['status'] ?? 'pending',
                           );
                         },
                         childCount: docs.length,
@@ -180,8 +180,9 @@ class _CertificateApprovalScreenState extends State<CertificateApprovalScreen> {
     String eventName,
     String? eventId,
     String requestedBy,
-    Timestamp? timestamp,
-  ) {
+    Timestamp? timestamp, {
+    String status = 'pending',
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Padding(
@@ -189,7 +190,7 @@ class _CertificateApprovalScreenState extends State<CertificateApprovalScreen> {
       child: GlassCard(
         borderRadius: 32,
         child: InkWell(
-          onTap: () => _navigateToDetails(context, eventId, eventName),
+          onTap: () => _showRequestDetailsDialog(context, eventId, eventName, requestedBy, timestamp, status),
           borderRadius: BorderRadius.circular(32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,12 +242,12 @@ class _CertificateApprovalScreenState extends State<CertificateApprovalScreen> {
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4)),
+                              border: Border.all(color: (status == 'pending' ? const Color(0xFFF59E0B) : Colors.green).withOpacity(0.4)),
                             ),
-                            child: const Text(
-                              "PENDING VERIFICATION",
+                            child: Text(
+                              status == 'pending' ? "PENDING VERIFICATION" : status.toUpperCase(),
                               style: TextStyle(
-                                color: Color(0xFFF59E0B),
+                                color: status == 'pending' ? const Color(0xFFF59E0B) : Colors.green,
                                 fontSize: 9,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 0.5,
@@ -295,7 +296,7 @@ class _CertificateApprovalScreenState extends State<CertificateApprovalScreen> {
                         ],
                       ),
                       child: ElevatedButton(
-                        onPressed: () => _navigateToDetails(context, eventId, eventName),
+                        onPressed: () => _showRequestDetailsDialog(context, eventId, eventName, requestedBy, timestamp, status),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           foregroundColor: Colors.white,
@@ -380,6 +381,83 @@ class _CertificateApprovalScreenState extends State<CertificateApprovalScreen> {
         const SnackBar(content: Text("Event details not found"))
       );
     }
+  }
+
+  void _showRequestDetailsDialog(
+      BuildContext context, String? eventId, String eventName, String requestedBy, Timestamp? timestamp, String status) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(
+            "Certificate Request Details",
+            style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _dialogDetailRow("Club Name", widget.clubName, isDark),
+              const SizedBox(height: 12),
+              _dialogDetailRow("Event", eventName, isDark),
+              const SizedBox(height: 12),
+              _dialogDetailRow("Coordinator Email", requestedBy, isDark),
+              const SizedBox(height: 12),
+              _dialogDetailRow("Requested By", requestedBy, isDark),
+              const SizedBox(height: 12),
+              _dialogDetailRow("Status", status.toUpperCase(), isDark,
+                  valueColor: status == 'pending' ? Colors.orange : Colors.green),
+              const SizedBox(height: 12),
+              _dialogDetailRow(
+                  "Sent Timestamp", timestamp != null ? _formatDate(timestamp.toDate()) : "Unknown", isDark),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                // Future Implementation for downloading or reviewing
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Download functionality coming soon!")),
+                );
+              },
+              icon: const Icon(Icons.download_rounded, size: 18),
+              label: const Text("Download"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _dialogDetailRow(String label, String value, bool isDark, {Color? valueColor}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isDark ? Colors.white54 : Colors.black54),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+              fontSize: 14, fontWeight: FontWeight.w600, color: valueColor ?? (isDark ? Colors.white : Colors.black87)),
+        ),
+      ],
+    );
   }
 
   String _formatDate(DateTime date) {

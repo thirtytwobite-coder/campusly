@@ -12,6 +12,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/rendering.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -188,7 +189,16 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                           return const Center(child: CircularProgressIndicator());
                         }
 
-                        final docs = snapshot.data?.docs ?? [];
+                        final rawDocs = snapshot.data?.docs ?? [];
+                        final uniqueClubDocs = <String, QueryDocumentSnapshot>{};
+                        for (final doc in rawDocs) {
+                          final clubId = (doc.data() as Map<String, dynamic>)['clubId']?.toString();
+                          if (clubId == null) continue;
+                          if (!uniqueClubDocs.containsKey(clubId)) {
+                            uniqueClubDocs[clubId] = doc;
+                          }
+                        }
+                        final docs = uniqueClubDocs.values.toList();
 
                         if (docs.isEmpty) {
                           return CustomScrollView(
@@ -584,25 +594,6 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
             _buildApprovalCard(clubId, clubName),
             _buildCertificateCard(clubId, clubName),
             _buildDashboardCard(
-              icon: Icons.workspace_premium_rounded,
-              title: "Certificates Hub",
-              subtitle: "View & Coordinator Certs",
-              colors: [const Color(0xFFD946EF), const Color(0xFFA21CAF)],
-              index: 4,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CertificatesScreen(
-                      clubId: clubId,
-                      clubName: clubName,
-                      isFaculty: true,
-                    ),
-                  ),
-                );
-              },
-            ),
-            _buildDashboardCard(
               icon: Icons.check_circle_rounded,
               title: "Approved",
               subtitle: "Success",
@@ -639,6 +630,22 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
                   ),
                 );
               },
+            ),
+            _buildDashboardCard(
+              icon: Icons.auto_awesome_rounded,
+              title: "Branding",
+              subtitle: "Logo & Signatures",
+              colors: [const Color(0xFF8B5CF6), const Color(0xFF7C3AED)],
+              index: 7,
+              onTap: () => _showBrandingDialog(clubId),
+            ),
+            _buildDashboardCard(
+              icon: Icons.stars_rounded,
+              title: "Coordinator Certs",
+              subtitle: "Excellence & Leadership",
+              colors: [const Color(0xFFEAB308), const Color(0xFFCA8A04)],
+              index: 8,
+              onTap: () => _showCoordinatorCertDialog(clubId, clubName),
             ),
           ],
         ),
@@ -870,6 +877,509 @@ class _FacultyHomeScreenState extends State<FacultyHomeScreen> {
         );
       },
     );
+  }
+
+  void _showBrandingDialog(String clubId) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    FirebaseFirestore.instance.collection('clubs').doc(clubId).get().then((clubDoc) {
+      if (!clubDoc.exists || !mounted) return;
+      final clubData = clubDoc.data() as Map<String, dynamic>;
+
+      final logoController = TextEditingController(text: clubData['profilePic'] ?? '');
+      final signatureController = TextEditingController(text: clubData['signatureUrl'] ?? '');
+      final facultySignatureController = TextEditingController(text: clubData['facultySignatureUrl'] ?? '');
+
+      showGeneralDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: '',
+        barrierColor: Colors.black54,
+        transitionDuration: const Duration(milliseconds: 400),
+        pageBuilder: (ctx, anim1, anim2) => Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.6 : 0.2),
+                  blurRadius: 32,
+                  offset: const Offset(0, 16),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(32),
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Material(
+                  color: isDark ? Colors.black.withOpacity(0.85) : Colors.white.withOpacity(0.92),
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: 500,
+                      maxHeight: MediaQuery.of(context).size.height * 0.8,
+                    ),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Club Branding",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 24,
+                                      letterSpacing: -1.2,
+                                      color: isDark ? Colors.white : Colors.black,
+                                    ),
+                                  ),
+                                  Text(
+                                    "Configure certificates logo and signatures",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: (isDark ? Colors.white : Colors.black).withOpacity(0.4),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              icon: const Icon(Icons.close_rounded),
+                              style: IconButton.styleFrom(
+                                backgroundColor: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Flexible(
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: StatefulBuilder(
+                              builder: (context, setDialogState) => Column(
+                                children: [
+                                  _buildBrandingPicker(
+                                    controller: logoController,
+                                    label: "Club Logo",
+                                    icon: Icons.business_center_rounded,
+                                    isDark: isDark,
+                                    context: context,
+                                    setDialogState: setDialogState,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildBrandingPicker(
+                                    controller: signatureController,
+                                    label: "Coordinator Signature",
+                                    icon: Icons.draw_rounded,
+                                    isDark: isDark,
+                                    context: context,
+                                    setDialogState: setDialogState,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildBrandingPicker(
+                                    controller: facultySignatureController,
+                                    label: "Faculty Signature",
+                                    icon: Icons.verified_user_rounded,
+                                    isDark: isDark,
+                                    context: context,
+                                    setDialogState: setDialogState,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    "Selected images will be embedded in generated certificates.",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 10, color: (isDark ? Colors.white : Colors.black).withOpacity(0.4), fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  gradient: const LinearGradient(colors: [Color(0xFF2196F3), Color(0xFF1565C0)]),
+                                  boxShadow: [
+                                    BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(20),
+                                    onTap: () async {
+                                      await FirebaseFirestore.instance
+                                          .collection('clubs')
+                                          .doc(clubId)
+                                          .update({
+                                        'profilePic': logoController.text.trim(),
+                                        'signatureUrl': signatureController.text.trim(),
+                                        'facultySignatureUrl': facultySignatureController.text.trim(),
+                                      });
+                                      if (mounted) {
+                                        Navigator.pop(ctx);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text("Branding updated successfully!"), backgroundColor: Colors.green),
+                                        );
+                                      }
+                                    },
+                                    child: const Center(
+                                      child: Text(
+                                        "SAVE SETTINGS",
+                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15, letterSpacing: 1),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        transitionBuilder: (ctx, anim1, anim2, child) => FadeTransition(
+          opacity: anim1,
+          child: ScaleTransition(
+            scale: anim1.drive(CurveTween(curve: Curves.easeOutBack)),
+            child: child,
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildBrandingPicker({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required bool isDark,
+    required BuildContext context,
+    required StateSetter setDialogState,
+  }) {
+    final hasImage = controller.text.isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: (isDark ? Colors.white : Colors.black).withOpacity(0.08)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () async {
+            final picker = ImagePicker();
+            final pickedFile = await picker.pickImage(
+              source: ImageSource.gallery,
+              imageQuality: 50,
+              maxWidth: 500,
+            );
+            if (pickedFile == null) return;
+
+            try {
+              final bytes = await pickedFile.readAsBytes();
+              final base64String = base64Encode(bytes);
+              setDialogState(() {
+                controller.text = 'data:image/jpeg;base64,$base64String';
+              });
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to pick image: $e'), backgroundColor: Colors.red),
+                );
+              }
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: (hasImage ? Colors.green : Colors.blue).withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(hasImage ? Icons.check_circle_rounded : icon, color: hasImage ? Colors.green : Colors.blue, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label.toUpperCase(),
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: (isDark ? Colors.white : Colors.black).withOpacity(0.4), letterSpacing: 1.2),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        hasImage ? "Image Selected (Tap to Change)" : "Click to select image",
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isDark ? Colors.white70 : Colors.black87),
+                      ),
+                    ],
+                  ),
+                ),
+                if (hasImage)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Builder(
+                      builder: (context) {
+                        try {
+                          final imageData = controller.text;
+                          if (imageData.startsWith('data:image')) {
+                            return Image.memory(
+                              base64Decode(imageData.split(',').last),
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, stack) => const Icon(Icons.broken_image, size: 20, color: Colors.grey),
+                            );
+                          } else if (imageData.isNotEmpty) {
+                            return Image.network(
+                              imageData,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, stack) => const Icon(Icons.broken_image, size: 20, color: Colors.grey),
+                            );
+                          }
+                        } catch (e) {
+                          debugPrint("Image decoding error: $e");
+                        }
+                        return const Icon(Icons.broken_image, size: 20, color: Colors.grey);
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+  // --- Coordinator Certificate Generation Helper ---
+
+  Future<void> _showCoordinatorCertDialog(String clubId, String clubName) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        title: Text("Coordinator Certificates", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance.collection('clubs').doc(clubId).get(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+              if (!snapshot.hasData || !snapshot.data!.exists) return const Text("Club not found");
+              
+              final clubData = snapshot.data!.data() as Map<String, dynamic>;
+              final List<dynamic> coordsMap = clubData['coordinators'] ?? [];
+              final List<String> coordinatorEmails = List<String>.from(clubData['coordinatorEmails'] ?? []);
+
+              final List<String> sentList = List<String>.from(clubData['sentCoordinatorCerts'] ?? []);
+
+              if (coordinatorEmails.isEmpty && coordsMap.isEmpty) return const Text("No coordinators assigned.");
+
+              final itemsList = coordsMap.isNotEmpty
+                  ? coordsMap.map((e) => e['studentEmail'].toString()).toList()
+                  : coordinatorEmails;
+
+              return ListView.builder(
+                shrinkWrap: true,
+                itemCount: itemsList.length,
+                itemBuilder: (context, index) {
+                  final email = itemsList[index];
+                  final isSent = sentList.contains(email);
+
+                  return ListTile(
+                    title: Text(email, style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isSent)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8.0),
+                            child: Icon(Icons.check_circle_rounded, color: Colors.green),
+                          )
+                        else
+                          IconButton(
+                            icon: const Icon(Icons.send_rounded, color: Colors.green),
+                            tooltip: "Send to Coordinator",
+                            onPressed: () async {
+                              await FirebaseFirestore.instance.collection('clubs').doc(clubId).update({
+                                'sentCoordinatorCerts': FieldValue.arrayUnion([email])
+                              });
+                              if (context.mounted) Navigator.pop(context);
+                              _showCoordinatorCertDialog(clubId, clubName);
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Certificate sent!")));
+                            },
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.file_download_rounded, color: Colors.blueAccent),
+                          tooltip: "Preview / Download PDF",
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            await _generateCoordinatorCert(email, clubId, clubName);
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Close")),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _generateCoordinatorCert(String email, String clubId, String clubName) async {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text("Generating Certificate...", style: TextStyle(fontWeight: FontWeight.bold))
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final clubData = (await FirebaseFirestore.instance.collection('clubs').doc(clubId).get()).data()!;
+      final userSnap = await FirebaseFirestore.instance.collection('student').where('email', isEqualTo: email).limit(1).get();
+      String name = email.split('@')[0].toUpperCase();
+      if (userSnap.docs.isNotEmpty) {
+        name = (userSnap.docs.first.data())['name']?.toString().toUpperCase() ?? name;
+      }
+
+      final pdf = pw.Document();
+      pw.MemoryImage? logoImg;
+      pw.MemoryImage? sigImg;
+      pw.MemoryImage? facSigImg;
+
+      if (clubData['profilePic'] != null && clubData['profilePic'].toString().isNotEmpty) {
+        logoImg = await _loadCertImage(clubData['profilePic']);
+      }
+      if (clubData['signatureUrl'] != null && clubData['signatureUrl'].toString().isNotEmpty) {
+        sigImg = await _loadCertImage(clubData['signatureUrl']);
+      }
+      if (clubData['facultySignatureUrl'] != null && clubData['facultySignatureUrl'].toString().isNotEmpty) {
+        facSigImg = await _loadCertImage(clubData['facultySignatureUrl']);
+      }
+
+      pdf.addPage(pw.Page(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: pw.EdgeInsets.zero,
+        build: (pw.Context context) {
+          return pw.Container(
+            margin: const pw.EdgeInsets.all(30),
+            padding: const pw.EdgeInsets.all(20),
+            decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.blueGrey900, width: 5)),
+            child: pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.center,
+              children: [
+                if (logoImg != null) pw.Container(height: 80, width: 80, child: pw.Image(logoImg!)),
+                pw.SizedBox(height: 20),
+                pw.Text("CERTIFICATE OF LEADERSHIP", style: pw.TextStyle(fontSize: 32, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+                pw.SizedBox(height: 10),
+                pw.Text("This is to certify that", style: pw.TextStyle(fontSize: 18, fontStyle: pw.FontStyle.italic)),
+                pw.SizedBox(height: 20),
+                pw.Text(name, style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold, decoration: pw.TextDecoration.underline)),
+                pw.SizedBox(height: 20),
+                pw.Text("has exceptionally served as the Club Coordinator for", style: const pw.TextStyle(fontSize: 16)),
+                pw.Text(clubName.toUpperCase(), style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                pw.Text("during the academic period and has demonstrated outstanding commitment and leadership.", textAlign: pw.TextAlign.center, style: const pw.TextStyle(fontSize: 16)),
+                pw.SizedBox(height: 50),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.center,
+                  children: [
+                    pw.Column(children: [
+                      if (facSigImg != null) pw.Container(height: 40, width: 100, child: pw.Image(facSigImg!)),
+                      pw.Container(width: 140, height: 1, color: PdfColors.black),
+                      pw.Text("Faculty In-Charge", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                    ]),
+                  ],
+                ),
+                pw.SizedBox(height: 20),
+                pw.Text("Generated on ${DateFormat('dd MMMM yyyy').format(DateTime.now())}", style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+              ],
+            ),
+          );
+        },
+      ));
+
+      if (mounted) Navigator.pop(context);
+      final output = await getTemporaryDirectory();
+      final file = File("${output.path}/coordinator_cert_${name.replaceAll(' ', '_')}.pdf");
+      await file.writeAsBytes(await pdf.save());
+      await OpenFile.open(file.path);
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
+  }
+
+  Future<pw.MemoryImage?> _loadCertImage(String data) async {
+    try {
+      if (data.startsWith('data:image')) {
+        return pw.MemoryImage(base64Decode(data.split(',').last));
+      } else {
+        final link = _convertGoogleDriveLink(data);
+        final response = await http.get(Uri.parse(link));
+        if (response.statusCode == 200) return pw.MemoryImage(response.bodyBytes);
+      }
+    } catch (e) {
+      debugPrint("Image load error: $e");
+    }
+    return null;
+  }
+
+  String _convertGoogleDriveLink(String link) {
+    if (link.isEmpty) return '';
+    if (link.contains('drive.google.com/uc?export=view')) return link;
+    final regex = RegExp(r'(?:drive\.google\.com/file/d/|id=)([a-zA-Z0-9-_]+)');
+    final match = regex.firstMatch(link);
+    if (match != null) return 'https://drive.google.com/uc?export=view&id=${match.group(1)}';
+    return link;
   }
 }
 
