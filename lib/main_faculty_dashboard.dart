@@ -344,20 +344,25 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                 stream: FirebaseFirestore.instance.collection('clubs').snapshots(),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                  final currentUser = FirebaseAuth.instance.currentUser;
-                  final currentEmail = currentUser?.email?.trim().toLowerCase();
-                  final currentUid = currentUser?.uid;
+                  final currentCollege = widget.collegeName.trim().toLowerCase();
 
                   final docs = snapshot.data!.docs.where((doc) {
                     final data = doc.data() as Map<String, dynamic>;
-                    final createdBy = data['createdBy']?.toString().trim().toLowerCase();
+                    final clubCollege = data['college']?.toString().trim().toLowerCase();
+                    final createdBy = data['createdBy']?.toString().trim();
                     final createdByUid = data['createdByUid']?.toString().trim();
-                    if (currentUid != null && createdByUid == currentUid) return true;
-                    if (currentEmail != null && createdBy == currentEmail) return true;
-                    return false;
+                    final facultyEmail = data['facultyEmail']?.toString().trim().toLowerCase();
+                    final coordinatorEmail = data['coordinatorEmail']?.toString().trim().toLowerCase();
+
+                    final isCollegeMatch = clubCollege == null || clubCollege == '' || clubCollege == currentCollege;
+                    final isStaffCreated = (createdBy != null && createdBy.isNotEmpty) ||
+                        (createdByUid != null && createdByUid.isNotEmpty) ||
+                        (facultyEmail != null && facultyEmail.isNotEmpty) ||
+                        (coordinatorEmail != null && coordinatorEmail.isNotEmpty);
+                    return isCollegeMatch && isStaffCreated;
                   }).toList();
 
-                  if (docs.isEmpty) return const Center(child: Text("No clubs added by you yet."));
+                  if (docs.isEmpty) return const Center(child: Text("No clubs added by admin or faculty yet."));
 
                   return ListView.separated(
                     padding: const EdgeInsets.all(16),
