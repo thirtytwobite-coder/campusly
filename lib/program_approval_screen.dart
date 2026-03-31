@@ -349,6 +349,8 @@ class _ApprovalCard extends StatelessWidget {
           'teamSize': data['teamSize'],
           'registrationDeadlineDate': data['registrationDeadlineDate'],
           'registrationDeadlineTime': data['registrationDeadlineTime'],
+          'isPaid': false,
+          'entryFee': 0.0,
         };
 
         if (existingEvents.docs.isNotEmpty) {
@@ -573,6 +575,7 @@ class _ApprovalCard extends StatelessWidget {
                   ],
                 ),
               ),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -616,6 +619,7 @@ class _ApprovalCard extends StatelessWidget {
                 _detailChip(Icons.chair_alt_rounded, data['totalSeats'] != null ? '${data['totalSeats']} Seats' : (data['maxSeats'] != null ? '${data['maxSeats']} Seats' : 'N/A Seats')),
                 if (data['registrationDeadlineDate'] != null && data['registrationDeadlineDate'].toString().isNotEmpty)
                   _detailChip(Icons.timer_off_rounded, 'Deadline: ${data['registrationDeadlineDate']} ${data['registrationDeadlineTime'] ?? ''}'),
+
               ],
             ),
             const SizedBox(height: 24),

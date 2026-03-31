@@ -38,6 +38,7 @@ dependencies:
   confetti: ^0.8.0
   dart_jsonwebtoken: ^3.4.0
 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

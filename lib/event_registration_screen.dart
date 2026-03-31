@@ -12,6 +12,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:college_event_manager/vibrant_background.dart';
 
+
 class EventRegistrationScreen extends StatefulWidget {
   final DocumentSnapshot event;
 
@@ -36,6 +37,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
   late TextEditingController _ktuIdController;
   late TextEditingController _teamNameController;
 
+
   final List<Map<String, dynamic>> _selectedTeamMembers = [];
   List<Map<String, dynamic>> _collegeStudents = [];
   bool _isLoadingStudents = false;
@@ -51,6 +53,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
     _semController = TextEditingController();
     _ktuIdController = TextEditingController();
     _teamNameController = TextEditingController();
+
     _fetchStudentData();
   }
 
@@ -64,6 +67,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
     _semController.dispose();
     _ktuIdController.dispose();
     _teamNameController.dispose();
+
     super.dispose();
   }
 
@@ -170,6 +174,8 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
     return availableSeats >= seatsRequired;
   }
 
+
+
   Future<void> _handleRegistration() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -268,6 +274,8 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
         'college': studentData?['college'],
         'registrationType': regType,
         'registeredAt': FieldValue.serverTimestamp(),
+        'paymentId': 'free',
+        'paymentStatus': 'free',
         if (isTeamEvent && regType == 'participant') 'teamId': teamId,
         if (isTeamEvent && regType == 'participant') 'teamName': teamName,
         if (isTeamEvent && regType == 'participant') 'isTeamLeader': true,
@@ -385,6 +393,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
     final dynamic teamSizeRaw = eventData['teamSize'];
     final int maxTeamSize = (teamSizeRaw is int) ? teamSizeRaw : int.tryParse(teamSizeRaw?.toString() ?? '') ?? 1;
 
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -415,6 +424,7 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
                             _buildRegisterTypeCard(volunteerCount, volunteerRole),
                             const SizedBox(height: 24),
                           ],
+
                           GlassCard(
                             child: Padding(
                               padding: const EdgeInsets.all(24),
@@ -482,8 +492,11 @@ class _EventRegistrationScreenState extends State<EventRegistrationScreen> with 
                               onPressed: (isSubmitting || _isRegistrationClosed()) ? null : _handleRegistration,
                               child: isSubmitting
                                   ? const CircularProgressIndicator(color: Colors.white)
-                                  : Text(_isRegistrationClosed() ? "REGISTRATION CLOSED" : "CONFIRM REGISTRATION",
-                                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+                                  : Text(
+                                      _isRegistrationClosed()
+                                          ? "REGISTRATION CLOSED"
+                                          : "CONFIRM REGISTRATION",
+                                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 0.8)),
                             ),
                           ),
                           const SizedBox(height: 60),

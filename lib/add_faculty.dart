@@ -35,6 +35,7 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
   final _n = TextEditingController();
   final _e = TextEditingController();
   final _p = TextEditingController();
+  final _cp = TextEditingController();
   final _ph = TextEditingController();
   final _c = TextEditingController();
   final _cc = TextEditingController();
@@ -103,6 +104,8 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
                         const SizedBox(height: 16),
                         _buildTextField(_p, "Password / ID", Icons.lock_outline_rounded, obscure: true),
                         const SizedBox(height: 16),
+                        _buildTextField(_cp, "Confirm Password", Icons.lock_outline_rounded, obscure: true),
+                        const SizedBox(height: 16),
                         _buildTextField(_ph, "Phone Number", Icons.phone_android_rounded, 
                             keyboardType: TextInputType.phone,
                             inputFormatters: [
@@ -151,6 +154,8 @@ class AddFacultyScreenState extends State<AddFacultyScreen> {
     if (!_isValidEmail(_e.text.trim())) { _showError("Valid email required"); return; }
     if (_p.text.isEmpty) { _showError("Password is required"); return; }
     if (_p.text.length < 6) { _showError("Password must be at least 6 characters"); return; }
+    if (_cp.text.isEmpty) { _showError("Please confirm the password"); return; }
+    if (_p.text != _cp.text) { _showError("Passwords do not match"); return; }
     if (_c.text.trim().isEmpty) { _showError("College is required"); return; }
     if (widget.role == 'Main Faculty' && _cc.text.trim().isEmpty) { _showError("College Code is required"); return; }
 

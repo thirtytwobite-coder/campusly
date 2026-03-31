@@ -1193,7 +1193,9 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
     final deadlineTimeController = TextEditingController();
 
     bool isUploadingPoster = false;
-    String? errorMessage;
+    String? errorMessage = '';
+
+
 
     showGeneralDialog(
       context: context,
@@ -1449,6 +1451,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                                 if (hasPrizePool)
                                   _buildProposalField(prizeAmountController, 'Prize Amount', isDark, prefixText: '₹ ', keyboardType: TextInputType.number),
 
+
+
                                 SwitchListTile(
                                   value: requiresVolunteers,
                                   title: const Text('Require Volunteers', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
@@ -1579,6 +1583,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                                                 setDialogState(() => errorMessage = valError);
                                                 return;
                                               }
+
                                               setDialogState(() => errorMessage = null);
                                               _handlePropose(
                                                 ctx,
@@ -1601,6 +1606,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
                                                 totalSeatsController.text,
                                                 deadlineDateController.text,
                                                 deadlineTimeController.text,
+
                                               );
                                             },
                                             child: const Center(
@@ -1685,6 +1691,7 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
       String totalSeats,
       String deadlineDate,
       String deadlineTime,
+
       ) async {
     if (name.trim().isEmpty ||
         desc.trim().isEmpty ||
@@ -1780,6 +1787,8 @@ class _ClubCoordinatorDashboardState extends State<ClubCoordinatorDashboard> {
         'registrationDeadlineTime': deadlineTime,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
+        'isPaid': false,
+        'entryFee': 0.0,
       });
 
       if (mounted) Navigator.pop(ctx);

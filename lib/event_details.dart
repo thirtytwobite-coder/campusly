@@ -170,6 +170,7 @@ View event details here: $deepLink
               final bool isTeamEvent = (data['isTeamEvent'] ?? false) == true;
               final bool requiresVolunteers = (data['requiresVolunteers'] ?? false) == true;
               final int volunteerCount = data['volunteerCount'] ?? 0;
+
               
               // CAPACITY LOGIC
               final int filledSeats = data['filledSeats'] is int ? data['filledSeats'] : int.tryParse(data['filledSeats']?.toString() ?? '') ?? 0;
@@ -277,6 +278,7 @@ View event details here: $deepLink
                                 children: [
                                   if (isTeamEvent) _coloredBadge("TEAM", Colors.deepPurple),
                                   if (requiresVolunteers) _coloredBadge("VOLUNTEER", Colors.orange.shade800),
+
                                   const Spacer(),
                                   IconButton(
                                     icon: Icon(Icons.share_rounded, color: theme.colorScheme.primary.withOpacity(0.6), size: 22),
@@ -285,7 +287,19 @@ View event details here: $deepLink
                                 ],
                               ),
                               const SizedBox(height: 24),
-                              _metricsGridDecorated(theme, date, time, venue, eventMode, isUnlimited, remainingSeats, totalSeats, data['registrationDeadlineDate'], data['registrationDeadlineTime']),
+                              _metricsGridDecorated(
+                                theme, 
+                                date, 
+                                time, 
+                                venue, 
+                                eventMode, 
+                                isUnlimited, 
+                                remainingSeats, 
+                                totalSeats, 
+                                data['registrationDeadlineDate'], 
+                                data['registrationDeadlineTime'],
+
+                              ),
                               
                               if (manualWinners != null && manualWinners.values.any((v) => v.toString().isNotEmpty)) ...[
                                 const SizedBox(height: 32),
@@ -472,6 +486,7 @@ View event details here: $deepLink
               const Expanded(child: SizedBox()),
           ],
         ),
+
       ],
     );
   }

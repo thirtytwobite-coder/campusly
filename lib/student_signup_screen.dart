@@ -32,6 +32,7 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
   final _ktuId = TextEditingController();
   final _email = TextEditingController();
   final _pass = TextEditingController();
+  final _confirmPass = TextEditingController();
   String? _selectedCollege;
 
   @override
@@ -56,6 +57,7 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
     _ktuId.dispose();
     _email.dispose();
     _pass.dispose();
+    _confirmPass.dispose();
     super.dispose();
   }
 
@@ -74,6 +76,7 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
 
   bool _isLoading = false;
   bool _isPasswordObscured = true;
+  bool _isConfirmPasswordObscured = true;
 
   Future<void> registerStudent() async {
     // Validate all fields
@@ -138,6 +141,16 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
 
     if (_pass.text.length < 6) {
       _showError("Password must be at least 6 characters");
+      return;
+    }
+
+    if (_confirmPass.text.isEmpty) {
+      _showError("Please confirm your password");
+      return;
+    }
+
+    if (_pass.text != _confirmPass.text) {
+      _showError("Passwords do not match");
       return;
     }
 
@@ -278,6 +291,18 @@ class _StudentSignUpScreenState extends State<StudentSignUpScreen> {
                   onPressed: () {
                     setState(() {
                       _isPasswordObscured = !_isPasswordObscured;
+                    });
+                  },
+                )),
+            _buildTextField(_confirmPass, "Confirm Password", Icons.lock_outline,
+                obscure: _isConfirmPasswordObscured,
+                suffixIcon: IconButton(
+                  icon: Icon(_isConfirmPasswordObscured
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  onPressed: () {
+                    setState(() {
+                      _isConfirmPasswordObscured = !_isConfirmPasswordObscured;
                     });
                   },
                 )),

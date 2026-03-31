@@ -108,12 +108,11 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                     return const Center(child: CircularProgressIndicator());
                   }
 
+                  final myCollege = widget.collegeName.trim().toLowerCase();
                   final docs = snapshot.data!.docs.where((doc) {
                     final data = doc.data() as Map<String, dynamic>;
-                    final clubCollege = data['college'];
-                    return clubCollege == null ||
-                        clubCollege == '' ||
-                        clubCollege == widget.collegeName;
+                    final clubCollege = (data['college'] ?? '').toString().trim().toLowerCase();
+                    return clubCollege.isEmpty || clubCollege == myCollege;
                   }).toList();
 
                   if (docs.isEmpty) {
@@ -331,19 +330,27 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
       context,
       MaterialPageRoute(
         builder: (c) => Scaffold(
-          appBar: AppBar(title: const Text('Manage Local Clubs')),
+          appBar: AppBar(title: const Text('Manage Clubs')),
           body: Stack(
             children: [
               const VibrantBackground(),
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('clubs')
-                    .where('college', isEqualTo: widget.collegeName)
                     .snapshots(),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                  final docs = snapshot.data!.docs;
-                  if (docs.isEmpty) return const Center(child: Text("No local clubs added yet."));
+
+                  final myCollege = widget.collegeName.trim().toLowerCase();
+                  final docs = snapshot.data!.docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final clubCollege = (data['college'] ?? '').toString().trim().toLowerCase();
+                    return clubCollege.isEmpty || clubCollege == myCollege;
+                  }).toList();
+
+                  if (docs.isEmpty) return const Center(child: Text("No clubs found."));
+
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
 
                   return ListView.separated(
                     padding: const EdgeInsets.all(16),
@@ -353,23 +360,124 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                       final data = docs[index].data() as Map<String, dynamic>;
                       final clubId = docs[index].id;
                       final bool isEnabled = data['isEnabled'] ?? true;
+                      final clubCollege = (data['college'] ?? '').toString().trim();
+                      final bool isGlobal = clubCollege.isEmpty;
 
-                      return GlassCard(
-                        borderRadius: 16,
-                        child: ListTile(
-                          title: Text(data['clubName']?.toUpperCase() ?? 'CLUB', 
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              decoration: isEnabled ? null : TextDecoration.lineThrough,
-                              color: isEnabled ? null : Colors.grey,
-                            )),
-                          subtitle: Text(isEnabled ? "Active Club" : "Disabled Club"),
-                          trailing: Switch(
-                            value: isEnabled,
-                            onChanged: (value) => _toggleClubStatus(clubId, value, data['clubName'] ?? 'Club'),
-                            activeColor: Colors.green,
-                          ),
-                        ),
+                      return StreamBuilder<DocumentSnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('club_mappings')
+                            .doc("${widget.collegeName}_$clubId")
+                            .snapshots(),
+                        builder: (context, mapSnap) {
+                          String? assignedFaculty;
+                          if (mapSnap.hasData && mapSnap.data!.exists) {
+                            final mappingData = mapSnap.data!.data() as Map<String, dynamic>;
+                            assignedFaculty = mappingData['facultyName'] ?? mappingData['facultyEmail'];
+                          }
+
+                          return GlassCard(
+                            borderRadius: 16,
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              leading: CircleAvatar(
+                                backgroundColor: isGlobal
+                                    ? Colors.deepPurple.withOpacity(0.1)
+                                    : Colors.blue.withOpacity(0.1),
+                                child: Icon(
+                                  isGlobal ? Icons.public_rounded : Icons.school_rounded,
+                                  color: isEnabled
+                                      ? (isGlobal ? Colors.deepPurple : Colors.blue)
+                                      : Colors.grey,
+                                ),
+                              ),
+                              title: Text(data['clubName']?.toUpperCase() ?? 'CLUB', 
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  decoration: isEnabled ? null : TextDecoration.lineThrough,
+                                  color: isEnabled ? null : Colors.grey,
+                                )),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: isGlobal
+                                                ? Colors.deepPurple.withOpacity(0.1)
+                                                : Colors.blue.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            isGlobal ? "Global" : "Local",
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: isGlobal ? Colors.deepPurple : Colors.blue,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: isEnabled
+                                                ? Colors.green.withOpacity(0.1)
+                                                : Colors.red.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            isEnabled ? "Active" : "Disabled",
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: isEnabled ? Colors.green : Colors.redAccent,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.person_rounded,
+                                          size: 14,
+                                          color: assignedFaculty != null
+                                              ? Colors.green
+                                              : (isDark ? Colors.white38 : Colors.black26),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            assignedFaculty ?? "No faculty assigned",
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: assignedFaculty != null
+                                                  ? (isDark ? Colors.white70 : Colors.black87)
+                                                  : (isDark ? Colors.white38 : Colors.black38),
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              trailing: Switch(
+                                value: isEnabled,
+                                onChanged: (value) => _toggleClubStatus(clubId, value, data['clubName'] ?? 'Club'),
+                                activeColor: Colors.green,
+                              ),
+                            ),
+                          ).animate().fadeIn(delay: (50 * index).ms).slideX(begin: 0.05);
+                        },
                       );
                     },
                   );
@@ -381,6 +489,8 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
       ),
     );
   }
+
+
 
   Future<void> _toggleClubStatus(String clubId, bool enable, String clubName) async {
     try {
@@ -565,7 +675,7 @@ class _MainFacultyDashboardState extends State<MainFacultyDashboard> {
                           ),
                           _buildPremiumCard(
                             "Clubs", 
-                            "Manage Local Groups",
+                            "All College Clubs",
                             Icons.business_center_rounded, 
                             const [Color(0xFF0EA5E9), Color(0xFF0284C7)],
                             _openManageClubs,
@@ -716,6 +826,7 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _pass = TextEditingController();
+  final _confirmPass = TextEditingController();
   final _phone = TextEditingController();
 
   Future<void> _register(String name, String email, String password, {FirebaseAuth? auth}) async {
@@ -744,6 +855,8 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
     if (_email.text.trim().isEmpty) { _showError("Email is required"); return; }
     if (!_isValidEmail(_email.text.trim())) { _showError("Please enter a valid email"); return; }
     if (_pass.text.length < 6) { _showError("Password must be at least 6 chars"); return; }
+    if (_confirmPass.text.isEmpty) { _showError("Please confirm the password"); return; }
+    if (_pass.text != _confirmPass.text) { _showError("Passwords do not match"); return; }
 
     try {
       FirebaseApp secondaryApp = await Firebase.initializeApp(
@@ -939,6 +1052,8 @@ class _AddFacultyScreenState extends State<AddFacultyScreen> {
                         _buildTextField(_email, "Email Address", Icons.email_outlined, keyboardType: TextInputType.emailAddress),
                         const SizedBox(height: 16),
                         _buildTextField(_pass, "Password", Icons.lock_outline_rounded, obscureText: true),
+                        const SizedBox(height: 16),
+                        _buildTextField(_confirmPass, "Confirm Password", Icons.lock_outline_rounded, obscureText: true),
                         const SizedBox(height: 16),
                         _buildTextField(_phone, "Phone Number", Icons.phone_android_rounded, keyboardType: TextInputType.phone),
                         const SizedBox(height: 32),

@@ -1215,6 +1215,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final theme = Theme.of(context);
 
+
     // Pick colors based on theme
     final List<List<Color>> gradients = isDark 
       ? [
@@ -1320,31 +1321,36 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (posterLink != null && posterLink.isNotEmpty)
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                        child: posterLink.startsWith('data:image') ? Image.memory(
-                          base64Decode(posterLink.split(',').last),
-                          width: double.infinity,
-                          height: isHorizontal ? 130 : 150, // Reduced poster height
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            height: isHorizontal ? 130 : 150,
-                            width: double.infinity,
-                            color: isDark ? Colors.grey[900] : Colors.grey[100],
-                            child: Icon(Icons.image_not_supported, size: 30, color: isDark ? Colors.grey : Colors.grey[400]),
+                      Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                            child: posterLink.startsWith('data:image') ? Image.memory(
+                              base64Decode(posterLink.split(',').last),
+                              width: double.infinity,
+                              height: isHorizontal ? 130 : 150,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                height: isHorizontal ? 130 : 150,
+                                width: double.infinity,
+                                color: isDark ? Colors.grey[900] : Colors.grey[100],
+                                child: Icon(Icons.image_not_supported, size: 30, color: isDark ? Colors.grey : Colors.grey[400]),
+                              ),
+                            ) : Image.network(
+                              posterLink,
+                              width: double.infinity,
+                              height: isHorizontal ? 130 : 150,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                height: isHorizontal ? 130 : 150,
+                                width: double.infinity,
+                                color: isDark ? Colors.grey[900] : Colors.grey[100],
+                                child: Icon(Icons.image_not_supported, size: 30, color: isDark ? Colors.grey : Colors.grey[400]),
+                              ),
+                            ),
                           ),
-                        ) : Image.network(
-                          posterLink,
-                          width: double.infinity,
-                          height: isHorizontal ? 130 : 150, // Reduced poster height
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            height: isHorizontal ? 130 : 150,
-                            width: double.infinity,
-                            color: isDark ? Colors.grey[900] : Colors.grey[100],
-                            child: Icon(Icons.image_not_supported, size: 30, color: isDark ? Colors.grey : Colors.grey[400]),
-                          ),
-                        ),
+
+                        ],
                       ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(10, 6, 10, 8), // Reduced padding
@@ -1423,8 +1429,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                                     
                                     if (isTeamEvent)
                                       _eventTag("Team", bgColor: Colors.purple.withOpacity(0.1), fgColor: Colors.purple.shade700),
+
                                     if (prize.isNotEmpty && prize != "0")
-                                      _eventTag("Rs.$prize", bgColor: Colors.amber.withOpacity(0.1), fgColor: Colors.amber.shade900),
+                                      _eventTag("Prize: ₹$prize", bgColor: Colors.amber.withOpacity(0.1), fgColor: Colors.amber.shade900),
                                     if (!isRegistrationClosed && deadlineDateStr != null && deadlineDateStr.isNotEmpty)
                                       _eventTag("Deadline: $deadlineDateStr", bgColor: Colors.teal.withOpacity(0.1), fgColor: Colors.teal.shade700),
                                   ],
